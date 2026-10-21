@@ -135,6 +135,8 @@
                                     </li>
                                     <li><hr class="dropdown-divider" /></li>
                                     <li><a class="dropdown-item {% if current == 'my-profile' %}active{% endif %}" href="{% url 'kiosk:my-profile' %}"><i class="bi bi-person-circle"></i> My profile</a></li>
+                                    {% if user_is_doctor %}<li><a class="dropdown-item {% if current == 'my-schedule' %}active{% endif %}" href="{% url 'kiosk:my-schedule' %}"><i class="bi bi-calendar-week"></i> My schedule</a></li>{% endif %}
+                                    <li><a class="dropdown-item {% if current == 'schedules' %}active{% endif %}" href="{% url 'kiosk:schedules' %}"><i class="bi bi-calendar3"></i> Doctor schedules</a></li>
                                     <li><a class="dropdown-item" href="{% url 'kiosk:landing' %}"><i class="bi bi-globe2"></i> Website</a></li>
                                     <li>
                                         <form method="post" action="{% url 'logout' %}" class="m-0">

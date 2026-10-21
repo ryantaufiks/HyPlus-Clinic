@@ -341,3 +341,5 @@ code { color: var(--aivin-primary-strong); }
 .brand-mark-img { height: 56px; width: auto; }
 .kiosk-logo { height: 84px; width: auto; }
 @media (max-width: 575.98px) { .brand-logo { height: 40px; } .brand-tag-side { display: none; } }
+.form-check-input:checked { background-color: var(--aivin-primary); border-color: var(--aivin-primary); }
+.form-check-input:focus { border-color: var(--aivin-primary); box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color); }

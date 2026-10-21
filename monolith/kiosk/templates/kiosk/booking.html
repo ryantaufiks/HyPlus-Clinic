@@ -20,7 +20,7 @@
             <h2 class="section-title"><i class="bi bi-clipboard2-pulse"></i> Your consultation</h2>
             <div class="row g-3">
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.service %}</div>
-                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_doctor %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_doctor %}<div class="form-text" id="doctor-hours"></div></div>
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_date %}</div>
                 <div class="col-12" id="queue-note" hidden>
                     <div class="alert {% if queue_open %}alert-success{% else %}alert-warning{% endif %} d-flex gap-2 mb-0">
@@ -74,6 +74,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ doctor_hours|json_script:"doctor-hours-data" }}
 <script>
 // A clinic consultation for today is a queue number, not a booking request.
 (function () {
@@ -91,6 +92,16 @@
         submit.querySelector("i").className = queueToday ? "bi bi-ticket-perforated" : "bi bi-send";
         submit.querySelector("span").textContent = queueToday ? "Get my queue number" : "Send booking request";
     }
+    const HOURS = JSON.parse(document.getElementById("doctor-hours-data").textContent);
+    const doctor = document.getElementById("{{ form.preferred_doctor.id_for_label }}");
+    function showHours() {
+        const hours = HOURS[doctor.value];
+        document.getElementById("doctor-hours").innerHTML = doctor.value
+            ? (hours ? `<i class="bi bi-calendar-week"></i> ${esc(hours)}` : "")
+            : "";
+    }
+    doctor.addEventListener("change", showHours);
+    showHours();
     service.addEventListener("change", update);
     date.addEventListener("change", update);
     update();

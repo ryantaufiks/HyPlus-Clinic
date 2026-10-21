@@ -71,7 +71,7 @@
                         {% for d in doctors_today|slice:":4" %}
                         <div class="today-doctor">
                             {% if d.face.photo %}<img class="avatar" src="{{ d.face.photo }}" alt="" style="--avatar-size: 48px" />{% else %}<span class="avatar avatar-initials" aria-hidden="true" style="--avatar-size: 48px; --avatar-bg: {{ d.face.color }}">{{ d.face.initials }}</span>{% endif %}
-                            <div class="flex-grow-1"><div class="fw-semibold">{{ d.name }}</div><div class="small text-muted">{{ d.room }}</div></div>
+                            <div class="flex-grow-1"><div class="fw-semibold">{{ d.name }}</div><div class="small text-muted">{{ d.room }}{% if d.hours %} · {{ d.hours }}{% endif %}</div></div>
                             <span class="status status-good"><i class="bi bi-circle-fill"></i>On duty</span>
                         </div>
                         {% empty %}
@@ -139,6 +139,8 @@
                     <div class="feature"><i class="bi bi-graph-up"></i><div><h4>Live clinic dashboard</h4><p>Check-ins, waiting patients, blood pressure alerts and device status in real time.</p></div></div>
                     <div class="feature"><i class="bi bi-inbox"></i><div><h4>Front desk tools</h4><p>Bookings confirmed on WhatsApp, registration approvals and review moderation.</p></div></div>
                     <div class="feature"><i class="bi bi-shield-lock"></i><div><h4>Secure by design</h4><p>Role-based access, an audit trail of every change, and encrypted sensitive settings.</p></div></div>
+                    <div class="feature"><i class="bi bi-calendar-week"></i><div><h4>Weekly doctor schedules</h4><p>Each doctor sets their consulting hours and days off; bookings outside them are refused automatically.</p></div></div>
+                    <div class="feature feature-soon feature-wide"><i class="bi bi-fingerprint"></i><div><h4>Staff attendance <span class="soon">Coming soon</span></h4><p>Clock in and out from the staff app with location or QR check, compared with each doctor's schedule, with monthly attendance reports for payroll.</p></div></div>
                 </div>
                 <div class="feature-panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai">
                     <h3 class="feature-panel-title"><i class="bi bi-stars"></i> AI features <span class="soon">Coming soon</span></h3>

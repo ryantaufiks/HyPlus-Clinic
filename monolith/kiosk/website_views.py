@@ -21,7 +21,7 @@ from django.views import View
 from django.views.generic import TemplateView
 from django_ratelimit.decorators import ratelimit
 
-from . import queue
+from . import queue, schedule
 from .forms import BootstrapMixin
 from .kiosk_api import assign_queue_number
 from .models import AuditEvent, BookingRequest, Patient, Review, Service, Visit
@@ -60,7 +60,11 @@ class LandingView(TemplateView):
                 "services": services,
                 "from_price": min((s.price_sgd for s in services), default=None),
                 "doctors_today": [
-                    {"name": _doctor_name(d), "room": room, "face": _doctor_face(d)} for d, room in queue.doctors_on_duty()
+                    {
+                        "name": _doctor_name(d), "room": room, "face": _doctor_face(d),
+                        "hours": schedule.format_blocks(schedule.hours_on(d, timezone.localdate())),
+                    }
+                    for d, room in queue.doctors_on_duty()
                 ],
                 "reviews": reviews[:6],
                 "review_count": summary["count"],
@@ -154,6 +158,10 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
             self._clean_queue_ticket(data)
         elif date and not data.get("preferred_time"):
             self.add_error("preferred_time", "Choose a time of day.")
+        elif date:
+            problem = schedule.availability_error(data.get("preferred_doctor"), date, data.get("preferred_time"))
+            if problem:
+                self.add_error("preferred_doctor", problem)
         return data
 
     def _clean_queue_ticket(self, data):
@@ -229,6 +237,7 @@ class BookingView(View):
                 "queue_service": Service.objects.filter(slug=QUEUE_SERVICE_SLUG, is_active=True).values_list("pk", flat=True).first(),
                 "today": timezone.localdate().isoformat(),
                 "queue_open": bool(queue.doctors_on_duty()),
+                "doctor_hours": {str(d.pk): schedule.summary(d) for d in bookable_doctors()},
             },
         )
 

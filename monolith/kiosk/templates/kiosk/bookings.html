@@ -11,6 +11,7 @@
     </div>
     <div class="d-flex gap-2">
         {% if user_can.manage_staff %}<a class="btn btn-light btn-icon" href="{% url 'admin:kiosk_service_changelist' %}"><i class="bi bi-tags"></i> Services &amp; prices</a>{% endif %}
+        <a class="btn btn-light btn-icon" href="{% url 'kiosk:schedules' %}"><i class="bi bi-calendar3"></i> Doctor schedules</a>
         <a class="btn btn-light btn-icon" href="{% url 'kiosk:landing' %}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Website</a>
     </div>
 </div>

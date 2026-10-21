@@ -539,3 +539,35 @@ class Review(models.Model):
         if not parts:
             return "Patient"
         return parts[0] + (f" {parts[-1][0].upper()}." if len(parts) > 1 else "")
+
+
+# --- Doctors' weekly schedules ---------------------------------------------------------------
+
+
+class DoctorSchedule(models.Model):
+    """One block of consulting hours in a doctor's weekly pattern (a day may have two)."""
+
+    WEEKDAYS = [(0, "Monday"), (1, "Tuesday"), (2, "Wednesday"), (3, "Thursday"), (4, "Friday"), (5, "Saturday"), (6, "Sunday")]
+
+    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="schedule_blocks")
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAYS)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        ordering = ["doctor_id", "weekday", "start_time"]
+
+    def __str__(self):
+        return f"{self.get_weekday_display()} {self.start_time:%H:%M}–{self.end_time:%H:%M}"
+
+
+class DoctorTimeOff(models.Model):
+    """A day the doctor does not work, whatever the weekly pattern says (leave, holiday)."""
+
+    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="time_off")
+    date = models.DateField()
+    note = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        ordering = ["date"]
+        constraints = [models.UniqueConstraint(fields=["doctor", "date"], name="one_time_off_per_day")]

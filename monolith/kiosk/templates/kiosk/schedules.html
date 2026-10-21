@@ -1,0 +1,57 @@
+{% extends 'kiosk/base.html' %}
+{% load avatars %}
+
+{% block title %}Doctor schedules - Hy+ Clinic{% endblock %}
+
+{% block extra_css %}
+<style>
+    .week-table th, .week-table td { white-space: nowrap; vertical-align: middle; }
+    .week-table .today { background: var(--aivin-primary-soft); }
+    .week-table .hours { font-variant-numeric: tabular-nums; font-size: 0.85rem; line-height: 1.5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Doctor schedules</h1>
+        <p class="page-subtitle">Weekly consulting hours. Bookings outside them are refused.</p>
+    </div>
+    {% if is_doctor %}<a class="btn btn-primary btn-icon" href="{% url 'kiosk:my-schedule' %}"><i class="bi bi-pencil"></i> Edit my schedule</a>{% endif %}
+</div>
+
+<section class="surface surface-flush">
+    <div class="table-responsive">
+        <table class="table table-aivin week-table mb-0">
+            <thead><tr><th>Doctor</th>{% for d in weekdays %}<th class="{% if forloop.counter0 == today_weekday %}today{% endif %}">{{ d }}</th>{% endfor %}<th></th></tr></thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><span class="with-avatar">{% avatar row.doctor 32 %}<span class="fw-semibold">{{ row.doctor.get_full_name|default:row.doctor.get_username }}</span></span></td>
+                    {% for hours in row.days %}<td class="hours {% if forloop.counter0 == today_weekday %}today{% endif %}">{% if hours %}{% for block in hours %}<div>{{ block }}</div>{% endfor %}{% elif row.has_schedule %}<span class="text-muted">—</span>{% endif %}</td>{% endfor %}
+                    <td class="text-end">
+                        {% if not row.has_schedule %}<span class="status status-neutral">Not set</span>{% endif %}
+                        {% if user.is_superuser or row.doctor == user %}<a class="btn btn-sm btn-light" href="{% if row.doctor == user %}{% url 'kiosk:my-schedule' %}{% else %}{% url 'kiosk:staff-schedule' row.doctor.pk %}{% endif %}">Edit</a>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9"><div class="empty-state"><i class="bi bi-person-badge"></i>No doctor accounts yet.</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="surface mt-4">
+    <h2 class="section-title"><i class="bi bi-calendar-x"></i> Days off in the next 30 days</h2>
+    {% for off in time_off %}
+    <div class="d-flex flex-wrap gap-2 align-items-center border-top py-2">
+        <span class="fw-semibold" style="min-width: 9rem">{{ off.date|date:"D j M" }}</span>
+        <span class="with-avatar">{% avatar off.doctor 24 %}{{ off.doctor.get_full_name|default:off.doctor.get_username }}</span>
+        {% if off.note %}<span class="text-muted small">· {{ off.note }}</span>{% endif %}
+    </div>
+    {% empty %}
+    <div class="small text-muted">None.</div>
+    {% endfor %}
+</section>
+{% endblock %}

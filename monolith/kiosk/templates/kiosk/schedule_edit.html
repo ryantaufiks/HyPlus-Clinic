@@ -1,0 +1,88 @@
+{% extends 'kiosk/base.html' %}
+{% load avatars %}
+
+{% block title %}{% if own %}My schedule{% else %}Schedule · {{ doctor.get_full_name|default:doctor.get_username }}{% endif %} - Hy+ Clinic{% endblock %}
+
+{% block extra_css %}
+<style>
+    .week-row { display: grid; grid-template-columns: 9rem 1fr; gap: 0.6rem 1rem; align-items: center; padding: 0.75rem 0; border-top: 1px solid var(--aivin-border); }
+    .week-row:first-of-type { border-top: 0; }
+    .week-row.off .blocks { opacity: 0.35; pointer-events: none; }
+    .blocks { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; }
+    .block { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .block input { width: 7.2rem; }
+    .day-error { grid-column: 2; color: var(--aivin-critical-ink); font-size: 0.85rem; }
+    @media (max-width: 575.98px) { .week-row { grid-template-columns: 1fr; } .day-error { grid-column: 1; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title with-avatar">{% avatar doctor 48 %}{% if own %}My schedule{% else %}{{ doctor.get_full_name|default:doctor.get_username }}{% endif %}</h1>
+        <p class="page-subtitle">Weekly consulting hours. Patients can only book you on these days and times.{% if summary %} <span class="status status-info">{{ summary }}</span>{% endif %}</p>
+    </div>
+    <a class="btn btn-light btn-icon" href="{% url 'kiosk:schedules' %}"><i class="bi bi-calendar-week"></i> All doctors</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <form method="post" class="surface" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="hours" />
+            <h2 class="section-title"><i class="bi bi-calendar-week"></i> Every week</h2>
+            {% for day in days %}
+            <div class="week-row {% if not day.on %}off{% endif %}" data-day>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="day-{{ day.weekday }}-on" name="day-{{ day.weekday }}-on" value="1" {% if day.on %}checked{% endif %} data-day-toggle />
+                    <label class="form-check-label fw-semibold" for="day-{{ day.weekday }}-on">{{ day.name }}</label>
+                </div>
+                <div class="blocks">
+                    {% for block in day.blocks %}
+                    <span class="block">
+                        <input type="time" class="form-control form-control-sm" name="day-{{ day.weekday }}-start{{ forloop.counter0 }}" value="{{ block.start }}" aria-label="{{ day.name }} session {{ forloop.counter }} start" step="900" />
+                        <span class="text-muted">–</span>
+                        <input type="time" class="form-control form-control-sm" name="day-{{ day.weekday }}-end{{ forloop.counter0 }}" value="{{ block.end }}" aria-label="{{ day.name }} session {{ forloop.counter }} end" step="900" />
+                    </span>
+                    {% endfor %}
+                </div>
+                {% for key, error in errors.items %}{% if key == day.weekday %}<div class="day-error"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}{% endfor %}
+            </div>
+            {% endfor %}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+                <span class="small text-muted">Two sessions per day at most, e.g. 08:00–12:00 and 17:00–20:00.</span>
+                <button class="btn btn-primary btn-icon"><i class="bi bi-check2"></i> Save schedule</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-lg-4">
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-calendar-x"></i> Days off</h2>
+            <p class="small text-muted">Leave, holidays or training. Patients cannot book you on these dates.</p>
+            <form method="post" class="d-flex flex-column gap-2 mb-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_off" />
+                <input type="date" class="form-control" name="date" min="{{ today }}" required aria-label="Date" />
+                <input class="form-control" name="note" maxlength="80" placeholder="Note (optional), e.g. Annual leave" aria-label="Note" />
+                <button class="btn btn-light btn-icon"><i class="bi bi-plus-lg"></i> Add day off</button>
+            </form>
+            {% for off in time_off %}
+            <div class="d-flex justify-content-between align-items-center border-top py-2">
+                <div><div class="fw-semibold">{{ off.date|date:"D j M Y" }}</div>{% if off.note %}<div class="small text-muted">{{ off.note }}</div>{% endif %}</div>
+                <form method="post" class="m-0">{% csrf_token %}<input type="hidden" name="action" value="remove_off" /><input type="hidden" name="time_off" value="{{ off.pk }}" /><button class="btn btn-sm btn-light text-danger" title="Remove" aria-label="Remove day off"><i class="bi bi-x-lg"></i></button></form>
+            </div>
+            {% empty %}
+            <div class="small text-muted">No days off planned.</div>
+            {% endfor %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll("[data-day-toggle]").forEach((toggle) => toggle.addEventListener("change", () => {
+    toggle.closest("[data-day]").classList.toggle("off", !toggle.checked);
+}));
+</script>
+{% endblock %}

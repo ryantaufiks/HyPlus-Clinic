@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import accounts_views, avatar_views, clinical_views, device_views, kiosk_api, portal_views, queue_views, views, website_views
+from . import accounts_views, avatar_views, clinical_views, device_views, kiosk_api, portal_views, queue_views, schedule_views, views, website_views
 
 app_name = "kiosk"
 
@@ -85,6 +85,9 @@ urlpatterns = [
     ),
     # Profile photos (served after a permission check, never public)
     path("me/", avatar_views.MyProfileView.as_view(), name="my-profile"),
+    path("me/schedule/", schedule_views.ScheduleEditView.as_view(), name="my-schedule"),
+    path("schedules/", schedule_views.ScheduleOverviewView.as_view(), name="schedules"),
+    path("staff/<int:pk>/schedule/", schedule_views.ScheduleEditView.as_view(), name="staff-schedule"),
     path("photos/staff/<int:user_id>/", avatar_views.staff_photo, name="staff-photo"),
     path("photos/patients/<int:pk>/", avatar_views.patient_photo, name="patient-photo"),
     # Staff accounts (administrators)

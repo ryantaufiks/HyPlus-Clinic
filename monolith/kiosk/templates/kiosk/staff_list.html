@@ -28,7 +28,7 @@
                         {% else %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Active</span>{% endif %}
                     </td>
                     <td class="text-muted text-nowrap">{{ m.user.last_login|date:"j M Y, H:i"|default:"Never" }}</td>
-                    <td class="text-end"><a class="btn btn-light btn-sm" href="{% url 'kiosk:staff-edit' m.user.pk %}">Manage</a></td>
+                    <td class="text-end text-nowrap">{% if m.role == 'Doctor' %}<a class="btn btn-light btn-sm" href="{% url 'kiosk:staff-schedule' m.user.pk %}"><i class="bi bi-calendar-week"></i> Schedule</a> {% endif %}<a class="btn btn-light btn-sm" href="{% url 'kiosk:staff-edit' m.user.pk %}">Manage</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
