@@ -1,0 +1,1668 @@
+"""Parser for Omron BLE blood pressure monitors.
+
+Handles device detection from BLE advertisements and active polling
+for measurement data via GATT connection.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import dataclasses
+import datetime as dt
+import logging
+from collections.abc import Callable
+from typing import Any
+
+from bleak import BleakClient
+from bleak.backends.device import BLEDevice
+from blesession import NotificationTimeout, Notifications, guarded_write
+
+from bluetooth_sensor_state_data import BluetoothData
+from home_assistant_bluetooth import BluetoothServiceInfoBleak
+from sensor_state_data import (
+    SensorUpdate,
+    SensorDeviceClass,
+)
+
+from .advertisement import _decode_omron_msd_fields
+from .bls import _parse_bp_measurement
+from .const import (
+    FIRMWARE_REVISION_UUID,
+    HARDWARE_REVISION_UUID,
+    MANUFACTURER_NAME_UUID,
+    MODEL_NUMBER_UUID,
+    BP_MEASUREMENT_CHAR_UUID,
+    BP_RACP_CHAR_UUID,
+    OMRON_MANUFACTURER_ID,
+    DISCOVERABLE_PARENT_SERVICE_UUIDS,
+    DEFAULT_DEVICE_MODEL,
+    ExtendedBinarySensorDeviceClass,
+)
+from .time_sync import async_sync_device_time, async_sync_eeprom_time
+from .devices import (
+    DeviceConfig,
+    HostPairingMode,
+    MeasurementKind,
+    get_device_config,
+    resolve_profile_model_id,
+)
+from .driver import OmronDeviceDriver
+from .session import OmronDeviceSession
+from .session_trace import SessionTrace
+from .util import slugify_for_entity_key
+
+_LOGGER = logging.getLogger(__name__)
+
+# Stored records read per user in one poll. The rest wait for the next poll,
+# which keeps the link short when a cuff has a long backlog.
+HISTORY_MAX_READS = 30
+
+# The pairing registration is two writes and only the second may be repeated;
+# one retry lets a failed clock write land without redoing the head.
+_REGISTRATION_ATTEMPTS: int = 2
+
+
+def _normalize_user_aliases(user_aliases: dict[int, str] | None) -> dict[int, str]:
+    """Build 1-based user index -> display label; empty strings become user{n}."""
+    if not user_aliases:
+        return {}
+    out: dict[int, str] = {}
+    for k, v in user_aliases.items():
+        try:
+            idx = int(k)
+        except (TypeError, ValueError):
+            continue
+        label = str(v).strip() if v is not None else ""
+        out[idx] = label if label else f"user{idx}"
+    return out
+
+
+# Local-name prefixes of Omron model codes: cuffs and scales.
+_OMRON_MODEL_PREFIXES = ("HEM-", "HN-3", "HBF-")
+
+_RACP_SETTLE_S = 0.5
+_RACP_MEASUREMENT_TIMEOUT_S = 3.0
+_RACP_DONE_TIMEOUT_S = 1.5
+
+
+class OmronBluetoothDeviceData(BluetoothData):
+    """Data handler for Omron BLE blood pressure monitors."""
+
+    def __init__(
+        self,
+        device_model: str | None = None,
+        user_aliases: dict[int, str] | None = None,
+        get_tz: Callable[[], dt.tzinfo] | None = None,
+    ) -> None:
+        super().__init__()
+        # Zone for naive measurement timestamps, read at conversion time so a
+        # caller whose zone can change is not pinned to the one at setup; the
+        # system zone when unset.
+        self._get_tz = get_tz
+        self.last_service_info: BluetoothServiceInfoBleak | None = None
+        self.pending = True
+        # Until a model is chosen (discovery in the config flow) the device is
+        # only known to be an Omron, so its title does not name a kind.
+        self._model_chosen = bool(device_model)
+        self._device_model = device_model or DEFAULT_DEVICE_MODEL
+        self._device_config: DeviceConfig = get_device_config(self._device_model)
+        self._driver = OmronDeviceDriver(self._device_config)
+        self._user_aliases: dict[int, str] = _normalize_user_aliases(user_aliases)
+        self._last_record_signature: tuple[Any, ...] | None = None
+        self._last_readout_at: dt.datetime | None = None
+        # The stage breakdown of the last BLE session this object ran (poll,
+        # pairing or time sync), success or not; the diagnostic sensors
+        # publish it. See ``SessionTrace``.
+        self.last_session_trace: SessionTrace | None = None
+        # Application-layer credential for SECURE_SESSION profiles: loaded from
+        # the config entry at setup, and replaced here when a session
+        # establishes a new one so the entry can be updated after the poll.
+        self.transport_credential: bytes | None = None
+        self.pending_credential: bytes | None = None
+        # Stored-record sync (#234). The host sets ``history_last_seq`` (per
+        # user, the last cuff sequence it has handled) to turn it on; a poll
+        # then leaves its findings in ``pending_history`` for the host to
+        # publish and persist, and the host advances ``history_last_seq``.
+        # ``history_updates`` holds one SensorUpdate per record older than
+        # the latest, oldest first, for the host to push before the poll's
+        # own result.
+        self.history_last_seq: dict[int, int] | None = None
+        self.pending_history: dict[str, Any] | None = None
+        self.history_updates: list[SensorUpdate] = []
+        # Per user, the cuff counter of the newest record a poll has shown, so
+        # a drain that spans polls never moves the sensors back.
+        self.history_shown: dict[int, int] = {}
+        self._last_record_signatures_by_user: dict[int, tuple[Any, ...]] = {}
+        self._bp_char_unavailable = False
+        self._bls_racp_unavailable_logged = False
+        self._poll_guard = asyncio.Lock()
+        self.omron_extra_attributes = {}
+
+        # Advertisement Status Flags
+        # Names referenced from __init__.py (poll triggers): forced_transfer,
+        # invalid_time, pairing_mode. Do NOT rename without auditing callers.
+        self.forced_transfer: bool = False
+        self.invalid_time: bool = False
+        self.pairing_mode: bool = False
+        # Additional fields parsed from MSD. Kept as
+        # informational attributes; not exposed as sensors today.
+        self.streaming_mode: bool = False
+        self.service_uuid_mode: bool = False
+        self.user_register_count: int = 0
+        self.guidance_mode: int = 0
+        self.result_identifier_num: int = 0
+
+        self._seed_measurement_entities()
+
+    def _open_session(
+        self, ble_device: BLEDevice, *, pairing_session: bool = False
+    ) -> OmronDeviceSession:
+        """Build a session carrying the stored transport credential."""
+        return OmronDeviceSession(
+            ble_device,
+            self._device_config,
+            pairing_session=pairing_session,
+            credential=self.transport_credential,
+        )
+
+    def _collect_credential(self, session: OmronDeviceSession) -> None:
+        """Take a credential the session established, for the entry to store.
+
+        Kept in memory as well: a poll that follows before the entry is written
+        back still has to authenticate with it.
+        """
+        new = session.new_credential
+        if new is not None and new != self.transport_credential:
+            self.transport_credential = new
+            self.pending_credential = new
+
+    @property
+    def measurement_kind(self) -> MeasurementKind:
+        """What the configured profile measures (blood pressure, weight, ...)."""
+        return self._device_config.measurement_kind
+
+    @property
+    def device_model(self) -> str:
+        """Return the configured device model."""
+        return self._device_model
+
+    @device_model.setter
+    def device_model(self, model: str) -> None:
+        """Set the device model and update internal config."""
+        self._model_chosen = True
+        self._device_model = model
+        self._device_config = get_device_config(model)
+        self._driver = OmronDeviceDriver(self._device_config)
+        self._last_record_signature = None
+        self._last_record_signatures_by_user = {}
+        if self.last_service_info is not None:
+            self._setup_device_info(self.last_service_info)
+
+    def _seed_measurement_entities(self) -> None:
+        """Pre-register measurement sensor descriptions for offline startup.
+
+        This ensures entities exist on setup so RestoreEntity can show last values
+        before the first successful device poll.
+        """
+        from .const import ExtendedSensorDeviceClass
+
+        multi_user_mode = self._device_config.num_users > 1
+        user_ids = (
+            list(range(1, self._device_config.num_users + 1))
+            if multi_user_mode
+            else [None]
+        )
+        for user in user_ids:
+            key_suffix, name_suffix = self._measurement_user_suffixes(
+                user if isinstance(user, int) else None, multi_user_mode
+            )
+            self._publish_seed_measurements_for_suffix(
+                key_suffix,
+                name_suffix,
+                ExtendedSensorDeviceClass,
+            )
+
+    def _seed_measurement_specs(
+        self, sensor_classes: Any
+    ) -> tuple[tuple[str, str | None, Any, str], ...]:
+        """Declarative spec for all measurement entities that must exist at startup."""
+        if self._device_config.measurement_kind == MeasurementKind.BODY_COMPOSITION:
+            return (
+                ("weight", "kg", sensor_classes.WEIGHT, "Weight"),
+                ("body_fat", "%", sensor_classes.BODY_FAT, "Body Fat"),
+                (
+                    "skeletal_muscle",
+                    "%",
+                    sensor_classes.SKELETAL_MUSCLE,
+                    "Skeletal Muscle",
+                ),
+                (
+                    "visceral_fat",
+                    None,
+                    sensor_classes.VISCERAL_FAT,
+                    "Visceral Fat Level",
+                ),
+                (
+                    "basal_metabolic_rate",
+                    "kcal/day",
+                    sensor_classes.BASAL_METABOLIC_RATE,
+                    "Basal Metabolic Rate",
+                ),
+                (
+                    "body_composition_bmi",
+                    "kg/m²",
+                    sensor_classes.BODY_COMPOSITION_BMI,
+                    "BMI",
+                ),
+                (
+                    "measurement_timestamp",
+                    None,
+                    SensorDeviceClass.TIMESTAMP,
+                    "Measured At",
+                ),
+            )
+        if not self._device_config.is_blood_pressure:
+            return (
+                ("weight", "kg", sensor_classes.WEIGHT, "Weight"),
+                (
+                    "measurement_timestamp",
+                    None,
+                    SensorDeviceClass.TIMESTAMP,
+                    "Measured At",
+                ),
+            )
+        return (
+            (
+                "blood_pressure_systolic",
+                "mmHg",
+                sensor_classes.BLOOD_PRESSURE_SYSTOLIC,
+                "Systolic",
+            ),
+            (
+                "blood_pressure_diastolic",
+                "mmHg",
+                sensor_classes.BLOOD_PRESSURE_DIASTOLIC,
+                "Diastolic",
+            ),
+            ("heart_rate", "bpm", sensor_classes.HEART_RATE, "Pulse"),
+            ("pulse_pressure", "mmHg", sensor_classes.PULSE_PRESSURE, "Pulse Pressure"),
+            (
+                "mean_arterial_pressure_estimated",
+                "mmHg",
+                sensor_classes.MEAN_ARTERIAL_PRESSURE_ESTIMATED,
+                "Estimated MAP",
+            ),
+            (
+                "blood_pressure_category",
+                None,
+                sensor_classes.BLOOD_PRESSURE_CATEGORY,
+                "BP Category (ACC/AHA)",
+            ),
+            ("shock_index", "ratio", sensor_classes.SHOCK_INDEX, "Shock Index"),
+            (
+                "rate_pressure_product",
+                "mmHg*bpm",
+                sensor_classes.RATE_PRESSURE_PRODUCT,
+                "Rate Pressure Product",
+            ),
+            ("measurement_timestamp", None, SensorDeviceClass.TIMESTAMP, "Measured At"),
+        )
+
+    def _publish_seed_measurements_for_suffix(
+        self,
+        key_suffix: str,
+        name_suffix: str,
+        sensor_classes: Any,
+    ) -> None:
+        """Publish all startup measurement entities for one user suffix."""
+        for base_key, unit, device_class, base_name in self._seed_measurement_specs(
+            sensor_classes
+        ):
+            self._publish_measurement_sensor(
+                base_key,
+                unit,
+                None,
+                device_class,
+                base_name,
+                key_suffix,
+                name_suffix,
+            )
+
+    def supported(self, data: BluetoothServiceInfoBleak) -> bool:
+        if super().supported(data):
+            return True
+        for uuid in DISCOVERABLE_PARENT_SERVICE_UUIDS:
+            if uuid in data.service_uuids:
+                return True
+        md = getattr(data, "manufacturer_data", None) or {}
+        if OMRON_MANUFACTURER_ID in md:
+            return True
+        name = (data.name or "").strip()
+        if name:
+            if "omron" in name.lower():
+                return True
+            if name.upper().startswith(_OMRON_MODEL_PREFIXES):
+                return True
+        return False
+
+    def _start_update(self, service_info: BluetoothServiceInfoBleak) -> None:
+        """Update from BLE advertisement data."""
+        md = getattr(service_info, "manufacturer_data", None) or {}
+        if OMRON_MANUFACTURER_ID in md:
+            self._parse_omron_msd(md[OMRON_MANUFACTURER_ID])
+
+        name = (service_info.name or "").strip()
+        # Check if any known Omron service UUID is present
+        for uuid in DISCOVERABLE_PARENT_SERVICE_UUIDS:
+            if uuid in service_info.service_uuids:
+                self._setup_device_info(service_info)
+                self.last_service_info = service_info
+                return
+
+        # Omron manufacturer company id (manifest manufacturer_id 526)
+        if OMRON_MANUFACTURER_ID in md:
+            self._setup_device_info(service_info)
+            self.last_service_info = service_info
+            return
+
+        # Fallback: device name (align with manifest bluetooth local_name matchers)
+        if name:
+            if "omron" in name.lower():
+                self._setup_device_info(service_info)
+                self.last_service_info = service_info
+                return
+            if name.upper().startswith(_OMRON_MODEL_PREFIXES):
+                self._setup_device_info(service_info)
+                self.last_service_info = service_info
+
+    def _parse_omron_msd(self, payload: bytes) -> None:
+        """Parse Omron Manufacturer Specific Data (MSD) for status flags.
+
+        Bleak's ``manufacturer_data`` value already excludes the 2-byte LE
+        manufacturer ID, so ``payload[0]`` is the first format byte of the
+        Omron MSD body.
+
+        Three advertisement formats are recognized via ``payload[0]``:
+
+        - ``0x03`` — older single/dual-user BPM. Carries ``invalid_time``,
+          ``pairing_mode``, ``guidance_mode``, ``result_identifier_num``.
+        - ``0x08`` — BLS-style fixed length (10 or 13 byte payload). Adds
+          ``streaming_mode``, ``service_uuid_mode``, ``forced_transfer``.
+        - ``0x09`` — newest, variable per registered user count (9/11/13/15).
+          Same status bits as ``0x08`` but distinct length contract.
+
+        Advertisements that fail the length contract are logged at DEBUG and
+        ignored (sensor state is not flipped) to avoid acting on transient
+        or truncated packets.
+        """
+        if not payload or len(payload) < 2:
+            return
+
+        fields = _decode_omron_msd_fields(payload)
+        if fields is None:
+            _LOGGER.debug(
+                "Ignoring Omron MSD: format=0x%02X len=%d (length contract mismatch)",
+                payload[0],
+                len(payload),
+            )
+            return
+
+        # Update instance attributes referenced externally (poll triggers in
+        # custom_components/omron/__init__.py).
+        self.invalid_time = fields["invalid_time"]
+        self.pairing_mode = fields["pairing_mode"]
+        self.forced_transfer = fields["forced_transfer"]
+        # Additional fields (informational; not yet exposed as sensors).
+        self.streaming_mode = fields["streaming_mode"]
+        self.service_uuid_mode = fields["service_uuid_mode"]
+        self.user_register_count = fields["user_register_count"]
+        self.guidance_mode = fields["guidance_mode"]
+        self.result_identifier_num = fields["result_identifier_num"]
+
+        self.update_binary_sensor(
+            "forced_transfer",
+            self.forced_transfer,
+            ExtendedBinarySensorDeviceClass.FORCED_TRANSFER,
+            "Data Pending",
+        )
+        self.update_binary_sensor(
+            "invalid_time",
+            self.invalid_time,
+            ExtendedBinarySensorDeviceClass.INVALID_TIME,
+            "Time Sync Required",
+        )
+        self.update_binary_sensor(
+            "pairing_mode",
+            self.pairing_mode,
+            ExtendedBinarySensorDeviceClass.PAIRING_MODE,
+            "Pairing Mode",
+        )
+
+    def _measurement_user_suffixes(
+        self, user: int | None, multi_user: bool
+    ) -> tuple[str, str]:
+        """Return (sensor_key_suffix, friendly_name_suffix) for multi-user cuffs.
+
+        Keys use a slug of the configured alias (default user1, user2, …).
+        """
+        if not multi_user or user is None:
+            return "", ""
+        label = self._user_aliases.get(user)
+        if not label:
+            label = f"user{user}"
+        slug = slugify_for_entity_key(label)
+        if not slug:
+            slug = f"user{user}"
+        return f"_{slug}", f" ({label})"
+
+    def _publish_measurement_sensor(
+        self,
+        base_key: str,
+        unit: str | None,
+        value: Any,
+        device_class: Any,
+        base_name: str,
+        key_suffix: str,
+        name_suffix: str,
+    ) -> None:
+        """Publish one measurement sensor with precomputed user suffixes."""
+        self.update_sensor(
+            f"{base_key}{key_suffix}",
+            unit,
+            value,
+            device_class=device_class,
+            name=f"{base_name}{name_suffix}",
+        )
+
+    def _publish_primary_measurements(
+        self,
+        record: dict[str, Any],
+        key_suffix: str,
+        name_suffix: str,
+        sensor_classes: Any,
+    ) -> tuple[Any, Any, Any]:
+        """Publish direct values read from the cuff."""
+        sys_val = record.get("sys")
+        dia_val = record.get("dia")
+        bpm_val = record.get("bpm")
+        self._publish_measurement_sensor(
+            "blood_pressure_systolic",
+            "mmHg",
+            sys_val,
+            sensor_classes.BLOOD_PRESSURE_SYSTOLIC,
+            "Systolic",
+            key_suffix,
+            name_suffix,
+        )
+        self._publish_measurement_sensor(
+            "blood_pressure_diastolic",
+            "mmHg",
+            dia_val,
+            sensor_classes.BLOOD_PRESSURE_DIASTOLIC,
+            "Diastolic",
+            key_suffix,
+            name_suffix,
+        )
+        self._publish_measurement_sensor(
+            "heart_rate",
+            "bpm",
+            bpm_val,
+            sensor_classes.HEART_RATE,
+            "Pulse",
+            key_suffix,
+            name_suffix,
+        )
+        return sys_val, dia_val, bpm_val
+
+    def _publish_pressure_derived_metrics(
+        self,
+        sys_val: Any,
+        dia_val: Any,
+        key_suffix: str,
+        name_suffix: str,
+        sensor_classes: Any,
+    ) -> None:
+        """Publish metrics derivable from systolic/diastolic pair."""
+        if not (
+            isinstance(sys_val, (int, float))
+            and isinstance(dia_val, (int, float))
+            and sys_val > dia_val
+        ):
+            return
+        pulse_pressure = float(sys_val - dia_val)
+        estimated_map = float(dia_val + (pulse_pressure / 3))
+        self._publish_measurement_sensor(
+            "pulse_pressure",
+            "mmHg",
+            round(pulse_pressure, 1),
+            sensor_classes.PULSE_PRESSURE,
+            "Pulse Pressure",
+            key_suffix,
+            name_suffix,
+        )
+        self._publish_measurement_sensor(
+            "mean_arterial_pressure_estimated",
+            "mmHg",
+            round(estimated_map, 1),
+            sensor_classes.MEAN_ARTERIAL_PRESSURE_ESTIMATED,
+            "Estimated MAP",
+            key_suffix,
+            name_suffix,
+        )
+        self._publish_measurement_sensor(
+            "blood_pressure_category",
+            None,
+            self._classify_blood_pressure_category(float(sys_val), float(dia_val)),
+            sensor_classes.BLOOD_PRESSURE_CATEGORY,
+            "BP Category (ACC/AHA)",
+            key_suffix,
+            name_suffix,
+        )
+
+    def _publish_shock_index(
+        self,
+        sys_val: Any,
+        bpm_val: Any,
+        key_suffix: str,
+        name_suffix: str,
+        sensor_classes: Any,
+    ) -> None:
+        """Publish shock index only when denominator is valid."""
+        if not (
+            isinstance(sys_val, (int, float))
+            and sys_val > 0
+            and isinstance(bpm_val, (int, float))
+        ):
+            return
+        shock_index = float(bpm_val) / float(sys_val)
+        self._publish_measurement_sensor(
+            "shock_index",
+            "ratio",
+            round(shock_index, 2),
+            sensor_classes.SHOCK_INDEX,
+            "Shock Index",
+            key_suffix,
+            name_suffix,
+        )
+
+    def _publish_rate_pressure_product(
+        self,
+        sys_val: Any,
+        bpm_val: Any,
+        key_suffix: str,
+        name_suffix: str,
+        sensor_classes: Any,
+    ) -> None:
+        """Publish RPP from systolic and pulse."""
+        if not (
+            isinstance(sys_val, (int, float)) and isinstance(bpm_val, (int, float))
+        ):
+            return
+        rpp = float(sys_val) * float(bpm_val)
+        self._publish_measurement_sensor(
+            "rate_pressure_product",
+            "mmHg*bpm",
+            round(rpp, 1),
+            sensor_classes.RATE_PRESSURE_PRODUCT,
+            "Rate Pressure Product",
+            key_suffix,
+            name_suffix,
+        )
+
+    def _publish_measurement_timestamp(
+        self, record: dict[str, Any], key_suffix: str, name_suffix: str
+    ) -> None:
+        """Publish measurement timestamp when present."""
+        measured_at = record.get("datetime")
+        if measured_at is None:
+            return
+        measured_at = self._ensure_aware_datetime(measured_at)
+        self._publish_measurement_sensor(
+            "measurement_timestamp",
+            None,
+            measured_at,
+            SensorDeviceClass.TIMESTAMP,
+            "Measured At",
+            key_suffix,
+            name_suffix,
+        )
+
+    def _build_record_signature(self, record: dict[str, Any]) -> tuple[Any, ...]:
+        """Build a compact record signature for new-vs-stale detection."""
+        if not self._device_config.is_blood_pressure:
+            return (
+                record.get("datetime"),
+                record.get("user"),
+                record.get("weight"),
+                record.get("body_fat"),
+                record.get("skeletal_muscle"),
+                record.get("visceral_fat"),
+                record.get("basal_metabolic_rate"),
+                record.get("bmi"),
+            )
+        return (
+            record.get("datetime"),
+            record.get("user"),
+            record.get("sys"),
+            record.get("dia"),
+            record.get("bpm"),
+        )
+
+    def _update_measurement_sensors(
+        self,
+        record: dict[str, Any],
+        *,
+        user: int | None = None,
+        multi_user: bool = False,
+    ) -> None:
+        """Publish measurement-derived sensors for one record."""
+        from .const import ExtendedSensorDeviceClass
+
+        key_suffix, name_suffix = self._measurement_user_suffixes(user, multi_user)
+        if not self._device_config.is_blood_pressure:
+            self._publish_measurement_sensor(
+                "weight",
+                "kg",
+                record.get("weight"),
+                ExtendedSensorDeviceClass.WEIGHT,
+                "Weight",
+                key_suffix,
+                name_suffix,
+            )
+            if self._device_config.measurement_kind == MeasurementKind.BODY_COMPOSITION:
+                for key, record_key, unit, device_class, name in (
+                    (
+                        "body_fat",
+                        "body_fat",
+                        "%",
+                        ExtendedSensorDeviceClass.BODY_FAT,
+                        "Body Fat",
+                    ),
+                    (
+                        "skeletal_muscle",
+                        "skeletal_muscle",
+                        "%",
+                        ExtendedSensorDeviceClass.SKELETAL_MUSCLE,
+                        "Skeletal Muscle",
+                    ),
+                    (
+                        "visceral_fat",
+                        "visceral_fat",
+                        None,
+                        ExtendedSensorDeviceClass.VISCERAL_FAT,
+                        "Visceral Fat Level",
+                    ),
+                    (
+                        "basal_metabolic_rate",
+                        "basal_metabolic_rate",
+                        "kcal/day",
+                        ExtendedSensorDeviceClass.BASAL_METABOLIC_RATE,
+                        "Basal Metabolic Rate",
+                    ),
+                    (
+                        "body_composition_bmi",
+                        "bmi",
+                        "kg/m²",
+                        ExtendedSensorDeviceClass.BODY_COMPOSITION_BMI,
+                        "BMI",
+                    ),
+                ):
+                    self._publish_measurement_sensor(
+                        key,
+                        unit,
+                        record.get(record_key),
+                        device_class,
+                        name,
+                        key_suffix,
+                        name_suffix,
+                    )
+            self._publish_measurement_timestamp(record, key_suffix, name_suffix)
+            return
+        sys_val, dia_val, bpm_val = self._publish_primary_measurements(
+            record,
+            key_suffix,
+            name_suffix,
+            ExtendedSensorDeviceClass,
+        )
+        self._publish_pressure_derived_metrics(
+            sys_val,
+            dia_val,
+            key_suffix,
+            name_suffix,
+            ExtendedSensorDeviceClass,
+        )
+        self._publish_shock_index(
+            sys_val,
+            bpm_val,
+            key_suffix,
+            name_suffix,
+            ExtendedSensorDeviceClass,
+        )
+        self._publish_rate_pressure_product(
+            sys_val,
+            bpm_val,
+            key_suffix,
+            name_suffix,
+            ExtendedSensorDeviceClass,
+        )
+        self._publish_measurement_timestamp(record, key_suffix, name_suffix)
+
+        user_id = f"user_{user}" if multi_user else "user_1"
+        if user_id not in self.omron_extra_attributes:
+            self.omron_extra_attributes[user_id] = {}
+
+        if "measurement_type" in record:
+            self.omron_extra_attributes[user_id]["measurement_type"] = record[
+                "measurement_type"
+            ]
+        if "truread_details" in record:
+            self.omron_extra_attributes[user_id]["truread_details"] = record[
+                "truread_details"
+            ]
+        else:
+            self.omron_extra_attributes[user_id].pop("truread_details", None)
+
+        # Merge EEPROM-parsed ihb/mov into status_flags so both BLS and EEPROM
+        # paths produce binary sensors for irregular pulse and body movement.
+        status_flags = dict(record.get("status_flags") or {})
+        if "ihb" in record and "irregular_pulse" not in status_flags:
+            status_flags["irregular_pulse"] = bool(record["ihb"])
+        if "mov" in record and "body_movement" not in status_flags:
+            status_flags["body_movement"] = bool(record["mov"])
+        if "cuff" in record and "cuff_fit" not in status_flags:
+            status_flags["cuff_fit"] = not bool(record["cuff"])
+        if "pos" in record and "improper_position" not in status_flags:
+            status_flags["improper_position"] = bool(record["pos"])
+
+        if status_flags:
+            from .const import ExtendedBinarySensorDeviceClass
+
+            for flag_key, class_name in [
+                ("body_movement", ExtendedBinarySensorDeviceClass.BODY_MOVEMENT),
+                ("cuff_fit", ExtendedBinarySensorDeviceClass.CUFF_FIT),
+                ("irregular_pulse", ExtendedBinarySensorDeviceClass.IRREGULAR_PULSE),
+                (
+                    "improper_position",
+                    ExtendedBinarySensorDeviceClass.IMPROPER_POSITION,
+                ),
+            ]:
+                if flag_key in status_flags:
+                    self.update_binary_sensor(
+                        f"{flag_key}{key_suffix}",
+                        status_flags[flag_key],
+                        class_name,
+                        f"{flag_key.replace('_', ' ').title()}{name_suffix}",
+                    )
+
+    def _ensure_aware_datetime(self, value: Any) -> Any:
+        """Convert naive datetime to timezone-aware datetime for HA timestamp sensors."""
+        if not isinstance(value, dt.datetime):
+            return value
+        if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+            tz = (
+                self._get_tz() if self._get_tz else None
+            ) or dt.datetime.now().astimezone().tzinfo
+            return value.replace(tzinfo=tz)
+        return value
+
+    @staticmethod
+    def _classify_blood_pressure_category(sys_val: float, dia_val: float) -> str:
+        """Classify blood pressure category using ACC/AHA 2017 thresholds."""
+        if sys_val > 180 or dia_val > 120:
+            return "hypertensive_crisis"
+        if sys_val >= 140 or dia_val >= 90:
+            return "hypertension_stage_2"
+        if sys_val >= 130 or dia_val >= 80:
+            return "hypertension_stage_1"
+        if sys_val >= 120 and dia_val < 80:
+            return "elevated"
+        return "normal"
+
+    async def _read_latest_via_bls_racp(
+        self, client: BleakClient
+    ) -> dict[str, Any] | None:
+        """Request latest BP measurement via BLS RACP and parse 0x2A35 notification."""
+        meas_char = client.services.get_characteristic(BP_MEASUREMENT_CHAR_UUID)
+        racp_char = client.services.get_characteristic(BP_RACP_CHAR_UUID)
+        if meas_char is None or racp_char is None:
+            if not self._bls_racp_unavailable_logged:
+                _LOGGER.debug(
+                    "BLS RACP path unavailable: missing characteristics "
+                    "(2A35=%s 2A52=%s)",
+                    meas_char is not None,
+                    racp_char is not None,
+                )
+                self._bls_racp_unavailable_logged = True
+            return None
+
+        try:
+            async with (
+                Notifications(client, BP_MEASUREMENT_CHAR_UUID) as measurements,
+                Notifications(client, BP_RACP_CHAR_UUID, settle=_RACP_SETTLE_S) as racp,
+            ):
+                # RACP: Report Stored Records (0x01), operator Last Record (0x06)
+                await guarded_write(
+                    client,
+                    BP_RACP_CHAR_UUID,
+                    b"\x01\x06",
+                    step="readout",
+                    response=True,
+                )
+                raw = await measurements.wait_for(
+                    bool, _RACP_MEASUREMENT_TIMEOUT_S, step="racp_measurement"
+                )
+                # Response code or procedure-complete indication; not every
+                # cuff sends one, so its absence is not a failure.
+                with contextlib.suppress(NotificationTimeout):
+                    await racp.next(_RACP_DONE_TIMEOUT_S, step="racp_done")
+                return _parse_bp_measurement(raw)
+        except Exception as exc:
+            if not self._bls_racp_unavailable_logged:
+                self._bls_racp_unavailable_logged = True
+            _LOGGER.debug("BLS RACP latest read failed: %s", exc)
+            return None
+
+    @property
+    def last_readout_at(self) -> dt.datetime | None:
+        """When a poll last decoded a record, or None if none ever has."""
+        return self._last_readout_at
+
+    def _record_session_trace(
+        self, session: OmronDeviceSession | None, trace: SessionTrace
+    ) -> None:
+        """Publish a finished session's trace."""
+        if session is not None:
+            session.publish_link_to(trace)
+        self.last_session_trace = trace
+
+    def _setup_device_info(self, service_info: BluetoothServiceInfoBleak) -> None:
+        """Set up device metadata from advertisement."""
+        model = self._device_config.display_model
+        manufacturer = "Omron"
+        normalized_address = service_info.address.replace(":", "")
+        identifier = (
+            normalized_address[-4:]
+            if len(normalized_address) >= 4
+            else normalized_address
+        )
+
+        if not self._model_chosen:
+            self.set_title(f"{manufacturer} {identifier}")
+            self.set_device_type("Blood Pressure Monitor")
+        elif not self._device_config.is_blood_pressure:
+            self.set_title(f"{manufacturer} Scale {identifier}")
+            self.set_device_type("Scale")
+        else:
+            self.set_title(f"{manufacturer} BPM {identifier}")
+            self.set_device_type("Blood Pressure Monitor")
+        self.set_device_name(f"{model} {identifier}")
+        self.set_device_manufacturer(manufacturer)
+        self.pending = False
+
+    async def _collect_stored_history(
+        self, session: OmronDeviceSession, trace: SessionTrace
+    ) -> None:
+        """Read the records stored since the host's last sync (#234)."""
+        # A retried readout comes through here again; start clean so its
+        # findings replace the failed attempt's instead of adding to them.
+        self.pending_history = None
+        self.history_updates = []
+        try:
+            with trace.timed("history"):
+                found = await self._driver.get_records_since(
+                    session,
+                    dict(self.history_last_seq or {}),
+                    max_reads=HISTORY_MAX_READS,
+                )
+        except Exception as exc:
+            trace.forgive("history")
+            trace.note(history_error=str(exc) or type(exc).__name__)
+            _LOGGER.debug("Stored-record read failed: %s", exc)
+            return
+        if not found:
+            return
+        events: list[dict[str, Any]] = []
+        updates: list[SensorUpdate] = []
+        next_seq: dict[int, int] = {}
+        shown: dict[int, int] = {}
+        # TruRead profiles store a session as three raw readings that the poll
+        # shows as their average; raw states would mix with the averages.
+        states_wanted = not (self._device_config.index_pointer_layout or {}).get(
+            "truread_sequence"
+        )
+        for user, outcome in sorted(found.items()):
+            next_seq[user] = outcome.next_seq
+            if outcome.lost:
+                _LOGGER.warning(
+                    "%d stored measurement(s) for user %d were overwritten or "
+                    "unreadable before they could be synced",
+                    outcome.lost,
+                    user,
+                )
+            records = outcome.records
+            # The poll shows the cuff's newest record itself, whether or not
+            # any older one was read (and after a rebase the old position
+            # means nothing), so everything up to the counter counts as shown.
+            shown[user] = outcome.index_seq
+            # Every other record newer than what an earlier poll already
+            # showed is pushed ahead of it, each as its own state change; the
+            # rest (a drain that carries on, or the newest one itself) only
+            # get their event.
+            last_shown = self.history_shown.get(user)
+            backlog = [
+                r
+                for r in records
+                if states_wanted
+                and r["sequence"] != outcome.index_seq
+                and (
+                    last_shown is None
+                    or 0 < ((r["sequence"] - last_shown) & 0xFFFF) < 0x8000
+                )
+            ]
+            for record in backlog:
+                self._update_measurement_sensors(
+                    record, user=user, multi_user=self._device_config.num_users > 1
+                )
+                update = self._finish_update()
+                # Seeded, still-empty entries of the other users would blank
+                # their sensors for this one state change.
+                updates.append(
+                    dataclasses.replace(
+                        update,
+                        entity_values={
+                            k: v
+                            for k, v in update.entity_values.items()
+                            if v.native_value is not None
+                        },
+                        binary_entity_values={
+                            k: v
+                            for k, v in update.binary_entity_values.items()
+                            if v.native_value is not None
+                        },
+                    )
+                )
+            events.extend(self._history_event(user, rec) for rec in records)
+        events.sort(key=lambda e: (e["measured_at"] or "", e["user"], e["sequence"]))
+        trace.note(history_reads=len(events))
+        self.history_updates = updates
+        self.pending_history = {"next_seq": next_seq, "events": events, "shown": shown}
+
+    def _history_event(self, user: int, record: dict[str, Any]) -> dict[str, Any]:
+        """Event payload for one stored record."""
+        measured = record.get("datetime")
+        aware = self._ensure_aware_datetime(measured)
+        return {
+            "user": user,
+            "user_alias": self._user_aliases.get(user),
+            "sequence": record.get("sequence"),
+            "measured_at": aware.isoformat()
+            if isinstance(aware, dt.datetime)
+            else None,
+            "device_time": measured.isoformat()
+            if isinstance(measured, dt.datetime)
+            else None,
+            **(
+                {
+                    "sys": record.get("sys"),
+                    "dia": record.get("dia"),
+                    "bpm": record.get("bpm"),
+                    "irregular_pulse": bool(record["ihb"]) if "ihb" in record else None,
+                    "body_movement": bool(record["mov"]) if "mov" in record else None,
+                    "cuff_loose": bool(record["cuff"]) if "cuff" in record else None,
+                    "improper_position": bool(record["pos"])
+                    if "pos" in record
+                    else None,
+                }
+                if self._device_config.is_blood_pressure
+                else {
+                    "weight": record.get("weight"),
+                    "body_fat": record.get("body_fat"),
+                    "skeletal_muscle": record.get("skeletal_muscle"),
+                    "visceral_fat": record.get("visceral_fat"),
+                    "basal_metabolic_rate": record.get("basal_metabolic_rate"),
+                    "bmi": record.get("bmi"),
+                }
+            ),
+        }
+
+    async def _poll_device_readout(
+        self,
+        session: OmronDeviceSession,
+        client: BleakClient,
+        ble_device: BLEDevice,
+        *,
+        memory_session_active: bool,
+    ) -> None:
+        """Time sync, record fetch, and device info reads for one poll cycle."""
+        trace = session.trace
+        try:
+            with trace.timed("time_sync"):
+                if memory_session_active:
+                    # The registration writes this same clock record again at the
+                    # end of the readout, so a pairing session sends the block
+                    # twice. Deliberate: skipping it here would leave a session
+                    # whose registration then failed with no clock write at all,
+                    # and a failed registration is exactly the case where there is
+                    # no next poll to catch up.
+                    if self._device_config.supports_eeprom_time_sync:
+                        await async_sync_eeprom_time(
+                            client,
+                            self._device_model,
+                            self._device_config,
+                            session,
+                        )
+                elif not self._device_config.supports_eeprom_time_sync:
+                    await self._async_sync_current_time_with_client(
+                        client, ble_device.address, session
+                    )
+                else:
+                    _LOGGER.debug(
+                        "Skipping EEPROM time sync for %s: memory session not opened",
+                        ble_device.address,
+                    )
+        except Exception as exc:
+            # Swallowed on purpose (a poll without a clock write still reads
+            # records), so it is not where the poll died; noted instead.
+            trace.forgive("time_sync")
+            trace.note(time_sync_error=str(exc) or type(exc).__name__)
+            _LOGGER.warning(
+                "Time sync failed during poll for %s: %s", ble_device.address, exc
+            )
+
+        if memory_session_active:
+            await self._driver.write_user_profile(session)
+
+        with trace.timed("readout"):
+            multi_user_mode = self._device_config.num_users > 1
+            record: dict[str, Any] | None = None
+            latest_by_user: dict[int, dict[str, Any]] = {}
+            eeprom_record_decoded = False
+            if multi_user_mode:
+                latest_by_user = await self._driver.get_latest_records_per_user(session)
+                eeprom_record_decoded = bool(latest_by_user)
+                if not latest_by_user and self._device_config.is_blood_pressure:
+                    # Diagnostic only: the classic EEPROM index/full-scan path found
+                    # nothing usable. Probe the standard BLE Blood Pressure Service
+                    # RACP path too so the log shows whether this device exposes
+                    # 0x2A35/0x2A52 and, if so, what a "last stored record" request
+                    # returns — without changing the (already-failing) result here.
+                    try:
+                        diag_record = await self._read_latest_via_bls_racp(client)
+                        _LOGGER.debug(
+                            "Diagnostic BLS RACP probe for %s (EEPROM path returned no "
+                            "records): result=%s",
+                            ble_device.address,
+                            diag_record,
+                        )
+                    except Exception as exc:
+                        _LOGGER.debug(
+                            "Diagnostic BLS RACP probe for %s failed: %s",
+                            ble_device.address,
+                            exc,
+                        )
+            else:
+                record = await self._driver.get_latest_record(session)
+                eeprom_record_decoded = record is not None
+                live_record: dict[str, Any] | None = None
+                # The standard Blood Pressure Service only exists on cuffs.
+                if self._device_config.is_blood_pressure:
+                    live_record = await self._read_latest_via_bls_racp(client)
+                if (
+                    self._device_config.is_blood_pressure
+                    and not self._bp_char_unavailable
+                ):
+                    try:
+                        bp_raw = await client.read_gatt_char(BP_MEASUREMENT_CHAR_UUID)
+                        if bp_raw:
+                            if live_record is None:
+                                live_record = _parse_bp_measurement(bytes(bp_raw))
+                    except Exception as exc:
+                        if "Read not permitted" in str(exc):
+                            self._bp_char_unavailable = True
+                            _LOGGER.debug(
+                                "BP measurement char 0x2A35 read not permitted on %s; "
+                                "disabling live BLS read path",
+                                ble_device.address,
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "Read BP measurement char 0x2A35 failed for %s: %s",
+                                ble_device.address,
+                                exc,
+                            )
+                        live_record = None
+
+                if (
+                    live_record
+                    and isinstance(live_record.get("sys"), int)
+                    and isinstance(live_record.get("dia"), int)
+                ):
+                    eeprom_dt = record.get("datetime") if record else None
+                    live_dt = live_record.get("datetime")
+                    use_live = False
+                    if record is None:
+                        use_live = True
+                    elif isinstance(live_dt, dt.datetime) and (
+                        not isinstance(eeprom_dt, dt.datetime)
+                        or live_dt > (eeprom_dt + dt.timedelta(minutes=1))
+                    ):
+                        use_live = True
+                    elif (
+                        not isinstance(live_dt, dt.datetime)
+                        and isinstance(record.get("sys"), int)
+                        and isinstance(record.get("dia"), int)
+                        and (
+                            int(live_record["sys"]) != int(record.get("sys"))
+                            or int(live_record["dia"]) != int(record.get("dia"))
+                        )
+                    ):
+                        use_live = True
+                    if use_live:
+                        merged = dict(record or {})
+                        merged["sys"] = live_record["sys"]
+                        merged["dia"] = live_record["dia"]
+                        if isinstance(live_record.get("bpm"), int):
+                            merged["bpm"] = live_record["bpm"]
+                        if isinstance(live_dt, dt.datetime):
+                            merged["datetime"] = live_dt
+                        if "user" not in merged:
+                            merged["user"] = 1
+                        record = merged
+
+            # Before the latest record is published below: the older ones go out
+            # first, each as its own update.
+            if memory_session_active and self.history_last_seq is not None:
+                await self._collect_stored_history(session, trace)
+
+            if multi_user_mode:
+                if latest_by_user:
+                    for user in sorted(latest_by_user):
+                        user_record = latest_by_user[user]
+                        if self._device_config.is_blood_pressure:
+                            _LOGGER.debug(
+                                "User-specific latest selected: user=%d datetime=%s sys=%s dia=%s bpm=%s",
+                                user,
+                                user_record.get("datetime"),
+                                user_record.get("sys"),
+                                user_record.get("dia"),
+                                user_record.get("bpm"),
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "User-specific latest selected: user=%d datetime=%s weight=%s",
+                                user,
+                                user_record.get("datetime"),
+                                user_record.get("weight"),
+                            )
+                        self._update_measurement_sensors(
+                            user_record,
+                            user=user,
+                            multi_user=True,
+                        )
+                        signature = self._build_record_signature(user_record)
+                        previous = self._last_record_signatures_by_user.get(user)
+                        if signature != previous:
+                            self._last_record_signatures_by_user[user] = signature
+            elif record:
+                if self._device_config.is_blood_pressure:
+                    _LOGGER.debug(
+                        "Latest selected: datetime=%s sys=%s dia=%s bpm=%s",
+                        record.get("datetime"),
+                        record.get("sys"),
+                        record.get("dia"),
+                        record.get("bpm"),
+                    )
+                else:
+                    _LOGGER.debug(
+                        "Latest selected: datetime=%s weight=%s",
+                        record.get("datetime"),
+                        record.get("weight"),
+                    )
+                self._update_measurement_sensors(record)
+                signature = self._build_record_signature(record)
+                if signature != self._last_record_signature:
+                    self._last_record_signature = signature
+
+            # Only a decoded EEPROM record owns the application-level
+            # completion mirrors. Time-sync-only and cleanup closes must
+            # never acknowledge a measurement transfer that did not finish.
+            #
+            # Skipped on a pairing session: the registration write at the end of
+            # this readout covers the same two addresses with a superset -- the
+            # whole index region including this completion byte, plus the profile
+            # slot -- so running both would send four writes where two do, and the
+            # first pair would be overwritten by the second.
+            if latest_by_user or record:
+                if (
+                    memory_session_active
+                    and eeprom_record_decoded
+                    and not (
+                        session._pairing_session
+                        and self._device_config.pairing_registration is not None
+                    )
+                ):
+                    await self._driver.complete_measurement_readout(session)
+                self._last_readout_at = dt.datetime.now(dt.timezone.utc)
+            # How many latest records the readout came back with: one per
+            # user with data, so 0 is a cuff with nothing stored -- not a
+            # failure, and the reason the measurement entities did not move.
+            trace.note(
+                records=len(latest_by_user)
+                if multi_user_mode
+                else int(record is not None)
+            )
+
+        with trace.timed("device_info"):
+            try:
+                char_fw = client.services.get_characteristic(FIRMWARE_REVISION_UUID)
+                if char_fw:
+                    fw_bytes = await client.read_gatt_char(char_fw)
+                    if fw_bytes:
+                        fw_rev = fw_bytes.decode("utf-8").strip(" \x00")
+                        self.set_device_sw_version(fw_rev)
+            except Exception as exc:
+                _LOGGER.debug("Failed to read Firmware Revision: %s", exc)
+
+            try:
+                char_hw = client.services.get_characteristic(HARDWARE_REVISION_UUID)
+                if char_hw:
+                    hw_bytes = await client.read_gatt_char(char_hw)
+                    if hw_bytes:
+                        hw_rev = hw_bytes.decode("utf-8").strip(" \x00")
+                        self.set_device_hw_version(hw_rev)
+            except Exception as exc:
+                _LOGGER.debug("Failed to read Hardware Revision: %s", exc)
+
+            try:
+                char_mfg = client.services.get_characteristic(MANUFACTURER_NAME_UUID)
+                if char_mfg:
+                    mfg_bytes = await client.read_gatt_char(char_mfg)
+                    if mfg_bytes:
+                        mfg_name = mfg_bytes.decode("utf-8").strip(" \x00")
+                        self.set_device_manufacturer(mfg_name)
+            except Exception as exc:
+                _LOGGER.debug("Failed to read Manufacturer Name: %s", exc)
+
+            try:
+                char_model = client.services.get_characteristic(MODEL_NUMBER_UUID)
+                if char_model:
+                    await client.read_gatt_char(char_model)
+            except Exception as exc:
+                _LOGGER.debug("Failed to read Model Number: %s", exc)
+
+        # After the records, before the close: the pairing session's
+        # registration write, on the profiles that need it.
+        #
+        # Two attempts, because the write has two halves and only the second
+        # is safe to repeat. A second call skips the half that already landed
+        # and redoes only what failed -- worth one retry, since a pairing
+        # session skips the completion mirror, so nothing else on this link
+        # writes the clock record's flag bit and this is the session that owes it.
+        #
+        # A failure that survives both is logged and the session still closes
+        # normally: the close is what keeps the cuff usable, and the user can
+        # pair again.
+        if memory_session_active:
+            for attempt in range(_REGISTRATION_ATTEMPTS):
+                try:
+                    await session.memory.commit_pairing_registration()
+                    break
+                except Exception as exc:
+                    trace.forgive("registration")
+                    if attempt + 1 < _REGISTRATION_ATTEMPTS:
+                        _LOGGER.debug(
+                            "Pairing registration for %s failed (attempt %d/%d), "
+                            "retrying the part that did not land: %s",
+                            ble_device.address,
+                            attempt + 1,
+                            _REGISTRATION_ATTEMPTS,
+                            exc,
+                        )
+                        continue
+                    trace.note(registration_error=str(exc) or type(exc).__name__)
+                    _LOGGER.warning(
+                        "Pairing registration for %s failed; the next reconnect "
+                        "may be refused and need another pairing: %s",
+                        ble_device.address,
+                        exc,
+                    )
+
+    async def async_poll(
+        self,
+        ble_device: BLEDevice,
+        preconnected_session: OmronDeviceSession | None = None,
+    ) -> SensorUpdate:
+        """Poll the device to retrieve measurement records via GATT connection.
+
+        If ``preconnected_session`` is supplied and still connected, the poll
+        adopts that setup session (unlock + memory session state preserved) so
+        pairing, time sync, and the initial read share one connection.
+        """
+        async with self._poll_guard:
+            self._events_updates.clear()
+            self.pending_history = None
+            self.history_updates = []
+            # This poll's own breakdown. An adopted session already carries the
+            # pairing session's trace; the link is copied across and the stages
+            # are swapped, so what this poll publishes matches its own duration.
+            trace = SessionTrace()
+            session: OmronDeviceSession | None = None
+
+            try:
+                if (
+                    preconnected_session is not None
+                    and preconnected_session.is_connected
+                ):
+                    session = preconnected_session
+                    session.reclaim_ownership()
+                    session.publish_link_to(trace)
+                    trace.note(adopted_link=True)
+                else:
+                    pairing_session = False
+                    if preconnected_session is not None:
+                        # Handed a link that dropped before we got here. Take
+                        # ownership back and close it, or it stays half-open
+                        # while this poll opens a second connection.
+                        _LOGGER.debug(
+                            "Handed-off session for %s is no longer connected; "
+                            "closing it and connecting fresh",
+                            ble_device.address,
+                        )
+                        preconnected_session.reclaim_ownership()
+                        await preconnected_session.aclose()
+                        # On the profiles that write a pairing registration,
+                        # the replacement inherits the dropped link's pairing
+                        # nature: that write only ever runs on a pairing
+                        # session, and the cuff may well still be in its
+                        # window. Nowhere else -- on a secure-session profile a
+                        # pairing session discards the stored credential and
+                        # pairs afresh, which outside the window fails a cuff
+                        # whose credential still works.
+                        pairing_session = (
+                            preconnected_session._pairing_session
+                            and self._device_config.pairing_registration is not None
+                        )
+                        if pairing_session:
+                            _LOGGER.info(
+                                "Reconnecting to %s as a pairing session so the "
+                                "registration the dropped link owed still gets "
+                                "written",
+                                ble_device.address,
+                            )
+                    session = self._open_session(
+                        ble_device, pairing_session=pairing_session
+                    )
+                session.trace = trace
+                async with session:
+                    client = session.client
+
+                    if not await session.verify_parent_service():
+                        trace.fail("services")
+                        prof = resolve_profile_model_id(self._device_model)
+                        stack_label = (
+                            "modern"
+                            if self._device_config.is_modern_stack
+                            else "classic"
+                        )
+                        _LOGGER.error(
+                            "Required service %s not on %s; model=%s profile=%s expected_stack=%s",
+                            self._device_config.parent_service_uuid,
+                            ble_device.address,
+                            self._device_model,
+                            prof,
+                            stack_label,
+                        )
+                        raise ConnectionError(
+                            f"Required service {self._device_config.parent_service_uuid} "
+                            f"not found on device {ble_device.address}"
+                        )
+
+                    if (
+                        self.last_service_info
+                        and not self._device_config.is_advertisement_compatible(
+                            self.last_service_info.service_uuids
+                        )
+                    ):
+                        prof = resolve_profile_model_id(self._device_model)
+                        stack_label = (
+                            "modern"
+                            if self._device_config.is_modern_stack
+                            else "classic"
+                        )
+                        _LOGGER.debug(
+                            "Configured model %s (profile %s) may not match advertised service family; "
+                            "advertised=%s expected_stack=%s",
+                            self._device_model,
+                            prof,
+                            self.last_service_info.service_uuids,
+                            stack_label,
+                        )
+
+                    _LOGGER.debug(
+                        "Poll start: model=%s addr=%s endian=%s parser=%s "
+                        "users=%d rec_size=%d time_sync=%s",
+                        self._device_config.model,
+                        ble_device.address,
+                        self._device_config.endianness,
+                        self._device_config.record_parser,
+                        self._device_config.num_users,
+                        self._device_config.record_byte_size,
+                        self._device_config.resolved_time_sync_layout()
+                        if self._device_config.supports_eeprom_time_sync
+                        else "none",
+                    )
+
+                    needs_memory = (
+                        self._device_config.is_classic_stack
+                        or self._device_config.supports_eeprom_time_sync
+                    )
+                    if needs_memory:
+                        if session.memory.memory_session_active:
+                            _LOGGER.debug(
+                                "Reusing setup memory session for %s",
+                                ble_device.address,
+                            )
+                            await self._poll_device_readout(
+                                session,
+                                client,
+                                ble_device,
+                                memory_session_active=True,
+                            )
+                        else:
+                            memory_session_active = False
+                            last_session_exc: Exception | None = None
+                            for session_attempt in range(3):
+                                try:
+                                    pair_first = (
+                                        session_attempt == 0
+                                        and self._device_config.host_pairing_mode
+                                        == HostPairingMode.CUSTOM_KEY
+                                        and self.pairing_mode
+                                    )
+                                    async with session.memory_session_after_unlock(
+                                        pair_first=pair_first
+                                    ):
+                                        memory_session_active = True
+                                        await self._poll_device_readout(
+                                            session,
+                                            client,
+                                            ble_device,
+                                            memory_session_active=True,
+                                        )
+                                    break
+                                # Exception, never BaseException: the poll
+                                # deadline (POLL_TIMEOUT_SECONDS) cancels this
+                                # task exactly once, so swallowing that
+                                # CancelledError here would drop the loop into
+                                # another unbounded GATT wait with no deadline
+                                # left to fire — the wedge the deadline exists
+                                # to break.
+                                except Exception as exc:
+                                    last_session_exc = exc
+                                    # Swallowed for the retry (or the fallback
+                                    # below, which raises on its own): whatever
+                                    # stage this attempt died in is not final.
+                                    trace.forgive()
+                                    _LOGGER.debug(
+                                        "Memory session open attempt %d/3 failed: %s",
+                                        session_attempt + 1,
+                                        exc,
+                                    )
+                                    if session_attempt < 2:
+                                        try:
+                                            await session.reset_session_state()
+                                        except Exception as reset_exc:
+                                            _LOGGER.debug(
+                                                "Session state reset failed (ignored): %s",
+                                                reset_exc,
+                                            )
+                                        await session.refresh_services()
+                                        await asyncio.sleep(0.5)
+                            trace.note(memory_session_attempts=session_attempt + 1)
+                            if (
+                                not memory_session_active
+                                and last_session_exc is not None
+                            ):
+                                if (
+                                    self._device_config.host_pairing_mode
+                                    == HostPairingMode.OS_BONDING
+                                ):
+                                    _LOGGER.warning(
+                                        "Memory session failed for OS-bonding device %s "
+                                        "(model=%s): %s. Ensure OS-level BLE bonding is "
+                                        "complete — remove and re-add the device if this "
+                                        "error persists.",
+                                        ble_device.address,
+                                        self._device_config.model,
+                                        last_session_exc,
+                                    )
+                                else:
+                                    _LOGGER.debug(
+                                        "Could not open memory session globally in poll "
+                                        "after retries: %s",
+                                        last_session_exc,
+                                    )
+                                try:
+                                    async with session.memory_session_after_unlock():
+                                        await self._poll_device_readout(
+                                            session,
+                                            client,
+                                            ble_device,
+                                            memory_session_active=True,
+                                        )
+                                # Exception, never BaseException — see above:
+                                # cancellation has to reach the poll deadline.
+                                except Exception as fallback_exc:
+                                    _LOGGER.debug(
+                                        "Fallback memory session readout failed: %s",
+                                        fallback_exc,
+                                    )
+                                    raise
+                    else:
+                        await self._poll_device_readout(
+                            session,
+                            client,
+                            ble_device,
+                            memory_session_active=False,
+                        )
+                    # An adopted setup session may have established one.
+                    self._collect_credential(session)
+
+            except ConnectionError as exc:
+                # Expected when the cuff is off, out of range, or the link drops mid-poll.
+                prof = resolve_profile_model_id(self._device_model)
+                _LOGGER.warning(
+                    "Poll interrupted (disconnected) model=%s profile=%s address=%s "
+                    "stage=%s: %s",
+                    self._device_model,
+                    prof,
+                    ble_device.address,
+                    trace.failed_stage,
+                    exc,
+                )
+                raise
+            except Exception as exc:
+                prof = resolve_profile_model_id(self._device_model)
+                _LOGGER.error(
+                    "Poll failed model=%s profile=%s address=%s stage=%s: %s",
+                    self._device_model,
+                    prof,
+                    ble_device.address,
+                    trace.failed_stage,
+                    exc,
+                    exc_info=exc,
+                )
+                raise
+            finally:
+                self._record_session_trace(session, trace)
+
+            return self._finish_update()
+
+    async def async_retry_pairing(self, ble_device: BLEDevice) -> OmronDeviceSession:
+        """Pair/bond and hand the still-open session to the follow-up poll.
+
+        Returns the live session with its memory readout session left open.
+        PER_SESSION profiles serve data during the pairing session and reject
+        later connections, so closing the link here and reconnecting for the
+        poll is exactly what fails. The caller parks the session (see
+        ``stash_handoff_session``, which is where ownership is released) so
+        ``async_poll`` adopts this link instead of opening a new one; a caller
+        that does not park it still owns the link and must close it.
+        """
+        session = self._open_session(ble_device, pairing_session=True)
+        trace = session.trace
+        try:
+            await session.connect()
+            if not await session.verify_parent_service():
+                trace.fail("services")
+                raise ConnectionError(
+                    f"Required service {self._device_config.parent_service_uuid} "
+                    f"not found on device {ble_device.address}"
+                )
+            await session.pair()
+            await session.refresh_services()
+            with trace.timed("time_sync"):
+                await async_sync_device_time(
+                    session.client,
+                    self._device_model,
+                    self._device_config,
+                    session,
+                    # Keep the readout session open so the poll does not
+                    # close-then-immediately-reopen on the same link.
+                    leave_memory_session_open=True,
+                )
+        except BaseException:
+            # Pairing failed: drop the link so a later retry starts clean.
+            # aclose() swallows its own errors, so it cannot mask this one.
+            await session.aclose()
+            raise
+        finally:
+            self._record_session_trace(session, trace)
+        # Only after the whole pairing path succeeded: a credential kept from a
+        # half-finished initialization would not authenticate later.
+        self._collect_credential(session)
+        return session
+
+    async def async_sync_time(self, ble_device: BLEDevice) -> None:
+        """Connect to the device and synchronize time only."""
+        session = self._open_session(ble_device)
+        try:
+            async with session:
+                with session.trace.timed("time_sync"):
+                    await self._async_sync_current_time_with_client(
+                        session.client, ble_device.address, session
+                    )
+        finally:
+            self._record_session_trace(session, session.trace)
+
+    async def _async_sync_current_time_with_client(
+        self,
+        client: BleakClient,
+        address: str,
+        transport: OmronDeviceSession | None = None,
+    ) -> bool:
+        """Sync current local time via CTS or EEPROM fallback."""
+        return await async_sync_device_time(
+            client, self._device_model, self._device_config, transport
+        )

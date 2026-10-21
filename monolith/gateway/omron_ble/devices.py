@@ -1,0 +1,749 @@
+"""Omron device definitions and profile registry."""
+
+from __future__ import annotations
+
+import logging
+import re
+from dataclasses import dataclass, field, replace
+from enum import Enum, StrEnum
+from typing import Any
+
+from .const import (
+    CLASSIC_STACK_PARENT_SERVICE_UUID,
+    MODERN_STACK_PARENT_SERVICE_UUID,
+    STANDARD_BLOOD_PRESSURE_SERVICE_UUID,
+    STANDARD_WEIGHT_SCALE_SERVICE_UUID,
+    CLASSIC_STACK_RX_CHARACTERISTIC_UUIDS,
+    CLASSIC_STACK_TX_CHARACTERISTIC_UUIDS,
+    DEFAULT_DEVICE_MODEL,
+)
+from .model_aliases import AMBIGUOUS_MODEL_NAMES, MODEL_NUMBER_ALIASES
+from .record_parsers import (
+    parse_classic_vital_14,
+    parse_classic_vital_14_6232_family,
+    parse_classic_vital_14_bitpacked,
+    parse_classic_vital_16_6401_family,
+    parse_classic_vital_24_heartguide,
+    parse_weight_16,
+    parse_hbf_32,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class UnlockMode(str, Enum):
+    """Transport unlock strategy for a device profile."""
+
+    NONE = "none"
+    CLASSIC_KEY = "classic_key"
+    # Stateless 0x11/0x91 handshake: host sends 0x11 + 4 arbitrary (nonce)
+    # bytes, device echoes them in a 0x91 0x00 ack. Not a stored secret —
+    # confirmed via HCI btsnoop where the same device echoed two different
+    # host-chosen values across two connections. Required for memory access
+    # outside the device's -P- pairing grace window on some modern-stack units.
+    TOKEN_KEY = "token_key"
+    SECURE_SESSION = "secure_session"
+
+
+class HostPairingMode(str, Enum):
+    """Host-side pairing strategy for BLE security establishment."""
+
+    CUSTOM_KEY = "custom_key"
+    OS_BONDING = "os_bonding"
+    # Reserved for future profiles that intentionally skip host-side pairing.
+    NONE = "none"
+
+
+class ConnectType(StrEnum):
+    """OMRON communication type; groups devices by BLE bonding/transfer behaviour."""
+
+    UNKNOWN = ""
+    WLB1_0 = "WLB1.0"
+    WLD1_0 = "WLD1.0"
+    WLD2_0 = "WLD2.0"
+    WLD3_0 = "WLD3.0"
+    WLD4_0 = "WLD4.0"
+    WLS3_0 = "WLS3.0"
+    WLC3_0 = "WLC3.0"
+
+
+class MeasurementKind(StrEnum):
+    """What a device measures; picks the record checks and the entity set."""
+
+    BLOOD_PRESSURE = "blood_pressure"
+    WEIGHT = "weight"
+    BODY_COMPOSITION = "body_composition"
+
+
+class Endianness(StrEnum):
+    """Byte order for EEPROM/record decoding."""
+
+    BIG = "big"
+    LITTLE = "little"
+
+
+class RecordParser(StrEnum):
+    """Record-decoder selector (see record_parsers)."""
+
+    CLASSIC_VITAL_14 = "classic_vital_14"
+    CLASSIC_VITAL_16_6401_FAMILY = "classic_vital_16_6401_family"
+    CLASSIC_VITAL_14_BITPACKED = "classic_vital_14_bitpacked"
+    CLASSIC_VITAL_14_6232_FAMILY = "classic_vital_14_6232_family"
+    CLASSIC_VITAL_24_HEARTGUIDE = "classic_vital_24_heartguide"
+    WEIGHT_16 = "weight_16"
+    HBF_32 = "hbf_32"
+
+
+class TimeSyncLayout(StrEnum):
+    """Where the six time bytes sit in the settings block, and in what order.
+
+    Every layout stores [year-2000, month, day, hour, minute, second]. The name
+    says the byte offset the six start at, and ``_SWAPPED`` says the transport
+    hands them over with each 16-bit word's bytes exchanged, so they read as
+    [month, year, hour, day, second, minute].
+    """
+
+    AT_0 = "eeprom_time_at_0"
+    AT_2 = "eeprom_time_at_2"
+    AT_2_SWAPPED = "eeprom_time_at_2_swapped"
+    AT_8 = "eeprom_time_at_8"
+    AT_8_SWAPPED = "eeprom_time_at_8_swapped"
+    # An 8-byte block: the six time bytes, their additive checksum, one pad byte.
+    AT_0_CHECKSUM = "eeprom_time_at_0_checksum"
+
+
+# How long to wait for the peer to hang up before closing the link ourselves.
+# The #91 capture shows the cuff taking about three seconds; this covers it.
+_PEER_CLOSES_SESSION_SEC: float = 5.0
+
+
+@dataclass(frozen=True)
+class PairingRegistration:
+    """What the pairing session writes back to the settings mirror.
+
+    The app ends a fresh pairing by writing the index region plus the user's
+    10-byte profile slot back to the mirror, and WLD3.0 token-key cuffs refuse
+    to resume the bond on the next connection without it (#175, #91).
+
+    The index region carries one unread counter per data stream: two-byte
+    counters for the two blood-pressure streams, whose idle marker is 0x8000,
+    and one-byte counters for the rest, idle at 0x80. A session that has read
+    the records resets every one of them -- the byte the #175 capture showed
+    going to 0x80 is one of the one-byte counters, not a flag. Which bytes
+    those are is a property of the index layout, so they are listed per
+    profile as (offset, width, idle value), little-endian.
+
+    The slot holds a 32-bit little-endian value at +4 that steps once per
+    transfer and an additive checksum in its second-to-last byte over
+    everything before it -- the same rule the clock record follows, verified
+    on every sample in the #67 and #175 captures. Slots are 10 bytes on the
+    profiles verified so far; the family also has 14-byte ones, which is why
+    the size is spelled out rather than assumed. A slot that starts 0xFFFF
+    has never been written and is left alone.
+    """
+
+    # Offset of the user's profile slot within the settings region. It does
+    # not always follow the index region directly (#67 shows padding).
+    slot_offset: int
+    # (offset, width in bytes, idle value) for every unread counter in the
+    # index region.
+    unread_clears: tuple[tuple[int, int, int], ...]
+    # Size of the profile slot: count at +4, checksum at size - 2.
+    slot_size: int = 10
+
+    def __post_init__(self) -> None:
+        if self.slot_size < 10:
+            raise ValueError(
+                f"A profile slot needs at least 10 bytes (count at +4, "
+                f"checksum at size-2), got {self.slot_size}"
+            )
+        for offset, width, idle in self.unread_clears:
+            if width not in (1, 2):
+                raise ValueError(
+                    f"Unread counter at {offset}: width {width} is not 1 or 2"
+                )
+            if idle >= 1 << (8 * width):
+                raise ValueError(
+                    f"Unread counter at {offset}: idle value 0x{idle:X} does not fit "
+                    f"{width} byte(s)"
+                )
+            if offset + width > self.slot_offset:
+                raise ValueError(
+                    f"Unread counter at {offset} lies outside the index region "
+                    f"({self.slot_offset} bytes)"
+                )
+
+
+@dataclass(frozen=True)
+class MeasurementCompletion:
+    """Byte edits that acknowledge a successful measurement readout.
+
+    The index byte is the profile's; the clock record that goes with it is
+    the settings mirror's ``clock_block`` -- flag bit, current time and
+    checksum -- and has no knobs here.
+    """
+
+    index_flag_offset: int
+    index_flag_value: int = 0x80
+
+    def __post_init__(self) -> None:
+        if self.index_flag_offset < 0:
+            raise ValueError("Measurement completion offset must be non-negative")
+        if not 0 <= self.index_flag_value <= 0xFF:
+            raise ValueError("index_flag_value must fit in one byte")
+
+
+@dataclass
+class DeviceConfig:
+    """Configuration for a specific Omron device model."""
+
+    # Device identity
+    model: str
+    connect_type: ConnectType = ConnectType.UNKNOWN
+
+    # BLE channel configuration
+    parent_service_uuid: str = CLASSIC_STACK_PARENT_SERVICE_UUID
+    rx_channel_uuids: list[str] = field(
+        default_factory=lambda: list(CLASSIC_STACK_RX_CHARACTERISTIC_UUIDS)
+    )
+    tx_channel_uuids: list[str] = field(
+        default_factory=lambda: list(CLASSIC_STACK_TX_CHARACTERISTIC_UUIDS)
+    )
+    unlock_mode: UnlockMode = UnlockMode.CLASSIC_KEY
+    host_pairing_mode: HostPairingMode = HostPairingMode.CUSTOM_KEY
+    # Enable more aggressive GATT timing for classic custom-key profiles
+    # (extra refresh/retry and pre-unlock 0x02 probe).
+    aggressive_gatt_timing: bool = False
+    # Connection attempts per session before giving up (see
+    # ``establish_connection_with_bond_settle``).
+    connect_settle_attempts: int = 3
+
+    # EEPROM layout
+    endianness: Endianness = Endianness.BIG
+    user_start_addresses: list[int] = field(default_factory=list)
+    per_user_records_count: list[int] = field(default_factory=list)
+    record_byte_size: int = 0x0E
+    transmission_block_size: int = 0x2C
+
+    # What the device measures. Blood pressure unless the profile says so.
+    measurement_kind: MeasurementKind = MeasurementKind.BLOOD_PRESSURE
+
+    # Settings addresses
+    settings_read_address: int | None = None
+    settings_write_address: int | None = None
+    settings_time_sync_bytes: list[int] | None = None
+    # EEPROM time layout; see TimeSyncLayout and _decode_eeprom_time_payload.
+    # AT_0 also writes the whole 16-byte block back with no checksum tail.
+    time_sync_layout: TimeSyncLayout | None = None
+    # Per user, ``cursor_parity`` ("odd" or "even") names the parity the cursor
+    # byte keeps in bit 7; the pointer is the low bits under ``write_cursor_mask``.
+    index_pointer_layout: dict[str, Any] | None = None
+
+    # Enable each notify CCCD once and leave it enabled for the life of the
+    # link, the way the app does. Disabling them at session close was why the
+    # cuff dropped its side of the bond (#91): the spec has a peripheral keep
+    # CCCD configuration per bonded client (Vol 3 Part G, 3.3.3.3) and small
+    # stacks store it inside the bond record. ``_secure_unlock`` already
+    # avoided the churn, its comment recording that this family rejects a
+    # pairing request (0xff 0x26) when the unlock CCCD is dropped and re-added.
+    keep_notify_subscriptions: bool = False
+    # HBF scales require RX0 before unlock and RX1–RX3 after unlock.
+    staged_classic_notifications: bool = False
+    # Hold an auto-confirming BlueZ agent registered across the connect
+    # without calling Pair() ourselves. For profiles where the cuff drives
+    # security with its own Security Request: BlueZ 5.72+ leaves the Just
+    # Works confirmation unanswered when no agent is registered.
+    register_pairing_agent: bool = False
+    # Write the app's end-of-pairing settings mirror (index with the unread
+    # counter cleared, one transfer slot, stamped clock) on the pairing session.
+    # WLD3.0 token-key cuffs refuse to resume the bond without it (#175).
+    pairing_registration: PairingRegistration | None = None
+    # Successful measurement transfer acknowledgement. Kept separate
+    # from pairing registration: it runs only after a real record was
+    # decoded and published, never during generic cleanup or time sync.
+    measurement_completion: MeasurementCompletion | None = None
+
+    @property
+    def pair_on_connect(self) -> bool:
+        """Whether to bond before service discovery on the pairing connection.
+
+        The only run whose retained-bond reconnect has ever worked -- the
+        2.7.8-beta.15 A/B on a local BlueZ adapter -- bonded at connect time,
+        before discovery. Every build since has bonded after it, and none has
+        reproduced that result.
+
+        Says nothing about ordinary reconnects: those must not send a pair
+        request. The caller pairs only on the session that creates the bond,
+        and only over a local adapter -- an incomplete request on an ESP32
+        proxy is read as an authentication failure and ESP-IDF drops the
+        stored bond from flash (#142).
+        """
+        return self.host_pairing_mode == HostPairingMode.OS_BONDING
+
+    @property
+    def subscribe_service_changed(self) -> bool:
+        """Whether to subscribe to Service Changed while pairing, as the app does.
+
+        Service Changed is a CCCD like the vendor ones, so this is the same
+        mechanism ``keep_notify_subscriptions`` exists for and follows it
+        rather than being a knob of its own. The phone writes 0x0002 to handle
+        0x000B in both pairing sessions of the #67 capture and in neither
+        reconnect; we wrote every other CCCD and never that one.
+        """
+        return self.keep_notify_subscriptions
+
+    @property
+    def peer_closes_session_sec(self) -> float:
+        """Seconds to stay idle at session end, letting the cuff drop the link.
+
+        In the #91 phone capture the app goes quiet after its last read and the
+        cuff hangs up about three seconds later; there is no HCI Disconnect
+        command from the phone, and reason 0x13 is "remote terminated". We
+        closed in the same millisecond as the final notification, so our
+        sessions ended 0x16 — closed by us.
+
+        Tied to ``keep_notify_subscriptions`` because both are about leaving
+        per-bond state as the app leaves it. Zero elsewhere keeps the immediate
+        close for every other profile.
+        """
+        return _PEER_CLOSES_SESSION_SEC if self.keep_notify_subscriptions else 0.0
+
+    # Record layout key -> parser in parse_record()
+    record_parser: RecordParser = RecordParser.CLASSIC_VITAL_14
+    equivalent_model_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Validate unlock/pairing strategy combinations."""
+        if self.unlock_mode == UnlockMode.SECURE_SESSION and not (
+            self.host_pairing_mode == HostPairingMode.OS_BONDING
+            or (
+                self.host_pairing_mode == HostPairingMode.NONE
+                and self.register_pairing_agent
+            )
+        ):
+            # A secure session still runs over an encrypted link, so the bond
+            # has to come from somewhere: either we ask for it (OS_BONDING) or
+            # the cuff asks and a registered agent answers.
+            raise ValueError(
+                "Invalid profile config for %s: secure-session unlock requires "
+                "host_pairing_mode=OS_BONDING, or NONE with register_pairing_agent "
+                "(unlock_mode=%s host_pairing_mode=%s register_pairing_agent=%s)"
+                % (
+                    self.model,
+                    self.unlock_mode,
+                    self.host_pairing_mode,
+                    self.register_pairing_agent,
+                )
+            )
+        if (
+            self.host_pairing_mode == HostPairingMode.OS_BONDING
+            and self.unlock_mode == UnlockMode.CLASSIC_KEY
+        ):
+            raise ValueError(
+                "Invalid profile config for %s: OS_BONDING cannot use classic-key unlock "
+                "(unlock_mode=%s host_pairing_mode=%s)"
+                % (
+                    self.model,
+                    self.unlock_mode,
+                    self.host_pairing_mode,
+                )
+            )
+        if (
+            self.host_pairing_mode == HostPairingMode.NONE
+            and self.unlock_mode != UnlockMode.NONE
+            # A secure session carries its own credential and lets the cuff
+            # drive link security, so it has an unlock step without us pairing.
+            and not (
+                self.unlock_mode == UnlockMode.SECURE_SESSION
+                and self.register_pairing_agent
+            )
+        ):
+            raise ValueError(
+                "Invalid profile config for %s: host_pairing_mode=NONE requires unlock_mode=NONE "
+                "(unlock_mode=%s host_pairing_mode=%s)"
+                % (
+                    self.model,
+                    self.unlock_mode,
+                    self.host_pairing_mode,
+                )
+            )
+        if (
+            self.unlock_mode == UnlockMode.NONE
+            and self.host_pairing_mode == HostPairingMode.CUSTOM_KEY
+        ):
+            _LOGGER.warning(
+                "Profile %s uses custom-key pairing with unlock_mode=NONE; verify catalog settings",
+                self.model,
+            )
+        if self.pairing_registration is not None:
+            # Whether the registration block fits is fixed by the catalog, so
+            # a profile that cannot describe one has to fail here rather than
+            # mid-pairing on someone's cuff.
+            needed = (
+                self.pairing_registration.slot_offset
+                + self.pairing_registration.slot_size
+            )
+            region = (self.settings_time_sync_bytes or [0])[0]
+            if region < needed:
+                raise ValueError(
+                    "Invalid profile config for %s: the settings region is %d bytes "
+                    "but its pairing registration needs %d"
+                    % (self.model, region, needed)
+                )
+            index_size = int(
+                (self.index_pointer_layout or {}).get("index_region_byte_size", 0)
+            )
+            if self.pairing_registration.slot_offset < index_size:
+                raise ValueError(
+                    "Invalid profile config for %s: the profile slot at %d overlaps "
+                    "the %d-byte index region"
+                    % (self.model, self.pairing_registration.slot_offset, index_size)
+                )
+        for user_layout in (self.index_pointer_layout or {}).get("users", []):
+            seq_offset = user_layout.get("latest_sequence_offset")
+            if seq_offset is None:
+                continue
+            index_size = int(self.index_pointer_layout.get("index_region_byte_size", 0))
+            if int(seq_offset) < 0 or int(seq_offset) + 4 > index_size:
+                raise ValueError(
+                    "Invalid profile config for %s: the latest sequence field at "
+                    "%d lies outside the %d-byte index region"
+                    % (self.model, int(seq_offset), index_size)
+                )
+        if self.measurement_completion is not None:
+            # Same reasoning as the registration above: where the completion
+            # byte lands is fixed by the catalog, so a profile that puts it
+            # outside its own index region has to fail here rather than
+            # mid-poll on someone's cuff, after the records were read.
+            index_size = int(
+                (self.index_pointer_layout or {}).get("index_region_byte_size", 0)
+            )
+            if self.measurement_completion.index_flag_offset >= index_size:
+                raise ValueError(
+                    "Invalid profile config for %s: the measurement completion byte "
+                    "at %d lies outside the %d-byte index region"
+                    % (
+                        self.model,
+                        self.measurement_completion.index_flag_offset,
+                        index_size,
+                    )
+                )
+            clock_size = (self.settings_time_sync_bytes or [0, 0])[1] - (
+                self.settings_time_sync_bytes or [0, 0]
+            )[0]
+            # The completion stamps the clock record through the settings
+            # mirror's clock_block(): a 16-byte record with the flag at byte
+            # 4 and the time at [8:14] in chronological order. A profile
+            # whose record is shorter or ordered differently would pass the
+            # check above and then fail on the clock write, after the index
+            # mirror landed.
+            if (
+                clock_size < 16
+                or self.resolved_time_sync_layout() != TimeSyncLayout.AT_8
+            ):
+                raise ValueError(
+                    "Invalid profile config for %s: the measurement completion needs "
+                    "a 16-byte %s clock record, not %d bytes of %s"
+                    % (
+                        self.model,
+                        TimeSyncLayout.AT_8.value,
+                        clock_size,
+                        self.resolved_time_sync_layout().value,
+                    )
+                )
+
+    @property
+    def display_model(self) -> str:
+        """Model name for the UI, kept in the HEM- (cuff) or HN- (scale) form.
+
+        A profile can be reached by a retail carton name -- BP5465 is the only
+        one in the catalog -- and that is also what the cuff answers with over
+        GATT, so it can end up in the device registry as the model. Show the
+        profile key instead: it is a real HEM designation and the one thing we
+        know maps to this device. There is no retail-to-variant table to do
+        better with, and inventing one would be a guess.
+
+        An unrecognised name is left alone rather than replaced with the
+        fallback profile, which would name a device we did not identify. Logs
+        keep ``model`` either way, so a report still shows what was resolved.
+        """
+        if self.model.upper().startswith(("HEM-", "HN-", "HBF-")):
+            return self.model
+        alias = MODEL_NUMBER_ALIASES.get(self.model)
+        if alias:
+            return alias
+        if self.model in CANONICAL_DEVICE_PROFILES or self.model in MODEL_VARIANT_MAP:
+            return resolve_profile_model_id(self.model)
+        return self.model
+
+    @property
+    def is_blood_pressure(self) -> bool:
+        """Whether this profile measures blood pressure."""
+        return self.measurement_kind == MeasurementKind.BLOOD_PRESSURE
+
+    @property
+    def supports_stored_record_sync(self) -> bool:
+        """Whether the index layout carries a per-user record counter."""
+        users = (self.index_pointer_layout or {}).get("users", [])
+        return any(
+            u.get("latest_sequence_offset") is not None
+            or u.get("sequence_source") == "record_id"
+            for u in users
+        )
+
+    @property
+    def num_users(self) -> int:
+        """Return the number of users this device supports."""
+        return len(self.user_start_addresses)
+
+    @property
+    def is_single_channel(self) -> bool:
+        """Return True if the device uses a single BLE channel."""
+        return len(self.tx_channel_uuids) == 1
+
+    @property
+    def supports_eeprom_time_sync(self) -> bool:
+        """Return True if the device supports EEPROM-based time synchronization."""
+        return (
+            self.settings_time_sync_bytes is not None
+            and self.settings_read_address is not None
+            and self.settings_write_address is not None
+        )
+
+    def resolved_time_sync_layout(self) -> TimeSyncLayout:
+        """Return effective EEPROM time-layout key for this profile."""
+        if self.time_sync_layout is not None:
+            return self.time_sync_layout
+        if self.settings_time_sync_bytes == [0x2C, 0x3C]:
+            return TimeSyncLayout.AT_8
+        return TimeSyncLayout.AT_2_SWAPPED
+
+    def parse_record(self, data: bytes | bytearray) -> dict[str, Any]:
+        """Parse a single record using the device-specific parser."""
+        parser_map = {
+            RecordParser.CLASSIC_VITAL_14: parse_classic_vital_14,
+            RecordParser.CLASSIC_VITAL_16_6401_FAMILY: parse_classic_vital_16_6401_family,
+            RecordParser.CLASSIC_VITAL_14_BITPACKED: parse_classic_vital_14_bitpacked,
+            RecordParser.CLASSIC_VITAL_14_6232_FAMILY: parse_classic_vital_14_6232_family,
+            RecordParser.CLASSIC_VITAL_24_HEARTGUIDE: parse_classic_vital_24_heartguide,
+            RecordParser.WEIGHT_16: parse_weight_16,
+            RecordParser.HBF_32: parse_hbf_32,
+        }
+        parser = parser_map.get(self.record_parser)
+        if parser is None:
+            raise ValueError(f"Unknown record parser: {self.record_parser}")
+        return parser(data, self.endianness)
+
+    @property
+    def is_modern_stack(self) -> bool:
+        """Whether this profile uses the modern FE4A parent-service layout."""
+        return self.parent_service_uuid == MODERN_STACK_PARENT_SERVICE_UUID
+
+    @property
+    def is_classic_stack(self) -> bool:
+        """Whether this profile uses the classic 1812 parent-service layout."""
+        return not self.is_modern_stack
+
+    def is_service_compatible(self, service_uuids: list[str]) -> bool:
+        """Check whether advertised GATT services match this profile's parent service."""
+        if self.is_modern_stack:
+            return MODERN_STACK_PARENT_SERVICE_UUID in service_uuids
+        return CLASSIC_STACK_PARENT_SERVICE_UUID in service_uuids
+
+    def is_advertisement_compatible(self, service_uuids: list[str] | None) -> bool:
+        """Whether scan-time service UUIDs are consistent enough to attempt pairing/poll.
+
+        Passive advertisements often list only the standard service of the device kind
+        (Blood Pressure 0x1810, Weight Scale 0x181D); the Omron parent service may
+        appear only after GATT service discovery post-connection.
+        """
+        if not service_uuids:
+            return True
+        if self.is_service_compatible(service_uuids):
+            return True
+        advertised = {str(u).lower() for u in service_uuids}
+        standard = (
+            STANDARD_BLOOD_PRESSURE_SERVICE_UUID
+            if self.is_blood_pressure
+            else STANDARD_WEIGHT_SCALE_SERVICE_UUID
+        )
+        return standard.lower() in advertised
+
+
+# Deliberately not at module top: device_catalog.py imports types (DeviceConfig,
+# UnlockMode, etc.) from this module, so importing it back at the top would be
+# circular. Safe here since everything device_catalog.py needs from this module
+# is already defined above.
+from .device_catalog import CANONICAL_DEVICE_PROFILES  # noqa: E402
+
+
+def _build_model_variant_map() -> dict[str, str]:
+    idx: dict[str, str] = {}
+    for canonical_model_id, profile in CANONICAL_DEVICE_PROFILES.items():
+        for variant_id in profile.equivalent_model_ids:
+            if variant_id in idx:
+                raise ValueError(f"Duplicate catalog model variant {variant_id!r}")
+            idx[variant_id] = canonical_model_id
+    return idx
+
+
+MODEL_VARIANT_MAP: dict[str, str] = _build_model_variant_map()
+
+
+def get_device_config(model: str) -> DeviceConfig:
+    """Get device configuration by model name.
+
+    Alternate catalog model IDs map to a canonical entry in CANONICAL_DEVICE_PROFILES.
+    """
+    canonical_profile = CANONICAL_DEVICE_PROFILES.get(model)
+    if canonical_profile is not None:
+        return canonical_profile
+    variant_profile = MODEL_VARIANT_MAP.get(model)
+    if variant_profile:
+        config = CANONICAL_DEVICE_PROFILES[variant_profile]
+        return replace(config, model=model)
+    alias = MODEL_NUMBER_ALIASES.get(model)
+    if alias:
+        # The name the device answers with is kept, so logs show what it said;
+        # display_model turns it into the HEM designation for the UI.
+        return replace(get_device_config(alias), model=model)
+    _LOGGER.warning(
+        "Unknown device model '%s', falling back to %s",
+        model,
+        DEFAULT_DEVICE_MODEL,
+    )
+    config = CANONICAL_DEVICE_PROFILES[DEFAULT_DEVICE_MODEL]
+    if config.model != model:
+        return replace(config, model=model)
+    return config
+
+
+def get_supported_models() -> list[str]:
+    """Return list of supported model strings (registry profiles + catalog variants)."""
+    core = list(CANONICAL_DEVICE_PROFILES.keys())
+    extra = list(MODEL_VARIANT_MAP.keys())
+    return sorted(set(core) | set(extra))
+
+
+def get_supported_model_stats() -> dict[str, int]:
+    """Counts for UI copy: total selectable strings, profiles, and extra variant-only codes."""
+    canonical_keys = set(CANONICAL_DEVICE_PROFILES.keys())
+    variant_keys = set(MODEL_VARIANT_MAP.keys())
+    return {
+        "total": len(canonical_keys | variant_keys),
+        "profiles": len(canonical_keys),
+        "extra_variants": len(variant_keys - canonical_keys),
+    }
+
+
+_MODEL_CODE_RE = re.compile(
+    r"(HEM-[A-Z0-9_.-]+|HBF-[A-Z0-9_.-]+|(?<![A-Z0-9])HN-[A-Z0-9_.-]+)",
+    re.IGNORECASE,
+)
+# Decoration the carton adds over the app's own listing: a HEM-7188T1-LEO
+# reports "X2+ Connect" where the app says "X2+".
+_NAME_DECORATION_RE = re.compile(
+    r"\s*\((?:Japan|China|US|EU)[^)]*\)\s*$|\s+Connect$", re.IGNORECASE
+)
+
+
+def normalise_reported_name(name: str) -> str:
+    """Strip a reported name down to the spelling the alias table uses."""
+    stripped = name.replace("™", "").replace("®", "")
+    stripped = _NAME_DECORATION_RE.sub("", stripped)
+    return " ".join(stripped.split())
+
+
+def ambiguous_model_candidates(name: str | None) -> tuple[str, ...]:
+    """Catalog ids a reported name covers, when it covers more than one.
+
+    See AMBIGUOUS_MODEL_NAMES: nothing sent over the air separates these, so
+    the config flow names them rather than guessing one.
+    """
+    if not name or not str(name).strip():
+        return ()
+    for cand in _name_candidates(str(name).strip()):
+        found = AMBIGUOUS_MODEL_NAMES.get(cand)
+        if found:
+            return found
+    return ()
+
+
+def _name_candidates(token: str) -> tuple[str, ...]:
+    """Spellings of a reported name to try against the lookup tables."""
+    normalised = normalise_reported_name(token)
+    seen: list[str] = []
+    for cand in (
+        token,
+        normalised,
+        token.upper(),
+        normalised.upper(),
+        token.replace(" ", "").upper(),
+    ):
+        if cand and cand not in seen:
+            seen.append(cand)
+    return tuple(seen)
+
+
+def _exact_catalog_model_id(token: str) -> str | None:
+    """Catalog model id for an exact name, ignoring case and inner spaces."""
+    supported = set(CANONICAL_DEVICE_PROFILES.keys()) | set(MODEL_VARIANT_MAP.keys())
+    candidates = _name_candidates(token)
+    # Before the catalog lookup: HEM-7155T_ESL is itself a catalog id and also
+    # what its K4 sibling reports.
+    if any(cand in AMBIGUOUS_MODEL_NAMES for cand in candidates):
+        return None
+    for cand in candidates:
+        if cand in supported:
+            return cand
+    for cand in candidates:
+        alias = MODEL_NUMBER_ALIASES.get(cand)
+        if alias:
+            return alias
+    return None
+
+
+def infer_model_id_from_local_name(local_name: str | None) -> str | None:
+    """Return a catalog model id if the BLE local name embeds a known HEM-* or HN-* code.
+
+    Many Omron cuffs advertise a name like ``HEM-7600T`` or ``Omron … HEM-7322T-D``;
+    manufacturer data alone usually does not include the full model string. The mobile
+    app can read additional identifiers after connecting; this only uses passive scan data.
+    """
+    if not local_name or not str(local_name).strip():
+        return None
+    name = str(local_name).strip()
+    match = _MODEL_CODE_RE.search(name)
+    if not match:
+        # The config flow also feeds this the GATT Model Number String, which is
+        # a different namespace: a US retail cuff answers with its carton name,
+        # like the BP5465 in issue #91, and no HEM-* code appears anywhere in
+        # it. Fall back to an exact catalog id so a name that is already one
+        # resolves; anything else still infers nothing.
+        return _exact_catalog_model_id(name)
+    token = match.group(1).strip()
+    candidates = _name_candidates(token) + (token.replace(" ", ""),)
+    supported = set(CANONICAL_DEVICE_PROFILES.keys()) | set(MODEL_VARIANT_MAP.keys())
+    if any(cand in AMBIGUOUS_MODEL_NAMES for cand in candidates):
+        return None
+    for cand in candidates:
+        if cand in supported:
+            return cand
+    for cand in candidates:
+        alias = MODEL_NUMBER_ALIASES.get(cand)
+        if alias:
+            return alias
+    return None
+
+
+def resolve_profile_model_id(model: str) -> str:
+    """Registry profile key (EEPROM layout) for a model string, including catalog variants."""
+    if model in CANONICAL_DEVICE_PROFILES:
+        return model
+    variant_profile = MODEL_VARIANT_MAP.get(model)
+    if variant_profile:
+        return variant_profile
+    alias = MODEL_NUMBER_ALIASES.get(model)
+    if alias:
+        return resolve_profile_model_id(alias)
+    return DEFAULT_DEVICE_MODEL
