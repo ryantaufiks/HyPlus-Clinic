@@ -116,7 +116,7 @@ function timeAgo(value) {
     const seconds = Math.round((Date.now() - (typeof value === "number" ? value * 1000 : Date.parse(value))) / 1000);
     if (seconds < 60) return `${Math.max(seconds, 0)} s ago`;
     if (seconds < 3600) return `${Math.round(seconds / 60)} min ago`;
-    return new Date(typeof value === "number" ? value * 1000 : value).toLocaleString();
+    return formatDateTime(typeof value === "number" ? value * 1000 : value);
 }
 
 function formatReading(r) {
@@ -216,7 +216,7 @@ function testDevice(address) {
         showResult(
             `<strong>Connection OK</strong> (signal ${esc(result.rssi)} dBm). ` +
                 (reading
-                    ? `Latest stored measurement: ${esc(reading)} at ${esc(new Date(latest.measured_at).toLocaleString())}.`
+                    ? `Latest stored measurement: ${esc(reading)} at ${esc(formatDateTime(latest.measured_at))}.`
                     : "The device has no stored measurement yet."),
             "success",
         );
@@ -269,7 +269,7 @@ async function refreshStatus() {
             const badge = { succeeded: "success", failed: "danger", running: "info", pending: "secondary" }[c.status];
             const detail = c.status === "failed" ? `<div class="muted">${esc(c.error)}</div>` : "";
             return `<tr>
-                <td>${esc(new Date(c.created_at).toLocaleString())}</td>
+                <td>${esc(formatDateTime(c.created_at))}</td>
                 <td>${esc(ACTION_LABELS[c.action])}${c.action === "pair" ? ` ${esc((c.result && c.result.model) || c.params.model || "(auto)")}` : ""}</td>
                 <td><code>${esc(c.params.address || "")}</code></td>
                 <td>${esc(c.requested_by || "")}</td>

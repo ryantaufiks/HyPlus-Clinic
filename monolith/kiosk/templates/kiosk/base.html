@@ -2,6 +2,25 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
+        <script>
+            // Times are always shown in the clinic's time zone (TIME_ZONE, WIB by
+            // default), whatever zone the viewing device is set to.
+            window.AIVIN_TIME_ZONE = "{{ app_time_zone|escapejs }}";
+            (function () {
+                const labels = { "Asia/Jakarta": "WIB", "Asia/Makassar": "WITA", "Asia/Jayapura": "WIT" };
+                const label = labels[window.AIVIN_TIME_ZONE];
+                function format(value, options) {
+                    const text = new Date(value).toLocaleString("en-GB", {
+                        timeZone: window.AIVIN_TIME_ZONE,
+                        ...options,
+                        ...(label ? {} : { timeZoneName: "short" }),
+                    });
+                    return label ? `${text} ${label}` : text;
+                }
+                window.formatDateTime = (value) => format(value, { dateStyle: "short", timeStyle: "medium" });
+                window.formatTime = (value) => format(value, { timeStyle: "medium" });
+            })();
+        </script>
         <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"

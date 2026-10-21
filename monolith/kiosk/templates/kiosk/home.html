@@ -558,6 +558,7 @@ function setDeviceStatus(text, level) {
 
 function onWeightReading(reading) {
     AppState.weightKg = reading.weight_kg;
+    AppState.weightMeasuredAt = reading.measured_at;
     updateDebugPanel();
     speak(`Your weight is ${AppState.weightKg} kilograms. Thank you.`);
     renderStep();
@@ -570,6 +571,7 @@ function onBloodPressureReading(reading) {
     AppState.systolicBp = reading.systolic_bp;
     AppState.diastolicBp = reading.diastolic_bp;
     AppState.heartRateBpm = reading.heart_rate_bpm;
+    AppState.bpMeasuredAt = reading.measured_at;
     updateDebugPanel();
     const pulse = AppState.heartRateBpm ? ` Heart rate is ${AppState.heartRateBpm} beats per minute.` : "";
     speak(`Your blood pressure is ${AppState.systolicBp} over ${AppState.diastolicBp}.${pulse} Thank you for your patience.`);
@@ -583,6 +585,8 @@ const AppState = {
     patientName: "",
     patientSymptoms: "",
     weightKg: null,
+    weightMeasuredAt: null,
+    bpMeasuredAt: null,
     systolicBp: null,
     diastolicBp: null,
     heartRateBpm: null,
@@ -947,7 +951,7 @@ function renderWeightStep() {
             <div class="measurement-result new-measurement" id="weight-result">
                 <div class="measurement-label">Your weight:</div>
                 <div class="measurement-value">${typeof AppState.weightKg === "number" ? AppState.weightKg.toFixed(1) : parseFloat(AppState.weightKg).toFixed(1)} kg</div>
-                <div class="measurement-timestamp">⏱️ Measured at: ${new Date().toLocaleTimeString()}</div>
+                <div class="measurement-timestamp">⏱️ Measured at: ${formatTime(AppState.weightMeasuredAt)}</div>
             </div>
         ` : ''}
         <div class="control-buttons">
@@ -990,7 +994,7 @@ function renderBloodPressureStep() {
                 `
                         : ""
                 }
-                <div class="measurement-timestamp">⏱️ Measured at: ${new Date().toLocaleTimeString()}</div>
+                <div class="measurement-timestamp">⏱️ Measured at: ${formatTime(AppState.bpMeasuredAt)}</div>
             </div>
         ` : ''}
         <div class="control-buttons">
@@ -1067,10 +1071,11 @@ async function simulateWeightMeasurement() {
         const seed = (Date.now() % 1000) / 1000;
         const randomWeight = ((Math.random() + seed) % 1) * 50 + 45;
         AppState.weightKg = parseFloat(randomWeight.toFixed(1));
+        AppState.weightMeasuredAt = new Date().toISOString();
 
         console.log("=== Weight Measurement ===");
         console.log("Simulated Weight:", AppState.weightKg, "kg");
-        console.log("Generated at:", new Date().toLocaleTimeString());
+        console.log("Generated at:", formatTime(new Date()));
         console.log("Random seed:", seed);
         console.log("This is a NEW measurement - value should be different each time");
 
@@ -1123,13 +1128,14 @@ async function simulateBloodPressureMeasurement() {
         AppState.systolicBp = systolic;
         AppState.diastolicBp = diastolic;
         AppState.heartRateBpm = heartRate;
+        AppState.bpMeasuredAt = new Date().toISOString();
 
         console.log("=== Blood Pressure Measurement ===");
         console.log("Simulated Blood Pressure:", {
             systolic: AppState.systolicBp,
             diastolic: AppState.diastolicBp,
             heartRate: AppState.heartRateBpm,
-            timestamp: new Date().toLocaleTimeString(),
+            timestamp: formatTime(new Date()),
             seed: seed,
         });
         console.log(
@@ -1166,6 +1172,8 @@ function resetKiosk() {
     AppState.patientName = "";
     AppState.patientSymptoms = "";
     AppState.weightKg = null;
+    AppState.weightMeasuredAt = null;
+    AppState.bpMeasuredAt = null;
     AppState.systolicBp = null;
     AppState.diastolicBp = null;
     AppState.heartRateBpm = null;
@@ -1211,7 +1219,7 @@ function updateDebugPanel() {
             : "--";
     }
     if (timeEl) {
-        timeEl.textContent = `Last update: ${new Date().toLocaleTimeString()}`;
+        timeEl.textContent = `Last update: ${formatTime(new Date())}`;
     }
 }
 
