@@ -37,7 +37,8 @@ class LandingTest(TestCase):
         self.assertEqual(reverse("kiosk:landing"), "/")
         for text in ["Video Consultation", "Repeat Prescriptions", "Fit Notes &amp; Certificates", "Referral Letters", "SGD 49", "Example price", "How it works"]:
             self.assertContains(response, text)
-        self.assertNotContains(response, 'id="reviews"')  # no approved reviews yet
+        self.assertContains(response, "Reviews from our first patients are on their way")  # none approved yet
+        self.assertNotContains(response, "Preview · sample reviews")
         self.assertEqual(reverse("kiosk:home"), "/kiosk/")
         self.assertContains(self.client.get("/kiosk/"), "Check-in")
 
@@ -129,3 +130,21 @@ class BookingChoicesTest(TestCase):
         Service.objects.filter(slug="video-consultation").update(is_active=False)
         self.assertContains(self.client.post(reverse("kiosk:book"), booking_data()), "Select a valid choice")
         self.assertFalse(BookingRequest.objects.exists())
+
+
+class ReviewPreviewTest(TestCase):
+    def test_sample_reviews_only_for_staff_and_only_until_real_ones_exist(self):
+        cache.clear()
+        self.assertNotContains(self.client.get("/"), "Sarah L.")  # never shown to the public
+        self.client.force_login(user_with_role("desk", "frontdesk"))
+        page = self.client.get("/")
+        self.assertContains(page, "Preview · sample reviews, visible to staff only")
+        self.assertContains(page, "Sarah L.")
+
+        patient = Patient.objects.create(name="Thomas Kurniawan")
+        visit = Visit.objects.create(patient=patient, reason="Flu", status=Visit.COMPLETED)
+        Review.objects.create(visit=visit, patient=patient, rating=5, comment="Real review from a real visit.", status=Review.APPROVED)
+        page = self.client.get("/")
+        self.assertContains(page, "Real review from a real visit.")
+        self.assertNotContains(page, "Sarah L.")
+        self.assertNotContains(page, "Preview · sample reviews")

@@ -12,7 +12,6 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -27,7 +26,7 @@ from .kiosk_api import assign_queue_number
 from .models import AuditEvent, BookingRequest, Patient, Review, Service, Visit
 from .portal_views import whatsapp_number
 from .queue_views import _doctor_face, _doctor_name
-from .roles import DOCTOR_GROUP, CapabilityRequiredMixin, PatientPortalMixin, patient_of
+from .roles import DOCTOR_GROUP, CapabilityRequiredMixin, PatientPortalMixin, can, patient_of
 
 BOOKING_DAYS_AHEAD = 60
 
@@ -44,6 +43,52 @@ def approved_reviews():
     return Review.objects.filter(status=Review.APPROVED).select_related("patient", "visit__doctor")
 
 
+# Shown only to signed-in staff, labelled "Preview", while no real review is
+# approved: lets the clinic see the section without ever showing invented
+# reviews to the public as if patients wrote them.
+SAMPLE_REVIEWS = [
+    ("Sarah L.", 5, "Took a number from home and only came in when I was nearly up. The doctor already had my readings."),
+    ("Budi H.", 5, "Check-in at the kiosk was quick and easy, even for my father. Very well organised clinic."),
+    ("Mei Ling T.", 4, "Short wait and a thorough doctor. My prescription was in the portal right after the visit."),
+    ("Rizky P.", 5, "Love seeing my queue position on my phone. No more sitting in the waiting room for an hour."),
+    ("Ayu S.", 5, "The doctor explained my blood pressure results clearly and the follow-up booking took a minute."),
+    ("Daniel W.", 4, "Clean, modern and efficient. Booking on WhatsApp was confirmed the same morning."),
+    ("Nur A.", 5, "Friendly staff and no paperwork. Everything from my last visits is in one place."),
+    ("Kevin O.", 5, "Fast, professional and on time. Exactly what a clinic visit should feel like."),
+]
+
+
+def _initials(name):
+    return "".join(part[0] for part in name.replace(".", "").split()[:2]).upper()
+
+
+def review_cards(reviews):
+    return [
+        {
+            "name": r.display_name,
+            "initials": _initials(r.display_name),
+            "rating": r.rating,
+            "comment": r.comment,
+            "when": r.created_at,
+        }
+        for r in reviews
+    ]
+
+
+def review_summary(ratings):
+    count = len(ratings)
+    average = sum(ratings) / count if count else None
+    return {
+        "count": count,
+        "average": average,
+        "stars": round(average or 0),
+        "bars": [
+            {"stars": n, "count": ratings.count(n), "percent": round(100 * ratings.count(n) / count) if count else 0}
+            for n in range(5, 0, -1)
+        ],
+    }
+
+
 # --- Home page --------------------------------------------------------------------------------
 
 
@@ -53,8 +98,17 @@ class LandingView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         services = list(Service.objects.filter(is_active=True, is_featured=True))
-        reviews = approved_reviews()
-        summary = reviews.aggregate(average=Avg("rating"), count=Count("id"))
+        reviews = list(approved_reviews()[:16])
+        ratings = list(approved_reviews().values_list("rating", flat=True))
+        preview = not reviews and can(self.request.user, "staff_area")
+        if preview:
+            cards = [
+                {"name": n, "initials": _initials(n), "rating": r, "comment": c, "when": None}
+                for n, r, c in SAMPLE_REVIEWS
+            ]
+            ratings = [r for _, r, _ in SAMPLE_REVIEWS]
+        else:
+            cards = review_cards(reviews)
         context.update(
             {
                 "services": services,
@@ -66,10 +120,11 @@ class LandingView(TemplateView):
                     }
                     for d, room in queue.doctors_on_duty()
                 ],
-                "reviews": reviews[:6],
-                "review_count": summary["count"],
-                "review_average": summary["average"],
-                "review_stars": round(summary["average"] or 0),
+                "reviews": cards,
+                # Two rows that scroll in opposite directions.
+                "review_rows": [cards[0::2], cards[1::2]] if len(cards) >= 6 else [cards],
+                "reviews_preview": preview,
+                "review_summary": review_summary(ratings),
             }
         )
         return context

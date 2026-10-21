@@ -1,0 +1,9 @@
+<figure class="review-card" {% if duplicate %}aria-hidden="true"{% endif %}>
+    <div class="review-top">
+        <span class="review-avatar" aria-hidden="true">{{ r.initials }}</span>
+        <div><div class="review-name">{{ r.name }}</div><div class="review-meta"><i class="bi bi-patch-check-fill"></i> Verified visit{% if r.when %} · {{ r.when|date:"M Y" }}{% endif %}</div></div>
+        <span class="review-quote" aria-hidden="true">&ldquo;</span>
+    </div>
+    <div class="stars" aria-label="{{ r.rating }} out of 5 stars">{% for i in "12345" %}<i class="bi {% if forloop.counter <= r.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</div>
+    <blockquote>{{ r.comment }}</blockquote>
+</figure>

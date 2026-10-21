@@ -26,7 +26,7 @@
             <a href="#services">Services</a>
             <a href="#how">How it works</a>
             <a href="#features">Features</a>
-            {% if reviews %}<a href="#reviews">Reviews</a>{% endif %}
+            <a href="#reviews">Reviews</a>
         </nav>
         {% if user.is_authenticated and user_role == "Patient" %}
         <a class="btn btn-light btn-icon d-none d-sm-inline-flex" href="{% url 'portal-home' %}"><i class="bi bi-person-heart"></i> My health</a>
@@ -250,28 +250,47 @@
         </div>
     </section>
 
-    {% if reviews %}
     <!-- Reviews -->
-    <section class="section" id="reviews">
+    <section class="section reviews-section" id="reviews">
         <div class="container">
             <div class="section-head">
-                <h2>What our patients say</h2>
-                <p><span class="stars" aria-hidden="true">{% for i in "12345" %}<i class="bi {% if forloop.counter <= review_stars %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</span> <strong>{{ review_average|floatformat:1 }}</strong> out of 5 from {{ review_count }} verified patient{{ review_count|pluralize }}</p>
+                <h2>What our patients say {% if reviews_preview %}<span class="status status-warning align-middle fs-6"><i class="bi bi-eye"></i>Preview · sample reviews, visible to staff only</span>{% endif %}</h2>
+                <p>Every review comes from a patient after a completed visit and is checked by our team before it appears here.</p>
             </div>
-            <div class="row g-3">
-                {% for r in reviews %}
-                <div class="col-md-6 col-lg-4">
-                    <figure class="review-card" data-reveal style="--i: {{ forloop.counter0 }}">
-                        <div class="stars" aria-label="{{ r.rating }} out of 5 stars">{% for i in "12345" %}<i class="bi {% if forloop.counter <= r.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</div>
-                        <blockquote>{{ r.comment }}</blockquote>
-                        <figcaption><strong>{{ r.display_name }}</strong> · <span class="text-muted">verified visit, {{ r.created_at|date:"M Y" }}</span></figcaption>
-                    </figure>
+            {% if reviews %}
+            <div class="reviews-layout">
+                <aside class="rating-card" data-reveal>
+                    <div class="rating-score">{{ review_summary.average|floatformat:1 }}<span>/5</span></div>
+                    <div class="stars" aria-label="{{ review_summary.average|floatformat:1 }} out of 5 stars">{% for i in "12345" %}<i class="bi {% if forloop.counter <= review_summary.stars %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</div>
+                    <div class="rating-count">from {{ review_summary.count }} verified patient{{ review_summary.count|pluralize }}</div>
+                    <ul class="rating-bars">
+                        {% for bar in review_summary.bars %}
+                        <li><span>{{ bar.stars }}<i class="bi bi-star-fill"></i></span><span class="bar"><span style="width: {{ bar.percent }}%"></span></span><span class="n">{{ bar.count }}</span></li>
+                        {% endfor %}
+                    </ul>
+                    <div class="rating-verified"><i class="bi bi-patch-check-fill"></i> Verified visits only</div>
+                </aside>
+                <div class="review-marquee" aria-label="Patient reviews">
+                    {% for row in review_rows %}
+                    <div class="marquee-row {% if forloop.counter == 2 %}reverse{% endif %}{% if row|length < 3 %} static{% endif %}">
+                        <div class="marquee-track">
+                            {% for r in row %}{% include 'kiosk/_review_card.html' %}{% endfor %}
+                            {% if row|length >= 3 %}{% for r in row %}{% include 'kiosk/_review_card.html' with duplicate=True %}{% endfor %}{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
+            {% else %}
+            <div class="reviews-empty" data-reveal>
+                <div class="stars" aria-hidden="true"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
+                <h3>Reviews from our first patients are on their way</h3>
+                <p>Visited us? Rate your visit in your patient portal: your review helps others choose with confidence.</p>
+                <a class="btn btn-primary btn-icon" href="{% url 'portal-login' %}"><i class="bi bi-star"></i> Rate my visit</a>
+            </div>
+            {% endif %}
         </div>
     </section>
-    {% endif %}
 
     <!-- Call to action -->
     <section class="section">
