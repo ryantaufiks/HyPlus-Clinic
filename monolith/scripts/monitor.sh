@@ -81,6 +81,13 @@ else
     check backup 0 "no backup found"
 fi
 
+# 6. The encrypted copy reached Google Drive (scripts/backup.sh writes this marker).
+marker="$STATE_DIR/offsite_last_success"
+if [ -f "$marker" ]; then
+    age_hours=$(( ($(date +%s) - $(cat "$marker")) / 3600 ))
+    check offsite_backup "$([ "$age_hours" -lt "$BACKUP_MAX_AGE_HOURS" ] && echo 1 || echo 0)" "last upload to Google Drive $age_hours h ago"
+fi
+
 # Keep the watchdog's own log short.
 tail -n 2000 "$LOG_FILE" > "$LOG_FILE.tmp" 2>/dev/null && mv "$LOG_FILE.tmp" "$LOG_FILE"
 exit 0
