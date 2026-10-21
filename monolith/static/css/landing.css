@@ -52,17 +52,6 @@
 .service-price .amount { font-size: 1.6rem; font-weight: 800; color: var(--aivin-ink); font-variant-numeric: tabular-nums; }
 .service-price .unit { color: var(--aivin-muted); font-size: 0.88rem; }
 
-.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; counter-reset: none; position: relative; }
-.steps::before { content: ""; position: absolute; top: 1.4rem; left: 1.4rem; right: 12%; height: 2px; background: var(--aivin-border); }
-.steps li { position: relative; }
-.step-num { position: relative; z-index: 1; width: 2.8rem; height: 2.8rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: var(--aivin-primary); box-shadow: 0 0 0 6px var(--aivin-surface); }
-.steps h3 { font-size: 1.08rem; font-weight: 700; margin: 1rem 0 0.4rem; }
-.steps p { color: var(--aivin-ink-2); font-size: 0.95rem; margin: 0; }
-@media (max-width: 991.98px) {
-    .steps { grid-template-columns: 1fr 1fr; }
-    .steps::before { display: none; }
-}
-@media (max-width: 575.98px) { .steps { grid-template-columns: 1fr; } }
 
 .stars { color: #e8a317; letter-spacing: 0.1em; }
 .review-card { height: 100%; margin: 0; padding: 1.4rem; border-radius: var(--aivin-radius); background: var(--aivin-surface); border: 1px solid var(--aivin-border); display: flex; flex-direction: column; gap: 0.7rem; }
@@ -141,10 +130,6 @@
 .cta-band::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(600px 200px at 90% 0%, rgba(143, 224, 219, 0.35), transparent 70%); z-index: -1; }
 .cta-band.glow-border::before { background: conic-gradient(from var(--angle), transparent 0 62%, rgba(255, 255, 255, 0.9) 78%, transparent 92%); }
 
-/* Steps: the connecting line fills in when the section comes into view */
-.steps::after { content: ""; position: absolute; top: 1.4rem; left: 1.4rem; right: 12%; height: 2px; background: linear-gradient(90deg, var(--aivin-primary), #2a78d6); transform: scaleX(0); transform-origin: left; transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s; }
-.steps.is-visible::after { transform: scaleX(1); }
-@media (max-width: 991.98px) { .steps::after { display: none; } }
 
 /* Hero entrance: a slide only, never hidden, so the first screen is readable even where animations do not run */
 @keyframes rise { from { transform: translateY(14px); } to { transform: none; } }
@@ -157,5 +142,54 @@
 @media (prefers-reduced-motion: reduce) {
     .hero-title span, .glow-border::before, .ekg .pulse, .live .dot, [data-rise] { animation: none; }
     .js-motion [data-reveal] { opacity: 1; transform: none; transition: none; }
-    .steps::after { transform: none; transition: none; }
+    .flow-dot, .flow-merge path { animation: none; }
 }
+
+/* ---- How it works: a flowchart -----------------------------------------------------
+ * Desktop: left to right, two entry points merging into the kiosk.
+ * Below 992px: the same chart, top to bottom.
+ */
+.flow { display: grid; grid-template-columns: minmax(150px, 0.9fr) 44px repeat(3, minmax(0, 1fr) 44px) minmax(0, 1fr); align-items: center; }
+.flow-start { display: flex; flex-direction: column; gap: 1.1rem; }
+.flow-entry { display: flex; align-items: center; gap: 0.7rem; padding: 0.8rem 0.9rem; border-radius: 14px; background: var(--aivin-surface); border: 1px dashed rgba(11, 122, 131, 0.45); }
+.flow-entry > .bi { font-size: 1.3rem; color: var(--aivin-primary); }
+.flow-entry strong { display: block; font-size: 0.95rem; }
+.flow-entry span { display: block; font-size: 0.8rem; color: var(--aivin-muted); }
+
+.flow-merge { align-self: stretch; display: flex; }
+.flow-merge svg { width: 100%; height: 100%; overflow: visible; }
+.flow-merge .merge-v { display: none; }
+.flow-merge path { fill: none; stroke: rgba(11, 122, 131, 0.5); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 5 5; animation: flow-dash 1.2s linear infinite; }
+
+.flow-node { position: relative; height: 100%; display: flex; flex-direction: column; gap: 0.5rem; padding: 1.3rem 1.15rem 1.15rem; border-radius: 18px; background: var(--aivin-surface); border: 1px solid var(--aivin-border); box-shadow: var(--aivin-shadow); }
+.flow-node h3 { font-size: 1.02rem; font-weight: 700; margin: 0.2rem 0 0; }
+.flow-node p { color: var(--aivin-ink-2); font-size: 0.9rem; margin: 0; flex: 1; }
+.flow-num { position: absolute; top: -0.85rem; left: 1.1rem; min-width: 1.7rem; height: 1.7rem; padding: 0 0.4rem; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.82rem; font-weight: 800; color: #fff; background: var(--aivin-primary); box-shadow: 0 0 0 4px var(--aivin-surface); }
+.flow-icon { width: 2.6rem; height: 2.6rem; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.25rem; color: var(--aivin-primary); background: var(--aivin-primary-soft); }
+.flow-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.flow-chips span { font-size: 0.75rem; font-weight: 600; color: var(--aivin-ink-2); background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); border-radius: 99px; padding: 0.2rem 0.55rem; }
+.flow-decision { display: flex; gap: 0.45rem; align-items: flex-start; font-size: 0.8rem; font-weight: 600; color: var(--aivin-warning-ink); background: var(--aivin-warning-soft); border: 1px solid rgba(250, 178, 25, 0.5); border-radius: 10px; padding: 0.45rem 0.6rem; }
+.flow-end { border-color: rgba(11, 122, 131, 0.35); background: linear-gradient(180deg, var(--aivin-primary-soft), var(--aivin-surface) 55%); }
+.flow-end .flow-num { background: var(--aivin-good); }
+
+/* Arrow between nodes, with a light travelling along it */
+.flow-link { position: relative; height: 2px; margin: 0 4px; background: linear-gradient(90deg, rgba(11, 122, 131, 0.25), rgba(11, 122, 131, 0.6)); }
+.flow-link::after { content: ""; position: absolute; right: -2px; top: 50%; width: 9px; height: 9px; border-top: 2px solid var(--aivin-primary); border-right: 2px solid var(--aivin-primary); transform: translateY(-50%) rotate(45deg); }
+.flow-dot { position: absolute; top: 50%; left: 0; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: #3fd0c9; box-shadow: 0 0 10px 2px rgba(63, 208, 201, 0.8); animation: flow-x 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+@keyframes flow-x { 0% { left: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { left: calc(100% - 8px); opacity: 0; } }
+@keyframes flow-y { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: calc(100% - 8px); opacity: 0; } }
+@keyframes flow-dash { to { stroke-dashoffset: -20; } }
+
+@media (max-width: 991.98px) {
+    .flow { grid-template-columns: minmax(0, 1fr); max-width: 520px; margin: 0 auto; }
+    .flow-start { flex-direction: row; }
+    .flow-start .flow-entry { flex: 1; }
+    .flow-merge { height: 44px; width: 100%; }
+    .flow-merge .merge-h { display: none; }
+    .flow-merge .merge-v { display: block; }
+    .flow-link { width: 2px; height: 44px; margin: 4px auto; background: linear-gradient(180deg, rgba(11, 122, 131, 0.25), rgba(11, 122, 131, 0.6)); }
+    .flow-link::after { right: auto; top: auto; left: 50%; bottom: -2px; transform: translateX(-50%) rotate(135deg); }
+    .flow-dot { left: 50%; margin: 0 0 0 -4px; top: 0; animation-name: flow-y; }
+    .flow-node { margin-top: 0.85rem; }
+}
+@media (prefers-reduced-motion: reduce) { .flow-dot { display: none; } .flow-merge path { animation: none; } }

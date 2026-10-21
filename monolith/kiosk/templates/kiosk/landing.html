@@ -137,14 +137,53 @@
         <div class="container">
             <div class="section-head">
                 <h2>How it works</h2>
-                <p>From booking to prescription, in four simple steps.</p>
+                <p>From the door to your prescription, every step is tracked, so you always know what comes next.</p>
             </div>
-            <ol class="steps" data-reveal>
-                <li><span class="step-num">1</span><h3>Book or walk in</h3><p>Request a time online and we confirm it on WhatsApp, or simply come to the clinic.</p></li>
-                <li><span class="step-num">2</span><h3>Check in at the kiosk</h3><p>Choose your doctor, step on the scale and measure your blood pressure. Get your queue ticket.</p></li>
-                <li><span class="step-num">3</span><h3>See your doctor</h3><p>Your number appears on the screen. Scan your ticket at the door; your doctor already has your vitals.</p></li>
-                <li><span class="step-num">4</span><h3>Prescription &amp; records</h3><p>Your diagnosis and prescription are saved to your patient portal, ready to print.</p></li>
-            </ol>
+            <div class="flow" role="list" aria-label="How a visit works">
+                <div class="flow-start" role="listitem" data-reveal>
+                    <div class="flow-entry"><i class="bi bi-globe2"></i><div><strong>Book online</strong><span>Confirmed on WhatsApp</span></div></div>
+                    <div class="flow-entry"><i class="bi bi-person-walking"></i><div><strong>Walk in</strong><span>No appointment needed</span></div></div>
+                </div>
+                <div class="flow-merge" aria-hidden="true">
+                    <svg class="merge-h" viewBox="0 0 48 100" preserveAspectRatio="none"><path d="M0 26 C26 26 22 50 48 50 M0 74 C26 74 22 50 48 50" /></svg>
+                    <svg class="merge-v" viewBox="0 0 100 48" preserveAspectRatio="none"><path d="M25 0 C25 26 50 22 50 48 M75 0 C75 26 50 22 50 48" /></svg>
+                </div>
+
+                <div class="flow-node" role="listitem" data-reveal style="--i: 1">
+                    <span class="flow-num">1</span>
+                    <span class="flow-icon"><i class="bi bi-display"></i></span>
+                    <h3>Check in at the kiosk</h3>
+                    <p>Choose your doctor, step on the scale and measure your blood pressure.</p>
+                    <div class="flow-chips"><span><i class="bi bi-speedometer2"></i> Weight</span><span><i class="bi bi-heart-pulse"></i> Blood pressure</span><span><i class="bi bi-stopwatch"></i> ~3 min</span></div>
+                </div>
+                <div class="flow-link" aria-hidden="true"><span class="flow-dot"></span></div>
+
+                <div class="flow-node" role="listitem" data-reveal style="--i: 2">
+                    <span class="flow-num">2</span>
+                    <span class="flow-icon"><i class="bi bi-ticket-perforated"></i></span>
+                    <h3>Get your ticket</h3>
+                    <p>Your queue number and QR code. Follow your place in line on your phone.</p>
+                    <div class="flow-decision"><i class="bi bi-exclamation-triangle-fill"></i> Very high blood pressure? You are seen first.</div>
+                </div>
+                <div class="flow-link" aria-hidden="true"><span class="flow-dot"></span></div>
+
+                <div class="flow-node" role="listitem" data-reveal style="--i: 3">
+                    <span class="flow-num">3</span>
+                    <span class="flow-icon"><i class="bi bi-tv"></i></span>
+                    <h3>Your number is called</h3>
+                    <p>It appears on the screen with a chime. Scan your QR at the doctor's door.</p>
+                    <div class="flow-chips"><span><i class="bi bi-bell"></i> Chime</span><span><i class="bi bi-qr-code-scan"></i> Door scan</span></div>
+                </div>
+                <div class="flow-link" aria-hidden="true"><span class="flow-dot"></span></div>
+
+                <div class="flow-node flow-end" role="listitem" data-reveal style="--i: 4">
+                    <span class="flow-num"><i class="bi bi-check-lg"></i></span>
+                    <span class="flow-icon"><i class="bi bi-clipboard2-pulse"></i></span>
+                    <h3>See your doctor</h3>
+                    <p>Your doctor already has your vitals. Diagnosis and prescription go straight to your portal.</p>
+                    <div class="flow-chips"><span><i class="bi bi-capsule"></i> Prescription</span><span><i class="bi bi-folder2-open"></i> Portal</span></div>
+                </div>
+            </div>
         </div>
     </section>
 
