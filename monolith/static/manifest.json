@@ -94,7 +94,7 @@
       "name": "Start Health Check",
       "short_name": "Check",
       "description": "Begin a new health check",
-      "url": "/",
+      "url": "/kiosk/",
       "icons": [
         {
           "src": "/static/icons/shortcut-check.png",

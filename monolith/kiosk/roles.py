@@ -32,6 +32,8 @@ CAPABILITIES = {
     "cancel_visits": {"doctor", "nurse", "admin"},
     "manage_devices": {"nurse", "admin"},
     "manage_staff": {"admin"},
+    "manage_bookings": {"nurse", "frontdesk", "admin"},
+    "moderate_reviews": {"nurse", "frontdesk", "admin"},
 }
 
 

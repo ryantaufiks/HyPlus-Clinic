@@ -234,11 +234,14 @@ class PortalHomeView(PatientPortalMixin, TemplateView):
         )
         measurements = list(patient.measurements.order_by("-measured_at"))
         oldest_first = list(reversed(measurements))
+        reviews = {r.visit_id: r for r in patient.reviews.all()}
         context.update(
             {
                 "patient": patient,
                 "vitals": latest_vitals(measurements),
-                "visits": [{"visit": v, "vitals": latest_vitals(v.measurements.all())} for v in visits],
+                "visits": [
+                    {"visit": v, "vitals": latest_vitals(v.measurements.all()), "review": reviews.get(v.pk)} for v in visits
+                ],
                 "open_visit": next((v for v in visits if v.is_open and v.queue_date == timezone.localdate()), None),
                 "chart_data": {
                     "bp": [

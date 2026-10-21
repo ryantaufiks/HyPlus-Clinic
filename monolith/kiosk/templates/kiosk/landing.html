@@ -1,0 +1,196 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b7a83" />
+    <meta name="description" content="Book a consultation, get your vital signs checked in minutes, and keep your records and prescriptions in one place." />
+    <title>AIVIN — See a doctor, without the wait</title>
+    <link rel="manifest" href="{% static 'manifest.json' %}" />
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/aivin.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}" />
+</head>
+<body class="landing">
+
+<header class="site-header">
+    <div class="container d-flex align-items-center gap-3">
+        <a class="brand me-auto" href="{% url 'kiosk:landing' %}">
+            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
+            <span><span class="brand-name">AIVIN</span><span class="brand-tag">AI-Vital Intake</span></span>
+        </a>
+        <nav class="site-nav d-none d-lg-flex" aria-label="Sections">
+            <a href="#services">Services</a>
+            <a href="#how">How it works</a>
+            {% if reviews %}<a href="#reviews">Reviews</a>{% endif %}
+        </nav>
+        {% if user.is_authenticated and user_role == "Patient" %}
+        <a class="btn btn-light btn-icon d-none d-sm-inline-flex" href="{% url 'portal-home' %}"><i class="bi bi-person-heart"></i> My health</a>
+        {% elif user_can.staff_area %}
+        <a class="btn btn-light btn-icon d-none d-sm-inline-flex" href="{% url 'kiosk:dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+        {% else %}
+        <a class="btn btn-light btn-icon d-none d-sm-inline-flex" href="{% url 'portal-login' %}"><i class="bi bi-person-heart"></i> Patient sign in</a>
+        {% endif %}
+        <a class="btn btn-primary btn-icon" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> <span>Book<span class="d-none d-md-inline"> a consultation</span></span></a>
+    </div>
+</header>
+
+<main>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-7">
+                    <span class="eyebrow"><i class="bi bi-shield-check"></i> Registered doctors · Records kept private</span>
+                    <h1 class="hero-title">See a doctor,<br /><span>without the wait.</span></h1>
+                    <p class="hero-lead">Book your consultation online, get your weight and blood pressure checked in about three minutes at our kiosk, and keep your diagnoses and prescriptions in one place.</p>
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <a class="btn btn-primary btn-lg btn-icon" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
+                        <a class="btn btn-light btn-lg" href="#services">View services</a>
+                    </div>
+                    {% if from_price is not None %}
+                    <p class="hero-price">Services from <strong>SGD {{ from_price|floatformat:"-2" }}</strong> · you see every fee before you book</p>
+                    {% endif %}
+                </div>
+                <div class="col-lg-5">
+                    <div class="today-card">
+                        <div class="today-head">
+                            <span><i class="bi bi-hospital"></i> Today at the clinic</span>
+                            {% if doctors_today %}<span class="live"><span class="dot"></span>Live</span>{% endif %}
+                        </div>
+                        {% for d in doctors_today|slice:":4" %}
+                        <div class="today-doctor">
+                            {% if d.face.photo %}<img class="avatar" src="{{ d.face.photo }}" alt="" style="--avatar-size: 48px" />{% else %}<span class="avatar avatar-initials" aria-hidden="true" style="--avatar-size: 48px; --avatar-bg: {{ d.face.color }}">{{ d.face.initials }}</span>{% endif %}
+                            <div class="flex-grow-1"><div class="fw-semibold">{{ d.name }}</div><div class="small text-muted">{{ d.room }}</div></div>
+                            <span class="status status-good"><i class="bi bi-circle-fill"></i>On duty</span>
+                        </div>
+                        {% empty %}
+                        <div class="today-empty"><i class="bi bi-moon-stars"></i><div><div class="fw-semibold">No doctors on duty right now</div><div class="small text-muted">Book ahead and we'll confirm your time on WhatsApp.</div></div></div>
+                        {% endfor %}
+                        <div class="today-steps">
+                            <span><i class="bi bi-speedometer2"></i> Vitals in ~3 min</span>
+                            <span><i class="bi bi-phone"></i> Queue on your phone</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Value -->
+    <section class="section">
+        <div class="container">
+            <div class="section-head">
+                <h2>Why patients choose AIVIN</h2>
+                <p>A clinic visit that respects your time, with the doctor fully prepared when you walk in.</p>
+            </div>
+            <div class="row g-3">
+                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-heart-pulse"></i><h3>Vitals before you sit down</h3><p>Weight and blood pressure are measured automatically and sent straight to your doctor.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-person-check"></i><h3>Choose your doctor</h3><p>See the doctor you prefer, or the first one available for the shortest wait.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-phone"></i><h3>Follow the queue</h3><p>Scan your ticket to see your place in line, so you can wait where you like.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-folder2-open"></i><h3>Your records, always with you</h3><p>Diagnoses, prescriptions and blood pressure trends in your own patient portal.</p></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section class="section section-alt" id="services">
+        <div class="container">
+            <div class="section-head">
+                <h2>Our services</h2>
+                <p>Clear prices in Singapore dollars. Extra documents are only charged if your doctor issues them.</p>
+            </div>
+            <div class="row g-3">
+                {% for s in services %}
+                <div class="col-md-6 col-xl-3">
+                    <article class="service-card">
+                        <span class="service-icon"><i class="bi {{ s.icon }}"></i></span>
+                        <h3>{{ s.name }}</h3>
+                        <p>{{ s.summary }}</p>
+                        <div class="service-price">
+                            <span class="amount">SGD {{ s.price_sgd|floatformat:"-2" }}</span>
+                            <span class="unit">{{ s.price_unit }}</span>
+                            {% if not s.price_confirmed %}<span class="status status-neutral mt-1">Example price</span>{% endif %}
+                        </div>
+                        {% if s.is_bookable %}<a class="btn btn-outline-primary w-100" href="{% url 'kiosk:book' %}?service={{ s.slug }}">Book</a>{% endif %}
+                    </article>
+                </div>
+                {% empty %}
+                <p class="text-muted">Services will be listed here soon.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section" id="how">
+        <div class="container">
+            <div class="section-head">
+                <h2>How it works</h2>
+                <p>From booking to prescription, in four simple steps.</p>
+            </div>
+            <ol class="steps">
+                <li><span class="step-num">1</span><h3>Book or walk in</h3><p>Request a time online and we confirm it on WhatsApp, or simply come to the clinic.</p></li>
+                <li><span class="step-num">2</span><h3>Check in at the kiosk</h3><p>Choose your doctor, step on the scale and measure your blood pressure. Get your queue ticket.</p></li>
+                <li><span class="step-num">3</span><h3>See your doctor</h3><p>Your number appears on the screen. Scan your ticket at the door; your doctor already has your vitals.</p></li>
+                <li><span class="step-num">4</span><h3>Prescription &amp; records</h3><p>Your diagnosis and prescription are saved to your patient portal, ready to print.</p></li>
+            </ol>
+        </div>
+    </section>
+
+    {% if reviews %}
+    <!-- Reviews -->
+    <section class="section section-alt" id="reviews">
+        <div class="container">
+            <div class="section-head">
+                <h2>What our patients say</h2>
+                <p><span class="stars" aria-hidden="true">{% for i in "12345" %}<i class="bi {% if forloop.counter <= review_stars %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</span> <strong>{{ review_average|floatformat:1 }}</strong> out of 5 from {{ review_count }} verified patient{{ review_count|pluralize }}</p>
+            </div>
+            <div class="row g-3">
+                {% for r in reviews %}
+                <div class="col-md-6 col-lg-4">
+                    <figure class="review-card">
+                        <div class="stars" aria-label="{{ r.rating }} out of 5 stars">{% for i in "12345" %}<i class="bi {% if forloop.counter <= r.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</div>
+                        <blockquote>{{ r.comment }}</blockquote>
+                        <figcaption><strong>{{ r.display_name }}</strong> · <span class="text-muted">verified visit, {{ r.created_at|date:"M Y" }}</span></figcaption>
+                    </figure>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Call to action -->
+    <section class="section">
+        <div class="container">
+            <div class="cta-band">
+                <div>
+                    <h2>Ready to see a doctor?</h2>
+                    <p>Book in under a minute. We'll confirm your time on WhatsApp.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-light btn-lg btn-icon" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
+                    <a class="btn btn-outline-light btn-lg" href="{% url 'portal-login' %}">Patient sign in</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container d-flex flex-wrap justify-content-between gap-3">
+        <span><strong>AIVIN</strong> · AI-Vital Intake</span>
+        <nav class="d-flex flex-wrap gap-3">
+            <a href="{% url 'kiosk:book' %}">Book</a>
+            <a href="{% url 'portal-login' %}">Patient sign in</a>
+            <a href="{% url 'login' %}">Staff login</a>
+        </nav>
+        <span>© {% now "Y" %} AIVIN</span>
+    </div>
+</footer>
+</body>
+</html>

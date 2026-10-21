@@ -65,7 +65,7 @@
         <header class="app-header no-print">
             <nav class="navbar navbar-expand-lg">
                 <div class="container">
-                    <a class="brand" href="{% url 'kiosk:home' %}">
+                    <a class="brand" href="{% if current == 'home' %}{% url 'kiosk:home' %}{% elif user_can.staff_area %}{% url 'kiosk:dashboard' %}{% else %}{% url 'kiosk:landing' %}{% endif %}">
                         <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
                         <span>
                             <span class="brand-name">AIVIN</span>
@@ -110,6 +110,16 @@
                                 <a class="nav-link {% if current == 'submissions' %}active{% endif %}" href="{% url 'kiosk:submissions' %}"><i class="bi bi-inbox"></i> Registrations{% if pending_submissions %} <span class="badge rounded-pill text-bg-danger">{{ pending_submissions }}</span>{% endif %}</a>
                             </li>
                             {% endif %}
+                            {% if user_can.manage_bookings %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'bookings' %}active{% endif %}" href="{% url 'kiosk:bookings' %}"><i class="bi bi-calendar2-plus"></i> Bookings{% if new_bookings %} <span class="badge rounded-pill text-bg-danger">{{ new_bookings }}</span>{% endif %}</a>
+                            </li>
+                            {% endif %}
+                            {% if user_can.moderate_reviews %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'reviews' %}active{% endif %}" href="{% url 'kiosk:reviews' %}" title="Reviews"><i class="bi bi-star"></i> <span class="d-lg-none">Reviews</span>{% if pending_reviews %} <span class="badge rounded-pill text-bg-danger">{{ pending_reviews }}</span>{% endif %}</a>
+                            </li>
+                            {% endif %}
                             {% if user_can.scan_tickets %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'qr-scanner' %}active{% endif %}" href="{% url 'kiosk:qr-scanner' %}" title="Scan ticket"><i class="bi bi-qr-code-scan"></i> <span class="d-lg-none">Scan ticket</span></a>
@@ -140,6 +150,11 @@
                                 </form>
                             </li>
                             {% else %}
+                            {% if current != 'home' %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'book' %}active{% endif %}" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
+                            </li>
+                            {% endif %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'portal-login' %}active{% endif %}" href="{% url 'portal-login' %}"><i class="bi bi-person-heart"></i> Patient sign in</a>
                             </li>

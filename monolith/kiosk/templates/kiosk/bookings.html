@@ -1,0 +1,61 @@
+{% extends 'kiosk/base.html' %}
+{% load avatars %}
+
+{% block title %}Bookings - AIVIN{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Booking requests</h1>
+        <p class="page-subtitle">From the website. Confirm each one with the patient on WhatsApp, then mark it here.</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if user_can.manage_staff %}<a class="btn btn-light btn-icon" href="{% url 'admin:kiosk_service_changelist' %}"><i class="bi bi-tags"></i> Services &amp; prices</a>{% endif %}
+        <a class="btn btn-light btn-icon" href="{% url 'kiosk:landing' %}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Website</a>
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3">
+    {% for key, label in tabs %}
+    <li class="nav-item"><a class="nav-link {% if tab == key %}active{% endif %}" href="?tab={{ key }}">{{ label }}{% if key == 'open' and new_bookings %} <span class="badge rounded-pill text-bg-danger">{{ new_bookings }}</span>{% endif %}</a></li>
+    {% endfor %}
+</ul>
+
+{% for row in rows %}{% with b=row.booking %}
+<section class="surface">
+    <div class="d-flex flex-wrap justify-content-between gap-3">
+        <div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="fs-5 fw-semibold">{{ b.name }}</span>
+                {% if b.patient %}<a class="status status-info text-decoration-none" href="{% url 'kiosk:patient-detail' b.patient.pk %}">{{ b.patient.patient_id }}</a>{% endif %}
+                <span class="status {% if b.status == 'new' %}status-warning{% elif b.status == 'confirmed' %}status-info{% elif b.status == 'done' %}status-good{% else %}status-neutral{% endif %}">{{ b.get_status_display }}</span>
+            </div>
+            <div class="mt-1"><i class="bi bi-calendar-event"></i> <strong>{{ b.preferred_date|date:"D j M Y" }}</strong> · {{ b.get_preferred_time_display }}</div>
+            <div class="text-muted small mt-1">
+                {{ b.service.name|default:"Service removed" }} ·
+                {% if b.preferred_doctor %}{{ b.preferred_doctor.get_full_name|default:b.preferred_doctor.get_username }}{% else %}First available doctor{% endif %} ·
+                <i class="bi bi-whatsapp"></i> {{ b.phone }}{% if b.email %} · {{ b.email }}{% endif %}
+            </div>
+            {% if b.notes %}<div class="mt-2 small" style="max-width: 640px">“{{ b.notes }}”</div>{% endif %}
+            <div class="text-muted small mt-2">Received {{ b.created_at|date:"j M, H:i" }}{% if b.handled_by %} · {{ b.get_status_display }} by {{ b.handled_by.get_full_name|default:b.handled_by.get_username }} {{ b.handled_at|date:"j M, H:i" }}{% endif %}{% if b.staff_note %} · <em>{{ b.staff_note }}</em>{% endif %}</div>
+        </div>
+        <div class="d-flex flex-column gap-2" style="min-width: 260px">
+            <a class="btn btn-success btn-icon" href="{{ row.whatsapp }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Message on WhatsApp</a>
+            <form method="post" action="{% url 'kiosk:booking-update' b.pk %}" class="d-flex flex-column gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="tab" value="{{ tab }}" />
+                <input class="form-control form-control-sm" name="staff_note" maxlength="200" placeholder="Note, e.g. confirmed for 10:30" value="{{ b.staff_note }}" />
+                <div class="d-flex gap-2">
+                    {% if b.status != 'confirmed' %}<button class="btn btn-primary btn-sm flex-fill" name="status" value="confirmed">Confirmed</button>{% endif %}
+                    {% if b.status == 'confirmed' %}<button class="btn btn-primary btn-sm flex-fill" name="status" value="done">Done</button>{% endif %}
+                    {% if b.status != 'declined' %}<button class="btn btn-light btn-sm flex-fill text-danger" name="status" value="declined">Decline</button>{% endif %}
+                    {% if b.status == 'declined' or b.status == 'done' %}<button class="btn btn-light btn-sm flex-fill" name="status" value="new">Reopen</button>{% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endwith %}{% empty %}
+<section class="surface"><div class="empty-state"><i class="bi bi-calendar2-check"></i>No booking requests here.</div></section>
+{% endfor %}
+{% endblock %}

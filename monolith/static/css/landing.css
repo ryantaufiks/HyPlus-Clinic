@@ -1,0 +1,85 @@
+/* Public website: home page and booking. Builds on the tokens in aivin.css. */
+
+.landing { background: var(--aivin-surface); }
+.landing h1, .landing h2, .landing h3 { letter-spacing: -0.02em; }
+
+/* Header */
+.site-header { position: sticky; top: 0; z-index: 20; background: rgba(255, 255, 255, 0.88); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--aivin-border); padding: 0.75rem 0; }
+.site-nav { gap: 1.6rem; margin-right: 0.5rem; }
+.site-nav a { color: var(--aivin-ink-2); text-decoration: none; font-weight: 550; }
+.site-nav a:hover { color: var(--aivin-primary); }
+
+/* Hero */
+.hero { padding: 4.5rem 0 4rem; background: radial-gradient(1200px 500px at 85% -10%, var(--aivin-primary-soft), transparent 60%), var(--aivin-surface); }
+.eyebrow { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; font-weight: 600; color: var(--aivin-primary-strong); background: var(--aivin-primary-soft); border-radius: 99px; padding: 0.35rem 0.85rem; }
+.hero-title { font-size: clamp(2.4rem, 5.2vw, 4rem); font-weight: 800; line-height: 1.05; margin: 1.2rem 0 1rem; }
+.hero-title span { color: var(--aivin-primary); }
+.hero-lead { font-size: 1.15rem; color: var(--aivin-ink-2); max-width: 36rem; }
+.hero-price { margin: 1.1rem 0 0; color: var(--aivin-muted); font-size: 0.95rem; }
+.hero-price strong { color: var(--aivin-ink); }
+
+.today-card { background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 22px; box-shadow: 0 2px 4px rgba(15, 29, 43, 0.04), 0 18px 48px rgba(15, 29, 43, 0.1); padding: 1.4rem; }
+.today-head { display: flex; justify-content: space-between; align-items: center; font-weight: 650; margin-bottom: 0.6rem; }
+.today-head .bi { color: var(--aivin-primary); }
+.live { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 650; color: var(--aivin-good-ink); }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--aivin-good); box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.5); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(12, 163, 12, 0); } 100% { box-shadow: 0 0 0 0 rgba(12, 163, 12, 0); } }
+@media (prefers-reduced-motion: reduce) { .live .dot { animation: none; } }
+.today-doctor { display: flex; align-items: center; gap: 0.85rem; padding: 0.75rem 0; border-top: 1px solid var(--aivin-border); }
+.today-empty { display: flex; gap: 0.85rem; align-items: center; padding: 1rem 0; border-top: 1px solid var(--aivin-border); }
+.today-empty > .bi { font-size: 1.8rem; color: var(--aivin-muted); }
+.today-steps { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.today-steps span { font-size: 0.82rem; font-weight: 600; color: var(--aivin-ink-2); background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); border-radius: 99px; padding: 0.3rem 0.75rem; }
+
+/* Sections */
+.section { padding: 4.5rem 0; }
+.section-alt { background: var(--aivin-bg); }
+.section-head { max-width: 40rem; margin-bottom: 2.2rem; }
+.section-head h2 { font-size: clamp(1.7rem, 3vw, 2.3rem); font-weight: 750; margin-bottom: 0.5rem; }
+.section-head p { color: var(--aivin-ink-2); font-size: 1.05rem; margin: 0; }
+
+.value-tile { height: 100%; padding: 1.4rem; border-radius: var(--aivin-radius); background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); }
+.value-tile > .bi { font-size: 1.5rem; color: var(--aivin-primary); display: inline-flex; width: 2.8rem; height: 2.8rem; align-items: center; justify-content: center; border-radius: 12px; background: var(--aivin-primary-soft); }
+.value-tile h3 { font-size: 1.08rem; font-weight: 700; margin: 1rem 0 0.4rem; }
+.value-tile p { color: var(--aivin-ink-2); margin: 0; font-size: 0.95rem; }
+
+.service-card { height: 100%; display: flex; flex-direction: column; gap: 0.6rem; padding: 1.5rem; border-radius: 20px; background: var(--aivin-surface); border: 1px solid var(--aivin-border); box-shadow: var(--aivin-shadow); transition: transform 0.15s, box-shadow 0.15s; }
+.service-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(15, 29, 43, 0.05), 0 14px 32px rgba(15, 29, 43, 0.1); }
+.service-icon { width: 3rem; height: 3rem; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff; background: linear-gradient(150deg, var(--aivin-primary), var(--aivin-primary-strong)); }
+.service-card h3 { font-size: 1.15rem; font-weight: 700; margin: 0.4rem 0 0; }
+.service-card p { color: var(--aivin-ink-2); font-size: 0.95rem; margin: 0; flex: 1; }
+.service-price { display: flex; flex-direction: column; align-items: flex-start; padding: 0.8rem 0 0.4rem; border-top: 1px dashed var(--aivin-border); }
+.service-price .amount { font-size: 1.6rem; font-weight: 800; color: var(--aivin-ink); font-variant-numeric: tabular-nums; }
+.service-price .unit { color: var(--aivin-muted); font-size: 0.88rem; }
+
+.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; counter-reset: none; position: relative; }
+.steps::before { content: ""; position: absolute; top: 1.4rem; left: 1.4rem; right: 12%; height: 2px; background: var(--aivin-border); }
+.steps li { position: relative; }
+.step-num { position: relative; z-index: 1; width: 2.8rem; height: 2.8rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: var(--aivin-primary); box-shadow: 0 0 0 6px var(--aivin-surface); }
+.steps h3 { font-size: 1.08rem; font-weight: 700; margin: 1rem 0 0.4rem; }
+.steps p { color: var(--aivin-ink-2); font-size: 0.95rem; margin: 0; }
+@media (max-width: 991.98px) {
+    .steps { grid-template-columns: 1fr 1fr; }
+    .steps::before { display: none; }
+}
+@media (max-width: 575.98px) { .steps { grid-template-columns: 1fr; } }
+
+.stars { color: #e8a317; letter-spacing: 0.1em; }
+.review-card { height: 100%; margin: 0; padding: 1.4rem; border-radius: var(--aivin-radius); background: var(--aivin-surface); border: 1px solid var(--aivin-border); display: flex; flex-direction: column; gap: 0.7rem; }
+.review-card blockquote { margin: 0; color: var(--aivin-ink); flex: 1; }
+.review-card figcaption { font-size: 0.9rem; }
+
+.cta-band { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 2.6rem; border-radius: 26px; color: #fff; background: linear-gradient(140deg, var(--aivin-primary) 0%, var(--aivin-primary-strong) 100%); }
+.cta-band h2 { color: #fff; font-weight: 750; margin: 0 0 0.3rem; }
+.cta-band p { margin: 0; opacity: 0.88; }
+
+.site-footer { border-top: 1px solid var(--aivin-border); padding: 1.6rem 0; color: var(--aivin-muted); font-size: 0.92rem; }
+.site-footer a { color: var(--aivin-ink-2); text-decoration: none; }
+.site-footer a:hover { color: var(--aivin-primary); }
+
+/* Booking form: time-of-day and star choices as large buttons */
+.choice-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; }
+.choice-group label { display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-align: center; padding: 0.75rem; border-radius: var(--aivin-radius-sm); border: 1px solid var(--aivin-border); background: var(--aivin-surface); font-weight: 600; cursor: pointer; }
+.choice-group input:checked + label { border-color: var(--aivin-primary); background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
+.choice-group input:focus-visible + label { outline: 3px solid var(--bs-focus-ring-color); }
+.booking-aside { position: sticky; top: 1.5rem; }

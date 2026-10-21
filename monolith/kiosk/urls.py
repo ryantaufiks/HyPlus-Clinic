@@ -1,12 +1,18 @@
 from django.urls import path
 
-from . import accounts_views, avatar_views, clinical_views, device_views, kiosk_api, portal_views, queue_views, views
+from . import accounts_views, avatar_views, clinical_views, device_views, kiosk_api, portal_views, queue_views, views, website_views
 
 app_name = "kiosk"
 
 urlpatterns = [
+    # Public website
+    path("", website_views.LandingView.as_view(), name="landing"),
+    path("book/", website_views.BookingView.as_view(), name="book"),
+    path("bookings/", website_views.BookingListView.as_view(), name="bookings"),
+    path("bookings/<int:pk>/", website_views.BookingUpdateView.as_view(), name="booking-update"),
+    path("reviews/", website_views.ReviewModerationView.as_view(), name="reviews"),
     # Kiosk
-    path("", views.HomeView.as_view(), name="home"),
+    path("kiosk/", views.HomeView.as_view(), name="home"),
     path("api/kiosk/lookup/", kiosk_api.PatientLookupView.as_view(), name="api-patient-lookup"),
     path("api/kiosk/doctors/", kiosk_api.DoctorChoiceView.as_view(), name="api-doctors"),
     path("api/kiosk/visits/", kiosk_api.VisitStartView.as_view(), name="api-visit-start"),

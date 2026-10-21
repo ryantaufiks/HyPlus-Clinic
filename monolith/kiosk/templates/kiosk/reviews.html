@@ -1,0 +1,25 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Reviews - AIVIN{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Patient reviews</h1>
+        <p class="page-subtitle">Approved reviews appear on the website with the patient's first name and last initial only.</p>
+    </div>
+    <a class="btn btn-light btn-icon" href="{% url 'kiosk:landing' %}#reviews" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Website</a>
+</div>
+
+<h2 class="h5 mb-3">Waiting for approval</h2>
+{% for r in pending %}
+{% include 'kiosk/_review_row.html' %}
+{% empty %}
+<section class="surface"><div class="empty-state"><i class="bi bi-star"></i>No reviews waiting.</div></section>
+{% endfor %}
+
+{% if recent %}
+<h2 class="h5 mt-4 mb-3">Recently moderated</h2>
+{% for r in recent %}{% include 'kiosk/_review_row.html' %}{% endfor %}
+{% endif %}
+{% endblock %}

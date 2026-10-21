@@ -424,3 +424,98 @@ class SiteConfiguration(models.Model):
 def get_openai_api_key():
     """The OpenAI API key configured in the admin, or "" if none is set."""
     return SiteConfiguration.load().openai_api_key
+
+
+# --- Public website: services, booking requests, reviews ------------------------------------
+
+
+class Service(models.Model):
+    """A service shown on the public website, with its price in SGD."""
+
+    name = models.CharField(max_length=80)
+    slug = models.SlugField(max_length=80, unique=True)
+    summary = models.CharField(max_length=240)
+    price_sgd = models.DecimalField("Price (SGD)", max_digits=8, decimal_places=2)
+    price_unit = models.CharField(max_length=40, default="per consultation", help_text='e.g. "per consultation"')
+    icon = models.CharField(max_length=40, default="bi-heart-pulse", help_text="Bootstrap icon class, e.g. bi-camera-video")
+    price_confirmed = models.BooleanField(
+        default=False, help_text='Until ticked, the website marks the price as "example price".'
+    )
+    is_featured = models.BooleanField(default=True, help_text="Shown on the home page")
+    is_bookable = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class BookingRequest(models.Model):
+    """A consultation request from the website; staff confirm it with the patient."""
+
+    NEW = "new"
+    CONFIRMED = "confirmed"
+    DECLINED = "declined"
+    DONE = "done"
+    STATUS_CHOICES = [(NEW, "New"), (CONFIRMED, "Confirmed"), (DECLINED, "Declined"), (DONE, "Done")]
+
+    MORNING = "morning"
+    AFTERNOON = "afternoon"
+    EVENING = "evening"
+    TIME_CHOICES = [(MORNING, "Morning (8–12)"), (AFTERNOON, "Afternoon (12–17)"), (EVENING, "Evening (17–20)")]
+
+    service = models.ForeignKey(Service, null=True, on_delete=models.SET_NULL, related_name="bookings")
+    preferred_doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    preferred_date = models.DateField()
+    preferred_time = models.CharField(max_length=10, choices=TIME_CHOICES)
+    name = models.CharField(max_length=100)
+    phone = models.CharField("WhatsApp number", max_length=30)
+    email = models.EmailField(blank=True)
+    notes = models.TextField("What would you like to see the doctor about?", max_length=1000, blank=True)
+    patient = models.ForeignKey(Patient, null=True, blank=True, on_delete=models.SET_NULL, related_name="bookings")
+    consent_at = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=NEW, db_index=True)
+    staff_note = models.CharField(max_length=200, blank=True)
+    handled_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    handled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} · {self.preferred_date}"
+
+
+class Review(models.Model):
+    """A patient's review of a completed visit; shown on the website once approved."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    STATUS_CHOICES = [(PENDING, "Pending"), (APPROVED, "Approved"), (REJECTED, "Rejected")]
+
+    visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name="review")
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="reviews")
+    rating = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)])
+    comment = models.TextField(max_length=600)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    moderated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    moderated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def display_name(self):
+        """First name and last initial only, e.g. "Thomas K."."""
+        parts = self.patient.name.split()
+        if not parts:
+            return "Patient"
+        return parts[0] + (f" {parts[-1][0].upper()}." if len(parts) > 1 else "")

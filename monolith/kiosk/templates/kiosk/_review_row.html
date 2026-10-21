@@ -1,0 +1,19 @@
+<section class="surface">
+    <div class="d-flex flex-wrap justify-content-between gap-3">
+        <div style="max-width: 720px">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span style="color: #e8a317" aria-label="{{ r.rating }} out of 5 stars">{% for i in "12345" %}<i class="bi {% if forloop.counter <= r.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</span>
+                <span class="fw-semibold">{{ r.display_name }}</span>
+                <a class="small text-muted" href="{% url 'kiosk:visit-detail' r.visit.pk %}">{{ r.patient.name }} · visit {{ r.visit.created_at|date:"j M Y" }}{% if r.visit.doctor %} with {{ r.visit.doctor.get_full_name|default:r.visit.doctor.get_username }}{% endif %}</a>
+                {% if r.status != 'pending' %}<span class="status {% if r.status == 'approved' %}status-good{% else %}status-neutral{% endif %}">{{ r.get_status_display }}</span>{% endif %}
+            </div>
+            <p class="mt-2 mb-0">{{ r.comment }}</p>
+        </div>
+        <form method="post" class="d-flex gap-2 align-items-start">
+            {% csrf_token %}
+            <input type="hidden" name="review" value="{{ r.pk }}" />
+            {% if r.status != 'approved' %}<button class="btn btn-primary btn-sm btn-icon" name="decision" value="approved"><i class="bi bi-check-lg"></i> Approve</button>{% endif %}
+            {% if r.status != 'rejected' %}<button class="btn btn-light btn-sm text-danger" name="decision" value="rejected">{% if r.status == 'approved' %}Remove from website{% else %}Reject{% endif %}</button>{% endif %}
+        </form>
+    </div>
+</section>

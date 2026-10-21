@@ -1,0 +1,120 @@
+import datetime as dt
+
+from django.core.cache import cache
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+
+from kiosk.models import BookingRequest, Patient, Review, Service, Visit
+from kiosk.portal_views import ensure_portal_user
+
+from .test_queue import user_with_role
+
+
+def booking_data(**overrides):
+    data = {
+        "service": Service.objects.get(slug="video-consultation").pk,
+        "preferred_doctor": "",
+        "preferred_date": (timezone.localdate() + dt.timedelta(days=2)).isoformat(),
+        "preferred_time": "morning",
+        "name": "Dewi Lestari",
+        "phone": "+65 8123 4567",
+        "email": "",
+        "notes": "Cough for a week",
+        "consent": "on",
+        "website": "",
+    }
+    data.update(overrides)
+    return data
+
+
+class LandingTest(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_home_page_lists_services_with_sgd_prices_and_kiosk_moved(self):
+        response = self.client.get(reverse("kiosk:landing"))
+        self.assertEqual(reverse("kiosk:landing"), "/")
+        for text in ["Video Consultation", "Repeat Prescriptions", "Fit Notes &amp; Certificates", "Referral Letters", "SGD 49", "Example price", "How it works"]:
+            self.assertContains(response, text)
+        self.assertNotContains(response, 'id="reviews"')  # no approved reviews yet
+        self.assertEqual(reverse("kiosk:home"), "/kiosk/")
+        self.assertContains(self.client.get("/kiosk/"), "Check-in")
+
+        Service.objects.update(price_confirmed=True)
+        self.assertNotContains(self.client.get("/"), "Example price")
+
+    def test_shows_doctors_on_duty(self):
+        user_with_role("budi", "doctor", room="Room 1")
+        self.assertContains(self.client.get("/"), "Room 1")
+
+
+class BookingTest(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_booking_request_is_saved_for_staff(self):
+        doctor = user_with_role("budi", "doctor", room="Room 1")
+        response = self.client.post(reverse("kiosk:book"), booking_data(preferred_doctor=doctor.pk))
+        self.assertContains(response, "Booking request sent")
+        booking = BookingRequest.objects.get()
+        self.assertEqual((booking.status, booking.preferred_doctor, booking.phone), (BookingRequest.NEW, doctor, "+65 8123 4567"))
+        self.assertIsNotNone(booking.consent_at)
+
+        desk = user_with_role("desk", "frontdesk")
+        self.client.force_login(desk)
+        page = self.client.get(reverse("kiosk:bookings"))
+        self.assertContains(page, "Dewi Lestari")
+        self.assertContains(page, "https://wa.me/6581234567?text=")
+        self.client.post(reverse("kiosk:booking-update", args=[booking.pk]), {"status": "confirmed", "staff_note": "10:30"})
+        booking.refresh_from_db()
+        self.assertEqual((booking.status, booking.staff_note, booking.handled_by), ("confirmed", "10:30", desk))
+
+    def test_validation_and_bots(self):
+        response = self.client.post(reverse("kiosk:book"), booking_data(preferred_date="2000-01-01", consent=""))
+        self.assertContains(response, "Choose today or a later date")
+        self.assertContains(response, "This field is required")
+        far = (timezone.localdate() + dt.timedelta(days=90)).isoformat()
+        self.assertContains(self.client.post(reverse("kiosk:book"), booking_data(preferred_date=far)), "60 days ahead")
+        self.client.post(reverse("kiosk:book"), booking_data(website="http://spam.example"))
+        self.assertFalse(BookingRequest.objects.exists())
+
+    def test_only_front_office_staff_handle_bookings(self):
+        self.client.force_login(user_with_role("budi", "doctor"))
+        self.assertEqual(self.client.get(reverse("kiosk:bookings")).status_code, 403)
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse("kiosk:bookings")).status_code, 302)
+
+
+class ReviewTest(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.patient = Patient.objects.create(name="Thomas Kurniawan", date_of_birth=dt.date(1990, 1, 1))
+        self.visit = Visit.objects.create(patient=self.patient, reason="Flu", status=Visit.COMPLETED)
+        self.client.force_login(ensure_portal_user(self.patient))
+
+    def review(self, visit=None, **data):
+        return self.client.post(reverse("portal-review", args=[(visit or self.visit).pk]), {"rating": 5, "comment": "Quick and friendly, thank you!", **data})
+
+    def test_patient_reviews_completed_visit_once_and_staff_approve(self):
+        self.review()
+        self.review(comment="A second review for the same visit")
+        review = Review.objects.get()
+        self.assertEqual((review.rating, review.status, review.display_name), (5, Review.PENDING, "Thomas K."))
+        self.assertNotContains(self.client.get("/"), "Quick and friendly")
+
+        nurse = user_with_role("nurse", "nurse")
+        self.client.force_login(nurse)
+        self.client.post(reverse("kiosk:reviews"), {"review": review.pk, "decision": "approved"})
+        home = self.client.get("/")
+        self.assertContains(home, "Quick and friendly")
+        self.assertContains(home, "Thomas K.")
+        self.assertNotContains(home, "Kurniawan")
+
+    def test_cannot_review_open_or_other_patients_visits(self):
+        open_visit = Visit.objects.create(patient=self.patient, reason="x", status=Visit.WAITING)
+        self.assertEqual(self.review(open_visit).status_code, 404)
+        other = Visit.objects.create(patient=Patient.objects.create(name="Other"), reason="x", status=Visit.COMPLETED)
+        self.assertEqual(self.review(other).status_code, 404)
+        self.review(rating=9)
+        self.assertFalse(Review.objects.exists())

@@ -5,11 +5,14 @@ from django.urls import reverse
 
 from .models import (
     AuditEvent,
+    BookingRequest,
     DeviceReading,
     Measurement,
     Patient,
     PatientSubmission,
     PrescriptionItem,
+    Review,
+    Service,
     SiteConfiguration,
     StaffProfile,
     Visit,
@@ -185,3 +188,25 @@ class SiteConfigurationAdmin(admin.ModelAdmin):
         elif form.cleaned_data.get("openai_api_key"):
             obj.openai_api_key = form.cleaned_data["openai_api_key"]
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ["name", "price_sgd", "price_unit", "price_confirmed", "is_featured", "is_bookable", "is_active", "sort_order"]
+    list_editable = ["price_sgd", "price_confirmed", "is_featured", "is_bookable", "is_active", "sort_order"]
+    prepopulated_fields = {"slug": ["name"]}
+
+
+@admin.register(BookingRequest)
+class BookingRequestAdmin(admin.ModelAdmin):
+    list_display = ["name", "service", "preferred_date", "preferred_time", "status", "created_at"]
+    list_filter = ["status", "service"]
+    search_fields = ["name", "phone", "email"]
+    readonly_fields = ["consent_at", "created_at", "handled_by", "handled_at"]
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ["patient", "rating", "status", "created_at"]
+    list_filter = ["status", "rating"]
+    readonly_fields = ["visit", "patient", "created_at", "moderated_by", "moderated_at"]

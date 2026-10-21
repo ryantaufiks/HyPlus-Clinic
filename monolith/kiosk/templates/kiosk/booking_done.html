@@ -1,0 +1,21 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Booking request sent - AIVIN{% endblock %}
+
+{% block content %}
+<section class="surface text-center mx-auto" style="max-width: 560px">
+    <span class="kiosk-icon done mx-auto"><i class="bi bi-check-lg"></i></span>
+    <h1 class="h3 mt-3">Booking request sent</h1>
+    {% if booking %}
+    <p class="text-muted">Thank you, {{ first_name }}. We'll message you on WhatsApp at <strong>{{ booking.phone }}</strong> to confirm your time.</p>
+    <dl class="row text-start small mx-auto mt-3" style="max-width: 380px">
+        <dt class="col-5 text-muted fw-semibold">Service</dt><dd class="col-7">{{ booking.service.name }}</dd>
+        <dt class="col-5 text-muted fw-semibold">Doctor</dt><dd class="col-7">{% if booking.preferred_doctor %}{{ booking.preferred_doctor.get_full_name|default:booking.preferred_doctor.get_username }}{% else %}First available{% endif %}</dd>
+        <dt class="col-5 text-muted fw-semibold">Preferred</dt><dd class="col-7">{{ booking.preferred_date|date:"l j F" }}, {{ booking.get_preferred_time_display }}</dd>
+    </dl>
+    {% else %}
+    <p class="text-muted">We'll message you on WhatsApp to confirm your time.</p>
+    {% endif %}
+    <a class="btn btn-light btn-icon mt-2" href="{% url 'kiosk:landing' %}"><i class="bi bi-arrow-left"></i> Back to home</a>
+</section>
+{% endblock %}

@@ -1,6 +1,7 @@
 {% extends 'kiosk/base.html' %}
 {% load avatars %}
 {% load static %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/landing.css' %}" />{% endblock %}
 
 {% block title %}My health - AIVIN{% endblock %}
 
@@ -76,7 +77,7 @@
 </div>
 
 <h2 class="h5 mt-4 mb-3"><i class="bi bi-calendar2-check"></i> My visits</h2>
-{% for row in visits %}{% with v=row.visit vit=row.vitals %}
+{% for row in visits %}{% with v=row.visit vit=row.vitals rv=row.review %}
 <section class="surface">
     <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
         <div>
@@ -96,6 +97,26 @@
     {% if v.prescriptions.all %}
     {% include 'kiosk/_prescription_list.html' with items=v.prescriptions.all %}
     <a class="btn btn-light btn-sm btn-icon" href="{% url 'portal-prescription' v.pk %}" target="_blank"><i class="bi bi-printer"></i> Prescription</a>
+    {% endif %}
+    {% if v.status == 'completed' %}
+    <div class="mt-3 pt-3 border-top">
+        {% if rv %}
+        <div class="small text-muted"><span style="color: #e8a317">{% for i in "12345" %}<i class="bi {% if forloop.counter <= rv.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</span> Your review{% if rv.status == 'pending' %} · waiting for a quick check before it appears on our website{% elif rv.status == 'approved' %} · shown on our website{% endif %}</div>
+        {% else %}
+        <details>
+            <summary class="fw-semibold text-primary" style="cursor: pointer"><i class="bi bi-star"></i> Rate this visit</summary>
+            <form method="post" action="{% url 'portal-review' v.pk %}" class="mt-2 d-flex flex-column gap-2" style="max-width: 520px">
+                {% csrf_token %}
+                <div class="choice-group" role="radiogroup" aria-label="Rating" style="grid-template-columns: repeat(5, 1fr)">
+                    {% for n in "54321" %}<input type="radio" class="btn-check" name="rating" id="rate-{{ v.pk }}-{{ n }}" value="{{ n }}" required /><label for="rate-{{ v.pk }}-{{ n }}">{{ n }} <i class="bi bi-star-fill" style="color: #e8a317"></i></label>{% endfor %}
+                </div>
+                <textarea class="form-control" name="comment" rows="3" maxlength="600" minlength="10" required placeholder="How was your visit?"></textarea>
+                <div class="small text-muted">Shown on our website with your first name and last initial, after a quick check. Never your health details.</div>
+                <div><button class="btn btn-primary btn-sm">Send review</button></div>
+            </form>
+        </details>
+        {% endif %}
+    </div>
     {% endif %}
 </section>
 {% endwith %}{% empty %}

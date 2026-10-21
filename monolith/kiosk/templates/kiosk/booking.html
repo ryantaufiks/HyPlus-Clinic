@@ -1,0 +1,66 @@
+{% extends 'kiosk/base.html' %}
+{% load static %}
+
+{% block title %}Book a consultation - AIVIN{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/landing.css' %}" />{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Book a consultation</h1>
+        <p class="page-subtitle">Tell us when suits you. We'll confirm your time on WhatsApp, usually within a few hours.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <form method="post" class="surface" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+            <h2 class="section-title"><i class="bi bi-clipboard2-pulse"></i> Your consultation</h2>
+            <div class="row g-3">
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.service %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_doctor %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_date %}</div>
+                <div class="col-12">
+                    <span class="form-label fw-semibold d-block">{{ form.preferred_time.label }} <span class="text-danger" aria-hidden="true">*</span></span>
+                    <div class="choice-group" role="radiogroup" aria-label="{{ form.preferred_time.label }}">
+                        {% for radio in form.preferred_time %}{{ radio.tag }}<label for="{{ radio.id_for_label }}"><i class="bi {% if forloop.counter == 1 %}bi-sunrise{% elif forloop.counter == 2 %}bi-sun{% else %}bi-sunset{% endif %}"></i> {{ radio.choice_label }}</label>{% endfor %}
+                    </div>
+                    {% for error in form.preferred_time.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12">{% include 'kiosk/_field.html' with field=form.notes %}</div>
+            </div>
+
+            <h2 class="section-title mt-4"><i class="bi bi-person"></i> Your details</h2>
+            <div class="row g-3">
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.name %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.phone %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.email %}</div>
+                <div class="d-none" aria-hidden="true">{{ form.website }}</div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ form.consent }}
+                        <label class="form-check-label" for="{{ form.consent.id_for_label }}">{{ form.consent.label }}</label>
+                        {% for error in form.consent.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-4">
+                <button class="btn btn-primary btn-lg btn-icon"><i class="bi bi-send"></i> Send booking request</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-lg-4">
+        <aside class="surface booking-aside">
+            <h2 class="section-title"><i class="bi bi-info-circle"></i> What happens next</h2>
+            <ol class="small text-muted ps-3 mb-3">
+                <li class="mb-2">We check the doctor's schedule and message you on WhatsApp to confirm a time.</li>
+                <li class="mb-2">On the day, check in at the kiosk: it measures your weight and blood pressure.</li>
+                <li>Your number appears on the screen when your doctor is ready.</li>
+            </ol>
+            <p class="small text-muted mb-0"><i class="bi bi-exclamation-triangle"></i> For a medical emergency, call your local emergency number or go to the nearest emergency department.</p>
+        </aside>
+    </div>
+</div>
+{% endblock %}
