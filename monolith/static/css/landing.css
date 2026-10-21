@@ -193,3 +193,46 @@
     .flow-node { margin-top: 0.85rem; }
 }
 @media (prefers-reduced-motion: reduce) { .flow-dot { display: none; } .flow-merge path { animation: none; } }
+
+/* ---- Workflow canvas (n8n-style) ---------------------------------------------------
+ * A dotted canvas behind the flowchart, connection ports on each node and
+ * dashed connectors that flow from one step to the next.
+ */
+.flow-canvas { position: relative; padding: 3.6rem 2.2rem 2.6rem; border-radius: 24px; border: 1px solid var(--aivin-border); background-color: #f7f9fb; background-image: radial-gradient(circle, rgba(15, 29, 43, 0.16) 1.1px, transparent 1.4px); background-size: 22px 22px; background-position: 11px 11px; box-shadow: inset 0 1px 0 #fff, var(--aivin-shadow); overflow: hidden; }
+/* Fade the dots towards the edges */
+.flow-canvas::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(247, 249, 251, 0.95) 100%); }
+.flow-canvas .flow { position: relative; }
+.canvas-chrome { position: absolute; top: 0.9rem; left: 1.1rem; right: 1.1rem; display: flex; justify-content: space-between; align-items: center; z-index: 1; }
+.canvas-chrome .live { background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 99px; padding: 0.25rem 0.7rem; font-size: 0.75rem; }
+.canvas-zoom { display: inline-flex; gap: 0.15rem; background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 8px; padding: 0.15rem; }
+.canvas-zoom .bi { width: 1.6rem; height: 1.6rem; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--aivin-muted); border-radius: 6px; }
+
+/* Nodes sit on the canvas with ports for their connections */
+.flow-canvas .flow-node { box-shadow: 0 1px 2px rgba(15, 29, 43, 0.06), 0 8px 24px rgba(15, 29, 43, 0.08); border-color: #dfe5eb; }
+.flow-canvas .flow-node:hover { border-color: rgba(11, 122, 131, 0.45); }
+.flow-canvas .flow-node::before, .flow-canvas .flow-node::after, .flow-canvas .flow-entry::after { content: ""; position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--aivin-surface); border: 2px solid #9fb3c2; z-index: 1; }
+.flow-canvas .flow-node::before { left: -7px; }
+.flow-canvas .flow-node::after, .flow-canvas .flow-entry::after { right: -7px; border-color: var(--aivin-primary); }
+.flow-canvas .flow-end::after { display: none; }
+.flow-canvas .flow-entry { position: relative; background: var(--aivin-surface); border-style: solid; border-color: #dfe5eb; box-shadow: 0 1px 2px rgba(15, 29, 43, 0.05); }
+
+/* Connectors: dashes flowing in the direction of the visit */
+@keyframes dash-x { to { background-position: 12px 0; } }
+@keyframes dash-y { to { background-position: 0 12px; } }
+.flow-canvas .flow-link { height: 2px; margin: 0 7px; background: repeating-linear-gradient(90deg, #8fa4b4 0 6px, transparent 6px 12px); background-size: 12px 2px; animation: dash-x 0.7s linear infinite; }
+.flow-canvas .flow-link::after { border-color: #8fa4b4; }
+.flow-canvas .flow-merge path { stroke: #8fa4b4; stroke-dasharray: 6 6; animation-duration: 0.7s; }
+
+@media (max-width: 991.98px) {
+    .flow-canvas { padding: 3.6rem 1rem 2rem; }
+    .flow-canvas .flow-node::before { left: 50%; top: -7px; margin: 0 0 0 -6px; }
+    .flow-canvas .flow-node::after, .flow-canvas .flow-entry::after { left: 50%; right: auto; top: auto; bottom: -7px; margin: 0 0 0 -6px; }
+    .flow-canvas .flow-link { width: 2px; height: 44px; margin: 7px auto; background: repeating-linear-gradient(180deg, #8fa4b4 0 6px, transparent 6px 12px); background-size: 2px 12px; animation-name: dash-y; }
+}
+@media (prefers-reduced-motion: reduce) { .flow-canvas .flow-link { animation: none; } }
+/* Longer connectors that end at the next node's input port, as on a workflow canvas */
+@media (min-width: 992px) {
+    .flow-canvas .flow { grid-template-columns: minmax(140px, 0.85fr) 64px repeat(3, minmax(0, 1fr) 64px) minmax(0, 1fr); }
+}
+.flow-canvas .flow-link::after { display: none; }
+@media (max-width: 575.98px) { .flow-canvas .flow-entry > .bi { display: none; } .flow-canvas .flow-entry { justify-content: center; text-align: center; } }
