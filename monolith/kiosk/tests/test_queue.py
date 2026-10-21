@@ -233,3 +233,20 @@ class DisplayRobustnessTest(TestCase):
         response = self.client.get(reverse("kiosk:display-data"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["called"][0]["queue_number"], "A001")
+
+
+class DisplayQueryCountTest(TestCase):
+    def test_tv_data_query_count_does_not_grow_with_doctors(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        today = timezone.localdate()
+        for i in range(6):
+            doctor = user_with_role(f"doc{i}", "doctor", room=f"Room {i}")
+            Visit.objects.create(
+                patient=Patient.objects.create(name=f"P{i}"), reason="r", queue_date=today, queue_number=f"A00{i}",
+                status=Visit.CALLED if i % 2 else Visit.WAITING, doctor=doctor if i % 2 else None, called_at=timezone.now(),
+            )
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(self.client.get(reverse("kiosk:display-data")).status_code, 200)
+        self.assertLessEqual(len(queries), 8)  # polled every 3 seconds by every TV

@@ -98,6 +98,8 @@ class LandingView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         services = list(Service.objects.filter(is_active=True, is_featured=True))
+        on_duty = queue.doctors_on_duty()
+        hours = schedule.hours_for([d for d, _ in on_duty], timezone.localdate())
         reviews = list(approved_reviews()[:16])
         ratings = list(approved_reviews().values_list("rating", flat=True))
         preview = not reviews and can(self.request.user, "staff_area")
@@ -114,11 +116,8 @@ class LandingView(TemplateView):
                 "services": services,
                 "from_price": min((s.price_sgd for s in services), default=None),
                 "doctors_today": [
-                    {
-                        "name": _doctor_name(d), "room": room, "face": _doctor_face(d),
-                        "hours": schedule.format_blocks(schedule.hours_on(d, timezone.localdate())),
-                    }
-                    for d, room in queue.doctors_on_duty()
+                    {"name": _doctor_name(d), "room": room, "face": _doctor_face(d), "hours": schedule.format_blocks(hours[d.pk])}
+                    for d, room in on_duty
                 ],
                 "reviews": cards,
                 # Two rows that scroll in opposite directions.

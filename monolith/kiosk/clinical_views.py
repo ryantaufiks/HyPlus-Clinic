@@ -254,7 +254,9 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        today = queue.todays_queue().select_related("patient", "doctor").prefetch_related("measurements")
+        today = queue.todays_queue().select_related(
+            "patient", "doctor__profile", "requested_doctor__profile", "cancelled_by"
+        ).prefetch_related("measurements")
 
         def rows(visits):
             return [{"visit": v, "vitals": latest_vitals(v.measurements.all())} for v in visits]
@@ -263,7 +265,7 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
         context["mine_called"] = rows(today.filter(status=Visit.CALLED, doctor=user))
         waiting = queue.waiting_in_order()
         on_duty = {d.pk for d, _ in queue.doctors_on_duty()}
-        waiting_rows = rows(today.filter(pk__in=[v.pk for v in waiting]).select_related("requested_doctor"))
+        waiting_rows = rows(today.filter(pk__in=[v.pk for v in waiting]))
         order = {v.pk: i for i, v in enumerate(waiting)}
         waiting_rows.sort(key=lambda r: order[r["visit"].pk])
         for row in waiting_rows:

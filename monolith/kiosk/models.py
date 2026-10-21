@@ -204,7 +204,10 @@ class StaffProfile(models.Model):
 
     @classmethod
     def room_for(cls, user):
-        profile = cls.objects.filter(user=user).first()
+        try:
+            profile = user.profile  # cached when loaded with select_related
+        except cls.DoesNotExist:
+            profile = None
         return (profile.room if profile else "") or "Consulting room"
 
 

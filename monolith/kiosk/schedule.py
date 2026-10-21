@@ -38,6 +38,17 @@ def hours_on(doctor, date):
     return [(b.start_time, b.end_time) for b in DoctorSchedule.objects.filter(doctor=doctor, weekday=date.weekday())]
 
 
+def hours_for(doctors, date):
+    """{doctor id: [(start, end), ...]} on a date for several doctors, in two queries."""
+    ids = [d.pk for d in doctors]
+    off = set(DoctorTimeOff.objects.filter(doctor_id__in=ids, date=date).values_list("doctor_id", flat=True))
+    hours = {pk: [] for pk in ids}
+    for block in DoctorSchedule.objects.filter(doctor_id__in=ids, weekday=date.weekday()):
+        if block.doctor_id not in off:
+            hours[block.doctor_id].append((block.start_time, block.end_time))
+    return hours
+
+
 def availability_error(doctor, date, period=None):
     """Why the doctor cannot be booked then, or "" when they can (or have no schedule)."""
     if doctor is None or date is None or not has_schedule(doctor):

@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .models import AuditEvent, StaffProfile, Visit
-from .roles import is_doctor
+from .roles import DOCTOR_GROUP
 from .vitals import bp_category
 
 
@@ -62,8 +62,14 @@ def chosen_doctor(visit, on_duty=None):
 
 def doctors_on_duty():
     """(doctor, room) for every active doctor who is on duty and has a room, by room name."""
-    profiles = StaffProfile.objects.filter(on_duty=True, user__is_active=True).exclude(room="").select_related("user")
-    pairs = [(p.user, p.room) for p in profiles if is_doctor(p.user)]
+    profiles = (
+        StaffProfile.objects.filter(on_duty=True, user__is_active=True)
+        .filter(Q(user__groups__name=DOCTOR_GROUP) | Q(user__is_superuser=True))
+        .exclude(room="")
+        .select_related("user")
+        .distinct()
+    )
+    pairs = [(p.user, p.room) for p in profiles]  # p.user.profile is p: no further queries
     return sorted(pairs, key=lambda pair: (_natural(pair[1]), pair[0].get_full_name()))
 
 

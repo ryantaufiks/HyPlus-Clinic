@@ -41,19 +41,33 @@ def can(user, capability):
     return bool(user.is_authenticated and user.is_active and role_of(user) in CAPABILITIES[capability])
 
 
+# Role lookups happen many times per page (menus, permissions), so a user's
+# patient record and group names are read once and kept on the user object,
+# which lives for one request. apply_role() clears them.
+_PATIENT_CACHE = "_hy_patient"
+_GROUPS_CACHE = "_hy_groups"
+
+
 def patient_of(user):
     """The Patient whose portal account `user` is, or None for staff."""
-    try:
-        return user.patient_record
-    except Exception:  # RelatedObjectDoesNotExist, or an anonymous user
-        return None
+    if _PATIENT_CACHE not in user.__dict__:
+        try:
+            patient = user.patient_record
+        except Exception:  # RelatedObjectDoesNotExist, or an anonymous user
+            patient = None
+        user.__dict__[_PATIENT_CACHE] = patient
+    return user.__dict__[_PATIENT_CACHE]
+
+
+def _group_names(user):
+    if _GROUPS_CACHE not in user.__dict__:
+        user.__dict__[_GROUPS_CACHE] = frozenset(user.groups.values_list("name", flat=True)) if user.pk else frozenset()
+    return user.__dict__[_GROUPS_CACHE]
 
 
 def is_doctor(user):
     """Doctors (members of the Doctor group) record diagnoses and prescriptions."""
-    return user.is_authenticated and (
-        user.is_superuser or user.groups.filter(name=DOCTOR_GROUP).exists()
-    )
+    return user.is_authenticated and (user.is_superuser or DOCTOR_GROUP in _group_names(user))
 
 
 def role_of(user):
@@ -61,7 +75,7 @@ def role_of(user):
         return "admin"
     if patient_of(user) is not None:
         return "patient"
-    names = {g.name for g in user.groups.all()}
+    names = _group_names(user)
     if DOCTOR_GROUP in names:
         return "doctor"
     if NURSE_GROUP in names:
@@ -71,6 +85,7 @@ def role_of(user):
 
 def apply_role(user, role):
     """Set the user's flags and groups for `role`. The user must be saved first."""
+    user.__dict__.pop(_GROUPS_CACHE, None)
     user.is_superuser = role == "admin"
     user.is_staff = role in ("admin", "nurse")
     user.save(update_fields=["is_superuser", "is_staff"])

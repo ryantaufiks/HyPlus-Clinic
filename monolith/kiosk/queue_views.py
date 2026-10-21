@@ -34,7 +34,10 @@ def _doctor_face(user):
     """Photo URL (public TV endpoint) or initials and colour for a doctor."""
     if user is None:
         return {"photo": "", "initials": "", "color": ""}
-    profile = StaffProfile.objects.filter(user=user).first()
+    try:
+        profile = user.profile  # cached when loaded with select_related
+    except StaffProfile.DoesNotExist:
+        profile = None
     photo = ""
     if profile and profile.photo:
         photo = reverse("kiosk:display-photo", args=[user.pk]) + "?v=" + profile.photo.name.rsplit("/", 1)[-1][:12]
@@ -52,7 +55,7 @@ class DisplayView(TemplateView):
 @method_decorator(never_cache, name="dispatch")
 class DisplayDataView(View):
     def get(self, request):
-        today = queue.todays_queue().select_related("doctor")
+        today = queue.todays_queue().select_related("doctor__profile")
         called = today.filter(status=Visit.CALLED).order_by("-called_at")
         in_progress = today.filter(status=Visit.IN_CONSULTATION).order_by("room")
         doctors = queue.doctors_on_duty()
