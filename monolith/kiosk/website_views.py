@@ -74,10 +74,23 @@ class LandingView(TemplateView):
 # --- Booking (public) --------------------------------------------------------------------------
 
 
+QUEUE_SERVICE_SLUG = "clinic-consultation"
+
+
 class BookingForm(BootstrapMixin, forms.ModelForm):
-    consent = forms.BooleanField(
-        label="I agree that the clinic stores these details to contact me about my booking.",
+    """One form for every service.
+
+    A clinic consultation for today gives a queue number straight away (an
+    online ticket, called once the patient checks in); everything else is a
+    booking request that staff confirm on WhatsApp.
+    """
+
+    patient_id = forms.CharField(
+        label="Patient ID (if you have one)", max_length=6, required=False,
+        widget=forms.TextInput(attrs={"autocapitalize": "characters", "autocomplete": "off", "placeholder": "e.g. 58MPQ"}),
+        help_text="Links the visit to your records. It must match the WhatsApp number we have for you.",
     )
+    consent = forms.BooleanField(label="I agree that the clinic stores these details for my visit or booking.")
     # Bots fill in every field; people never see this one.
     website = forms.CharField(required=False, widget=forms.TextInput(attrs={"tabindex": "-1", "autocomplete": "off"}))
 
@@ -92,7 +105,7 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
             "name": forms.TextInput(attrs={"autocomplete": "name"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
         }
-        labels = {"preferred_doctor": "Doctor", "preferred_date": "Preferred date", "preferred_time": "Preferred time", "name": "Full name"}
+        labels = {"preferred_doctor": "Doctor", "preferred_date": "Date", "preferred_time": "Preferred time", "name": "Full name"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,6 +121,8 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
         )
         self.fields["preferred_time"].widget.attrs["class"] = "btn-check"
         self.fields["preferred_time"].choices = BookingRequest.TIME_CHOICES  # no empty choice
+        self.fields["preferred_time"].required = False  # not needed for a queue number today
+        self.is_queue_ticket = False
 
     def clean_preferred_date(self):
         value = self.cleaned_data["preferred_date"]
@@ -130,6 +145,64 @@ class BookingForm(BootstrapMixin, forms.ModelForm):
             raise forms.ValidationError("Enter your full name.")
         return value
 
+    def clean(self):
+        data = super().clean()
+        service, date = data.get("service"), data.get("preferred_date")
+        self.is_queue_ticket = bool(service and service.slug == QUEUE_SERVICE_SLUG and date == timezone.localdate())
+        data["patient"] = None
+        if self.is_queue_ticket:
+            self._clean_queue_ticket(data)
+        elif date and not data.get("preferred_time"):
+            self.add_error("preferred_time", "Choose a time of day.")
+        return data
+
+    def _clean_queue_ticket(self, data):
+        on_duty = {d.pk for d, _ in queue.doctors_on_duty()}
+        if not on_duty:
+            raise forms.ValidationError("No doctors are on duty right now, so we cannot give a queue number for today. Please choose another day.")
+        doctor = data.get("preferred_doctor")
+        if doctor and doctor.pk not in on_duty:
+            self.add_error("preferred_doctor", "This doctor is not on duty today. Choose another doctor or the first available.")
+        if len(" ".join((data.get("notes") or "").split())) < 3:
+            self.add_error("notes", "Tell us briefly why you are coming.")
+        phone = data.get("phone")
+        if not phone:
+            return
+        digits = whatsapp_number(phone)
+        open_today = Visit.objects.filter(
+            queue_date=timezone.localdate(), source=Visit.SOURCE_ONLINE,
+            status__in=[Visit.WAITING, Visit.CALLED, Visit.IN_CONSULTATION],
+        ).exclude(contact_phone="")
+        if any(whatsapp_number(v.contact_phone) == digits for v in open_today.only("contact_phone")):
+            raise forms.ValidationError(
+                "This WhatsApp number already has a queue number for today. Open the ticket link you received, or ask the front desk."
+            )
+        patient_id = "".join((data.get("patient_id") or "").split()).upper()
+        if patient_id:
+            patient = Patient.objects.filter(patient_id=patient_id, is_active=True).first()
+            # The phone must match too, so nobody can add visits to someone else's record.
+            if patient is None or not patient.phone or whatsapp_number(patient.phone)[-4:] != digits[-4:]:
+                self.add_error("patient_id", "That Patient ID does not match this WhatsApp number. Leave it empty to continue as a new patient.")
+            else:
+                data["patient"] = patient
+
+
+def create_queue_ticket(data):
+    """An online ticket for today: numbered now, called once the patient checks in."""
+    with transaction.atomic():
+        patient = data["patient"] or Patient.objects.create(name=data["name"], phone=data["phone"])
+        visit = Visit.objects.create(
+            patient=patient,
+            reason=" ".join(data["notes"].split())[:2000],
+            requested_doctor=data.get("preferred_doctor"),
+            source=Visit.SOURCE_ONLINE,
+            checked_in_at=None,
+            contact_phone=data["phone"],
+        )
+    assign_queue_number(visit)
+    AuditEvent.record(None, "queue.online_ticket", visit=visit)
+    return visit
+
 
 @method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")
 class BookingView(View):
@@ -140,26 +213,48 @@ class BookingView(View):
         service = Service.objects.filter(slug=request.GET.get("service"), is_active=True).first()
         if service:
             initial["service"] = service
+            if service.slug == QUEUE_SERVICE_SLUG:
+                initial["preferred_date"] = timezone.localdate()
         patient = patient_of(request.user) if request.user.is_authenticated else None
         if patient:
-            initial.update({"name": patient.name, "phone": patient.phone})
+            initial.update({"name": patient.name, "phone": patient.phone, "patient_id": patient.patient_id})
         return initial
 
+    def _render(self, request, form):
+        return render(
+            request,
+            self.template_name,
+            {
+                "form": form,
+                "queue_service": Service.objects.filter(slug=QUEUE_SERVICE_SLUG, is_active=True).values_list("pk", flat=True).first(),
+                "today": timezone.localdate().isoformat(),
+                "queue_open": bool(queue.doctors_on_duty()),
+            },
+        )
+
     def get(self, request):
-        return render(request, self.template_name, {"form": BookingForm(initial=self._initial(request))})
+        return self._render(request, BookingForm(initial=self._initial(request)))
 
     def post(self, request):
         form = BookingForm(request.POST)
         if not form.is_valid():
-            return render(request, self.template_name, {"form": form})
+            return self._render(request, form)
         if form.cleaned_data.get("website"):
             return render(request, "kiosk/booking_done.html", {})  # quietly drop bots
+        if form.is_queue_ticket:
+            visit = create_queue_ticket(form.cleaned_data)
+            return redirect(reverse("kiosk:visit-token", args=[visit.token]) + "?new=1")
         booking = form.save(commit=False)
         booking.consent_at = timezone.now()
         if request.user.is_authenticated:
             booking.patient = patient_of(request.user)
         booking.save()
         return render(request, "kiosk/booking_done.html", {"booking": booking, "first_name": booking.name.split()[0]})
+
+
+def queue_ticket_redirect(request):
+    """Old link to the separate queue page: the clinic consultation in the booking form."""
+    return redirect(reverse("kiosk:book") + f"?service={QUEUE_SERVICE_SLUG}")
 
 
 # --- Booking requests (staff) ---------------------------------------------------------------------
@@ -286,124 +381,3 @@ class ReviewModerationView(CapabilityRequiredMixin, TemplateView):
             AuditEvent.record(request.user, f"review.{decision}", patient=review.patient, visit=review.visit)
             messages.success(request, f"Review by {review.display_name} {review.get_status_display().lower()}.")
         return redirect("kiosk:reviews")
-
-
-# --- Online queue ticket (today only) -------------------------------------------------------
-
-
-class QueueTicketForm(BootstrapMixin, forms.Form):
-    doctor = forms.ChoiceField(label="Doctor", required=False)
-    name = forms.CharField(label="Full name", max_length=100, widget=forms.TextInput(attrs={"autocomplete": "name"}))
-    phone = forms.CharField(
-        label="WhatsApp number", max_length=30,
-        widget=forms.TextInput(attrs={"inputmode": "tel", "autocomplete": "tel", "placeholder": "+65 8123 4567"}),
-        help_text="You'll need its last 4 digits to check in at the clinic.",
-    )
-    patient_id = forms.CharField(
-        label="Patient ID (if you have one)", max_length=6, required=False,
-        widget=forms.TextInput(attrs={"autocapitalize": "characters", "autocomplete": "off", "placeholder": "e.g. 58MPQ"}),
-        help_text="Links this visit to your records. It must match the WhatsApp number we have for you.",
-    )
-    reason = forms.CharField(label="What would you like to see the doctor about?", max_length=2000, widget=forms.Textarea(attrs={"rows": 2}))
-    consent = forms.BooleanField(label="I agree that the clinic stores these details for my visit.")
-    website = forms.CharField(required=False, widget=forms.TextInput(attrs={"tabindex": "-1", "autocomplete": "off"}))
-
-    def __init__(self, doctors, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.doctors = {str(d.pk): d for d, _ in doctors}
-        self.fields["doctor"].choices = [("", "First available doctor")] + [
-            (str(d.pk), f"{_doctor_name(d)} · {room}") for d, room in doctors
-        ]
-
-    def clean_name(self):
-        value = " ".join(self.cleaned_data["name"].split())
-        if len(value) < 2:
-            raise forms.ValidationError("Enter your full name.")
-        return value
-
-    def clean_phone(self):
-        value = " ".join(self.cleaned_data["phone"].split())
-        if len(whatsapp_number(value)) < 8:
-            raise forms.ValidationError("Enter a phone number we can reach on WhatsApp.")
-        return value
-
-    def clean_reason(self):
-        value = " ".join(self.cleaned_data["reason"].split())
-        if len(value) < 3:
-            raise forms.ValidationError("Tell us briefly why you are coming.")
-        return value
-
-    def clean(self):
-        data = super().clean()
-        phone = data.get("phone")
-        if not phone:
-            return data
-        digits = whatsapp_number(phone)
-        open_today = Visit.objects.filter(
-            queue_date=timezone.localdate(), source=Visit.SOURCE_ONLINE,
-            status__in=[Visit.WAITING, Visit.CALLED, Visit.IN_CONSULTATION],
-        ).exclude(contact_phone="")
-        if any(whatsapp_number(v.contact_phone) == digits for v in open_today.only("contact_phone")):
-            raise forms.ValidationError(
-                "This WhatsApp number already has a queue ticket for today. Open the ticket link you received, or ask the front desk."
-            )
-        patient_id = "".join((data.get("patient_id") or "").split()).upper()
-        data["patient"] = None
-        if patient_id:
-            patient = Patient.objects.filter(patient_id=patient_id, is_active=True).first()
-            # The phone must match too, so nobody can add visits to someone else's record.
-            if patient is None or not patient.phone or whatsapp_number(patient.phone)[-4:] != digits[-4:]:
-                self.add_error(
-                    "patient_id",
-                    "That Patient ID does not match this WhatsApp number. Leave it empty to continue as a new patient.",
-                )
-            else:
-                data["patient"] = patient
-        return data
-
-
-def online_queue_open():
-    """Online tickets are given while at least one doctor is on duty."""
-    return bool(queue.doctors_on_duty())
-
-
-@method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")
-class QueueTicketView(View):
-    template_name = "kiosk/queue_ticket.html"
-
-    def _context(self, form, doctors):
-        waiting = queue.waiting_in_order(arrived_only=False)
-        return {"form": form, "open": bool(doctors), "waiting_count": len(waiting)}
-
-    def get(self, request):
-        doctors = queue.doctors_on_duty()
-        initial = {}
-        patient = patient_of(request.user) if request.user.is_authenticated else None
-        if patient:
-            initial = {"name": patient.name, "phone": patient.phone, "patient_id": patient.patient_id}
-        doctor = request.GET.get("doctor")
-        if doctor:
-            initial["doctor"] = doctor
-        return render(request, self.template_name, self._context(QueueTicketForm(doctors, initial=initial), doctors))
-
-    def post(self, request):
-        doctors = queue.doctors_on_duty()
-        form = QueueTicketForm(doctors, request.POST)
-        if not doctors or not form.is_valid():
-            return render(request, self.template_name, self._context(form, doctors))
-        data = form.cleaned_data
-        if data.get("website"):
-            return redirect("kiosk:landing")  # quietly drop bots
-        with transaction.atomic():
-            patient = data["patient"] or Patient.objects.create(name=data["name"], phone=data["phone"])
-            visit = Visit.objects.create(
-                patient=patient,
-                reason=data["reason"],
-                requested_doctor=form.doctors.get(data.get("doctor") or ""),
-                source=Visit.SOURCE_ONLINE,
-                checked_in_at=None,
-                contact_phone=data["phone"],
-            )
-        assign_queue_number(visit)
-        AuditEvent.record(None, "queue.online_ticket", visit=visit)
-        return redirect(reverse("kiosk:visit-token", args=[visit.token]) + "?new=1")

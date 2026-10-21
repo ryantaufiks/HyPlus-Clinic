@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 
 from django.core.cache import cache
@@ -6,13 +7,19 @@ from django.urls import reverse
 from django.utils import timezone
 
 from kiosk import queue
-from kiosk.models import Patient, StaffProfile, Visit
+from kiosk.models import BookingRequest, Patient, Service, StaffProfile, Visit
 
 from .test_queue import user_with_role
 
 
 def ticket_data(**overrides):
-    data = {"doctor": "", "name": "Dewi Lestari", "phone": "0812 3456 7890", "patient_id": "", "reason": "Cough", "consent": "on", "website": ""}
+    """The booking form, filled in for a clinic consultation today."""
+    data = {
+        "service": Service.objects.get(slug="clinic-consultation").pk, "preferred_doctor": "",
+        "preferred_date": timezone.localdate().isoformat(), "preferred_time": "",
+        "name": "Dewi Lestari", "phone": "0812 3456 7890", "email": "", "patient_id": "",
+        "notes": "Cough", "consent": "on", "website": "",
+    }
     data.update(overrides)
     return data
 
@@ -23,14 +30,14 @@ class OnlineQueueTest(TestCase):
         self.doctor = user_with_role("budi", "doctor", room="Room 1")
 
     def take(self, **overrides):
-        return self.client.post(reverse("kiosk:queue-ticket"), ticket_data(**overrides))
+        return self.client.post(reverse("kiosk:book"), ticket_data(**overrides))
 
     def kiosk_visit(self, number):
         return Visit.objects.create(patient=Patient.objects.create(name=f"Walk-in {number}"), reason="r", queue_date=timezone.localdate(), queue_number=number)
 
     def test_online_ticket_keeps_its_place_but_is_called_after_check_in(self):
         self.kiosk_visit("A001")
-        response = self.take(doctor=self.doctor.pk)
+        response = self.take(preferred_doctor=self.doctor.pk)
         online = Visit.objects.get(source=Visit.SOURCE_ONLINE)
         self.assertRedirects(response, reverse("kiosk:visit-token", args=[online.token]) + "?new=1", fetch_redirect_response=False)
         self.assertEqual((online.queue_number, online.requested_doctor, online.checked_in_at), ("A002", self.doctor, None))
@@ -73,7 +80,7 @@ class OnlineQueueTest(TestCase):
 
     def test_one_ticket_per_phone_and_patient_id_must_match_phone(self):
         self.take()
-        self.assertContains(self.take(phone="+62 812-3456-7890"), "already has a queue ticket for today")
+        self.assertContains(self.take(phone="+62 812-3456-7890"), "already has a queue number for today")
         existing = Patient.objects.create(name="Ryan", phone="0811 1111 2222")
         self.assertContains(self.take(phone="0899 9999 9999", patient_id=existing.patient_id), "does not match this WhatsApp number")
         self.take(phone="0811 1111 2222", patient_id=existing.patient_id.lower())
@@ -81,9 +88,16 @@ class OnlineQueueTest(TestCase):
 
     def test_closed_without_doctors_on_duty(self):
         StaffProfile.objects.filter(user=self.doctor).update(on_duty=False)
-        self.assertContains(self.client.get(reverse("kiosk:queue-ticket")), "online queue is closed")
-        self.take()
+        self.assertContains(self.take(), "No doctors are on duty right now")
         self.assertFalse(Visit.objects.exists())
+
+    def test_clinic_consultation_another_day_is_a_booking_request(self):
+        tomorrow = (timezone.localdate() + dt.timedelta(days=1)).isoformat()
+        self.assertContains(self.take(preferred_date=tomorrow), "Choose a time of day")
+        self.assertContains(self.take(preferred_date=tomorrow, preferred_time="morning"), "Booking request sent")
+        self.assertFalse(Visit.objects.exists())
+        self.assertEqual(BookingRequest.objects.get().service.slug, "clinic-consultation")
+        self.assertRedirects(self.client.get("/queue/"), reverse("kiosk:book") + "?service=clinic-consultation")
 
     def test_staff_see_and_check_in_patients_who_have_not_arrived(self):
         self.take()

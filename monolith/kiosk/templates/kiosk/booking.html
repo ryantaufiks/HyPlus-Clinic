@@ -8,10 +8,9 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Book a consultation</h1>
-        <p class="page-subtitle">Tell us when suits you. We'll confirm your time on WhatsApp, usually within a few hours.</p>
+        <p class="page-subtitle">Clinic consultation today? You get a queue number straight away. Anything else, we confirm your time on WhatsApp.</p>
     </div>
 </div>
-{% include 'kiosk/_book_switch.html' with active='book' %}
 
 <div class="row g-4">
     <div class="col-lg-8">
@@ -23,7 +22,13 @@
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.service %}</div>
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_doctor %}</div>
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.preferred_date %}</div>
-                <div class="col-12">
+                <div class="col-12" id="queue-note" hidden>
+                    <div class="alert {% if queue_open %}alert-success{% else %}alert-warning{% endif %} d-flex gap-2 mb-0">
+                        <i class="bi bi-ticket-perforated fs-5"></i>
+                        <div>{% if queue_open %}<strong>You'll get a queue number right away.</strong> Follow the queue on your phone, and check in at the kiosk or front desk when you arrive. Your place is kept.{% else %}<strong>No doctors are on duty right now,</strong> so we cannot give a queue number for today. Please choose another day.{% endif %}</div>
+                    </div>
+                </div>
+                <div class="col-12" id="time-field">
                     <span class="form-label fw-semibold d-block">{{ form.preferred_time.label }} <span class="text-danger" aria-hidden="true">*</span></span>
                     <div class="choice-group" role="radiogroup" aria-label="{{ form.preferred_time.label }}">
                         {% for radio in form.preferred_time %}{{ radio.tag }}<label for="{{ radio.id_for_label }}"><i class="bi {% if forloop.counter == 1 %}bi-sunrise{% elif forloop.counter == 2 %}bi-sun{% else %}bi-sunset{% endif %}"></i> {{ radio.choice_label }}</label>{% endfor %}
@@ -38,6 +43,7 @@
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.name %}</div>
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.phone %}</div>
                 <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.email %}</div>
+                <div class="col-md-6" id="patient-id-field" hidden>{% include 'kiosk/_field.html' with field=form.patient_id %}</div>
                 <div class="d-none" aria-hidden="true">{{ form.website }}</div>
                 <div class="col-12">
                     <div class="form-check">
@@ -48,7 +54,7 @@
                 </div>
             </div>
             <div class="d-flex justify-content-end mt-4">
-                <button class="btn btn-primary btn-lg btn-icon"><i class="bi bi-send"></i> Send booking request</button>
+                <button class="btn btn-primary btn-lg btn-icon" id="submit-btn"><i class="bi bi-send"></i> <span>Send booking request</span></button>
             </div>
         </form>
     </div>
@@ -56,7 +62,8 @@
         <aside class="surface booking-aside">
             <h2 class="section-title"><i class="bi bi-info-circle"></i> What happens next</h2>
             <ol class="small text-muted ps-3 mb-3">
-                <li class="mb-2">We check the doctor's schedule and message you on WhatsApp to confirm a time.</li>
+                <li class="mb-2"><strong>Clinic consultation today:</strong> you get a queue number at once. Check in at the kiosk (<em>I took a queue number online</em>) or the front desk when you arrive.</li>
+                <li class="mb-2"><strong>Other days and services:</strong> we check the doctor's schedule and message you on WhatsApp to confirm a time.</li>
                 <li class="mb-2">On the day, check in at the kiosk: it measures your weight and blood pressure.</li>
                 <li>Your number appears on the screen when your doctor is ready.</li>
             </ol>
@@ -64,4 +71,29 @@
         </aside>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// A clinic consultation for today is a queue number, not a booking request.
+(function () {
+    const QUEUE_SERVICE = "{{ queue_service|default:'' }}";
+    const TODAY = "{{ today }}";
+    const service = document.getElementById("{{ form.service.id_for_label }}");
+    const date = document.getElementById("{{ form.preferred_date.id_for_label }}");
+    const submit = document.getElementById("submit-btn");
+    function update() {
+        if (service.value === QUEUE_SERVICE && !date.value) date.value = TODAY;
+        const queueToday = QUEUE_SERVICE !== "" && service.value === QUEUE_SERVICE && date.value === TODAY;
+        document.getElementById("queue-note").hidden = !queueToday;
+        document.getElementById("time-field").hidden = queueToday;
+        document.getElementById("patient-id-field").hidden = !queueToday;
+        submit.querySelector("i").className = queueToday ? "bi bi-ticket-perforated" : "bi bi-send";
+        submit.querySelector("span").textContent = queueToday ? "Get my queue number" : "Send booking request";
+    }
+    service.addEventListener("change", update);
+    date.addEventListener("change", update);
+    update();
+})();
+</script>
 {% endblock %}

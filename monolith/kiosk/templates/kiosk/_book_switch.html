@@ -1,9 +1,0 @@
-{# Two ways to see a doctor: a queue number for today, or a booking request for another day. #}
-<div class="book-switch" role="tablist" aria-label="How do you want to come in?">
-    <a role="tab" class="{% if active == 'queue' %}active{% endif %}" aria-selected="{% if active == 'queue' %}true{% else %}false{% endif %}" href="{% url 'kiosk:queue-ticket' %}">
-        <i class="bi bi-ticket-perforated"></i><span><strong>Queue number today</strong><small>Take a number now, check in when you arrive</small></span>
-    </a>
-    <a role="tab" class="{% if active == 'book' %}active{% endif %}" aria-selected="{% if active == 'book' %}true{% else %}false{% endif %}" href="{% url 'kiosk:book' %}">
-        <i class="bi bi-calendar2-plus"></i><span><strong>Book another day</strong><small>We confirm your time on WhatsApp</small></span>
-    </a>
-</div>

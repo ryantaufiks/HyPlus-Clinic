@@ -8,7 +8,7 @@ urlpatterns = [
     # Public website
     path("", website_views.LandingView.as_view(), name="landing"),
     path("book/", website_views.BookingView.as_view(), name="book"),
-    path("queue/", website_views.QueueTicketView.as_view(), name="queue-ticket"),
+    path("queue/", website_views.queue_ticket_redirect, name="queue-ticket"),
     path("bookings/", website_views.BookingListView.as_view(), name="bookings"),
     path("bookings/<int:pk>/", website_views.BookingUpdateView.as_view(), name="booking-update"),
     path("reviews/", website_views.ReviewModerationView.as_view(), name="reviews"),

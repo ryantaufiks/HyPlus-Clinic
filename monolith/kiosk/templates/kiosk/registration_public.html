@@ -40,7 +40,7 @@
         <div class="text-muted small"><i class="bi bi-person-vcard"></i> {% if visit.requested_doctor %}{{ visit.requested_doctor.get_full_name|default:visit.requested_doctor.get_username }}{% else %}First available doctor{% endif %}</div>
         <div id="live-status" class="status status-info fs-6 my-2" aria-live="polite">Checking your status…</div>
         <div id="checkin-hint" class="alert alert-warning text-start small my-2 {% if visit.is_checked_in %}d-none{% endif %}">
-            <strong><i class="bi bi-geo-alt"></i> Check in when you arrive</strong> to be called: at the kiosk choose <strong>Online ticket</strong> and enter <strong>{{ visit.queue_number }}</strong> and the last 4 digits of your WhatsApp number, or show this QR code at the front desk. Your place in the queue is kept.
+            <strong><i class="bi bi-geo-alt"></i> Check in when you arrive</strong> to be called: at the kiosk tap <strong>I took a queue number online</strong> and enter <strong>{{ visit.queue_number }}</strong> and the last 4 digits of your WhatsApp number, or show this QR code at the front desk. Your place in the queue is kept.
         </div>
         <div><img src="{% url 'kiosk:visit-qr' visit.token %}" alt="Ticket QR code" width="200" height="200" class="qr-box p-2 mt-2" /></div>
         <p class="text-muted small mt-2 mb-2">Show this code at the consulting-room door when your number is called.</p>
