@@ -32,3 +32,6 @@ android/
 Thumbs.db
 .vscode/
 .idea/
+
+# Database backups
+backups/

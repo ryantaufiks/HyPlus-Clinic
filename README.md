@@ -4,358 +4,87 @@
 
 Before a patient sees the doctor, a nurse usually measures their vital signs, writes them down, and passes the notes on to the doctor. AIVIN takes over this intake step: an AI voice assistant guides the patient, Bluetooth medical devices take the measurements, everything is recorded automatically, and the doctor receives the results ready for further examination. The goal is to **reduce nurse workload**, not to replace nurses.
 
-## 🎯 Overview
+## Features
 
-AIVIN is a full-stack monolithic application designed to run on tablets in kiosk mode. It provides:
-- AI-powered voice interaction for patient guidance
-- Bluetooth integration with Omron medical devices
-- Automated queue management with QR codes
-- Real-time dashboard and analytics
-- Complete patient record management
+- Voice-guided patient intake (Web Speech API)
+- Omron Bluetooth scale and blood-pressure monitor integration (Web Bluetooth)
+- Queue tickets with QR codes; doctors scan the QR to open the patient's results
+- Staff dashboard, patient records and measurement history (login required)
+- Admin-managed system settings, with the OpenAI API key stored encrypted
 
-## ✨ Key Features
+## Architecture
 
-- **Voice-Guided Interface**: Web Speech API for natural voice interaction
-- **Bluetooth Device Integration**: Direct connection to Omron scales and BP monitors
-- **Queue Management**: Automatic queue number generation with QR codes
-- **Patient Management**: Complete CRUD operations with search and filtering
-- **Real-Time Dashboard**: Statistics and recent activity monitoring
-- **QR Code Scanner**: Camera-based and manual QR code scanning
-- **Health Assessments**: Automatic health status indicators based on measurements
-- **Responsive Design**: Modern glassmorphism UI optimized for tablets
-- **Print Support**: Print-friendly ticket layouts
-
-## 🏗️ Architecture
-
-**Monolithic Design**: Single Django application combining frontend and backend
-- **Backend**: Django 5.2.9 with REST API
-- **Frontend**: Server-side rendered templates with Bootstrap 5.3
-- **Database**: SQLite (development) / PostgreSQL (production ready)
-- **Voice**: Web Speech API (STT & TTS)
-- **Bluetooth**: Web Bluetooth API
-- **QR Codes**: QRCode.js library
-
-## 📁 Project Structure
+| Component | Technology |
+|---|---|
+| App | Django 5.2 served by Gunicorn, static files by WhiteNoise |
+| Database | PostgreSQL 16 |
+| Runtime | Docker Compose (`aivin` project), app port bound to `127.0.0.1` only |
+| Public access | Cloudflare Tunnel (`cloudflared`) terminates HTTPS |
+| Android | Capacitor wrapper that loads the hosted app |
 
 ```
-AI_Nurse/
-├── monolith/                  # Main application directory
-│   ├── kiosk/                # Django app
-│   │   ├── models.py         # Patient, Measurement, QueueTicket models
-│   │   ├── views.py          # API endpoints and web views
-│   │   ├── urls.py           # URL routing
-│   │   ├── admin.py          # Admin panel configuration
-│   │   └── templates/        # HTML templates
-│   │       └── kiosk/
-│   │           ├── base.html              # Base template
-│   │           ├── home.html              # Main kiosk interface
-│   │           ├── dashboard.html         # Statistics dashboard
-│   │           ├── patient_list.html      # Patient listing
-│   │           ├── patient_detail.html    # Patient details
-│   │           ├── qr_scanner.html        # QR code scanner
-│   │           └── queue_ticket.html      # Ticket details
-│   ├── health_kiosk/         # Django project settings
-│   ├── manage.py             # Django management script
-│   ├── start.py              # Quick start script
-│   ├── db.sqlite3            # SQLite database
-│   ├── README.md             # Detailed setup guide
-│   └── UPDATES.md            # Latest updates and fixes
-├── docs/                     # Additional documentation
-└── README.md                 # This file
+Browser / tablet ──HTTPS──> Cloudflare ──tunnel──> cloudflared (host) ──> 127.0.0.1:8010 ──> web (Gunicorn) ──> db (PostgreSQL)
 ```
 
-### 🔑 Configure secrets (required)
+Who can see what:
 
-Secrets are read from `monolith/.env`, which is **not** committed to git. Before the first run:
+- **Public:** the kiosk screen (`/`) and its intake API. The API is CSRF-protected and rate-limited.
+- **Login required:** dashboard, patients, QR scanner and tickets.
+- **Superuser only:** Admin → System settings.
+
+## Deploying on Debian
+
+Requirements: Docker Engine with the Compose plugin, `make`, `python3`, and a running Cloudflare Tunnel.
 
 ```bash
 cd monolith
-copy .env.example .env      # Windows (use `cp` on Linux/macOS)
+make init-env          # creates .env with generated SECRET_KEY, FIELD_ENCRYPTION_KEY and DB password
+make up                # builds the image, starts db + web, runs migrations
+make createsuperuser   # first administrator account (interactive)
 ```
 
-Then edit `monolith/.env` and set at least `SECRET_KEY` (generate one with
-`python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`)
-and, if you use AI features, `OPENAI_API_KEY`.
+Then, in the Cloudflare Zero Trust dashboard, add a public hostname to the tunnel (for example `aivin.sc2platform.biz.id`) pointing to `http://localhost:8010`. The hostname must be listed in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in `.env`. Run `make restart` after editing `.env`.
 
-## 🚀 Quick Start (Windows)
+Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{"status": "ok"}`.
 
-### ⚡ Easiest Method - Just Double Click!
+## Secrets and configuration
 
-**For Windows users, we provide ready-to-use batch files:**
+| Secret | Where it lives | How to change it |
+|---|---|---|
+| OpenAI API key | Database, Fernet-encrypted | **Admin → System settings**. The field is write-only: the stored key is never shown again, only a hint like `sk-…abcd`. |
+| `SECRET_KEY` | `monolith/.env` (mode 600) | Generated by `make init-env`. Edit `.env` and run `make restart`. This signs everyone out. |
+| `FIELD_ENCRYPTION_KEY` | `monolith/.env` | Generated by `make init-env`. **Back it up.** If it is lost or changed, stored secrets cannot be decrypted and must be entered again. |
+| Database password | `monolith/.env` | Generated by `make init-env`. |
 
-1. **Double-click `quick_start.bat`** in the `AI_Nurse` folder
-   - Server starts automatically on port 8001
-   - Browser opens automatically
-   - That's it! 🎉
+`SECRET_KEY` and `FIELD_ENCRYPTION_KEY` deliberately cannot be edited from the web UI. Django needs them before it can read the database, and changing them from a web form would let one compromised admin session lock out or sign out everyone.
 
-**Alternative scripts:**
-- `autorun.bat` - With auto-migration and detailed info
-- `autorun_advanced.bat` - Full menu with management tools
-- `stop_server.bat` - Stop running server
+Application code reads the OpenAI key with `kiosk.models.get_openai_api_key()`.
 
-📖 **See [AUTORUN_GUIDE.md](AUTORUN_GUIDE.md) for detailed instructions**
+All other settings are documented in [`monolith/.env.example`](monolith/.env.example).
 
----
+## Operations
 
-## 🚀 Quick Start (Manual Setup)
+Run these commands from `monolith/`:
 
-### Prerequisites
+| Command | What it does |
+|---|---|
+| `make ps` / `make logs` | Container status and app logs |
+| `make up` | Rebuild and redeploy after pulling new code (migrations run automatically) |
+| `make backup` | Write a gzipped `pg_dump` to `monolith/backups/` (git-ignored) |
+| `make restore FILE=backups/<file>.sql.gz` | Restore a dump |
+| `make down` | Stop the stack. Data is kept in the `aivin_pgdata` volume. |
 
-- Python 3.8 or higher
-- Modern web browser (Chrome or Edge recommended)
-- Bluetooth-enabled device (for real device testing)
+Schedule `make backup` (for example a daily cron job), and copy the backups and `.env` off the server.
 
-### Installation
+## Development
 
-1. **Navigate to the monolith directory**:
-   ```bash
-   cd AI_Nurse/monolith
-   ```
-
-2. **Run the quick start script**:
-   ```bash
-   python start.py
-   ```
-
-   This script will automatically:
-   - Check Python version
-   - Create virtual environment
-   - Install dependencies
-   - Run database migrations
-   - Create superuser (admin/admin123)
-   - Start the development server
-
-3. **Access the application**:
-   - Kiosk Interface: http://127.0.0.1:8000/
-   - Dashboard: http://127.0.0.1:8000/dashboard/
-   - Patient List: http://127.0.0.1:8000/patients/
-   - QR Scanner: http://127.0.0.1:8000/scanner/
-   - Admin Panel: http://127.0.0.1:8000/admin/
-
-### Default Credentials
-
-- **Username**: `admin`
-- **Password**: `admin123`
-
-## 🎮 User Guide
-
-### For Patients (Kiosk Interface)
-
-1. Click "Start Health Check"
-2. Speak your full name when prompted
-3. Describe your symptoms when asked
-4. Follow instructions for weight measurement
-5. Follow instructions for blood pressure measurement
-6. Receive your queue number and QR code
-
-### For Healthcare Staff
-
-#### Dashboard
-- View real-time statistics
-- Monitor recent patients
-- Track active queue tickets
-- Access quick actions
-
-#### Patient Management
-- Search and filter patients
-- View complete patient records
-- See measurement history
-- Access health assessments
-
-#### QR Scanner
-- Scan patient QR codes with camera
-- Manual QR code entry option
-- Instant patient data access
-- Print ticket functionality
-
-## 🔧 Technical Details
-
-### API Endpoints
-
-- `POST /api/patients/` - Create new patient
-- `POST /api/measurements/` - Save measurements
-- `POST /api/queue/generate/` - Generate queue ticket
-- `GET /patients/` - List all patients
-- `GET /patients/<id>/` - Patient details
-- `GET /ticket/<uuid>/` - Ticket details
-
-### Device Integration
-
-**Weight Scale (Omron)**
-- Service UUID: `0000181d-0000-1000-8000-00805f9b34fb`
-- Characteristic: `00002a9d-0000-1000-8000-00805f9b34fb`
-- Data format: IEEE 11073 (weight in kg)
-
-**Blood Pressure Monitor (Omron)**
-- Service UUID: `00001810-0000-1000-8000-00805f9b34fb`
-- Characteristic: `00002a35-0000-1000-8000-00805f9b34fb`
-- Data format: IEEE 11073 (systolic/diastolic/pulse)
-
-### Browser Compatibility
-
-| Feature | Chrome/Edge | Firefox | Safari |
-|---------|-------------|---------|--------|
-| Voice Input | ✅ Full | ⚠️ Limited | ⚠️ Limited |
-| Voice Output | ✅ Full | ✅ Full | ✅ Full |
-| Bluetooth | ✅ Full | ❌ None | ❌ None |
-| QR Scanner | ✅ Full | ✅ Full | ✅ Full |
-
-**Recommendation**: Use Chrome or Microsoft Edge for full functionality.
-
-## 🧪 Testing
-
-### Voice Input Testing
 ```bash
-1. Open kiosk in Chrome/Edge
-2. Click "Start Health Check"
-3. Grant microphone permissions
-4. Speak clearly when prompted
-5. Verify both name and symptoms are recorded
+make test        # run the test suite inside the container, against PostgreSQL
 ```
 
-### Bluetooth Device Testing
-```bash
-1. Enable Bluetooth on your device
-2. Power on Omron medical device
-3. Click "Connect to Real [Device]"
-4. Grant Bluetooth permissions
-5. Select device from list
-6. Perform measurement
-7. Verify data appears correctly
-```
+To run without Docker, create a virtualenv, install `monolith/requirements.txt`, set `DEBUG=true` in `.env`, and leave out the `POSTGRES_*` variables so SQLite is used. Then run `python manage.py migrate` and `python manage.py runserver`.
 
-### Simulation Mode
-```bash
-# For testing without actual hardware
-1. Use "Simulate (Test)" buttons
-2. Simulated data will be generated
-3. All API calls function normally
-4. Perfect for development and demos
-```
+## More documentation
 
-## 🔐 Security Notes
-
-- Change default admin credentials in production
-- Use environment variables for sensitive data
-- Enable HTTPS in production (required for Web APIs)
-- Implement rate limiting for API endpoints
-- Regular security updates recommended
-- Follow HIPAA guidelines for patient data
-
-## 📊 Production Deployment
-
-### Prerequisites
-- PostgreSQL database
-- HTTPS certificate
-- Production web server (Gunicorn/uWSGI)
-- Reverse proxy (Nginx/Apache)
-
-### Steps
-1. Update `settings.py`:
-   ```python
-   DEBUG = False
-   ALLOWED_HOSTS = ['your-domain.com']
-   # Configure PostgreSQL
-   # Set SECRET_KEY from environment
-   ```
-
-2. Collect static files:
-   ```bash
-   python manage.py collectstatic
-   ```
-
-3. Use production WSGI server:
-   ```bash
-   gunicorn health_kiosk.wsgi:application
-   ```
-
-4. Configure Nginx as reverse proxy
-5. Set up SSL certificate
-6. Configure firewall rules
-
-## 📚 Documentation
-
-- `monolith/README.md` - Detailed setup and configuration
-- `monolith/UPDATES.md` - Latest updates and bug fixes
-- `docs/` - Additional documentation and guides
-
-## 🐛 Troubleshooting
-
-### Voice recognition not working
-- Ensure using Chrome or Edge
-- Check microphone permissions
-- Verify microphone is working
-- Use HTTPS in production
-
-### Bluetooth connection fails
-- Ensure using Chrome or Edge
-- Check Bluetooth permissions
-- Verify Bluetooth is enabled
-- Ensure device is powered on
-- Check device compatibility
-
-### Database errors
-- Delete `db.sqlite3` and run migrations again
-- Check file permissions
-- Verify SQLite installation
-
-## 🎯 Features Roadmap
-
-- [ ] Patient photo capture
-- [ ] Doctor authentication system
-- [ ] Appointment scheduling
-- [ ] PDF report generation
-- [ ] Multi-language support
-- [ ] Offline mode capability
-- [ ] EMR system integration
-- [ ] SMS/Email notifications
-- [ ] Advanced analytics
-- [ ] Backup and restore
-
-## 🤝 Contributing
-
-This is a proprietary project. For internal development:
-1. Create feature branch
-2. Make changes
-3. Test thoroughly
-4. Submit for review
-
-## 📄 License
-
-Proprietary and Confidential - All Rights Reserved
-
-## 👥 Support
-
-For technical support:
-- Check browser console for errors
-- Review `UPDATES.md` for recent fixes
-- Verify device compatibility
-- Test with simulation mode first
-- Check network connectivity
-
-## 📝 Changelog
-
-### Version 1.1.0 (December 2024)
-- ✅ Fixed voice recording for symptoms
-- ✅ Implemented real Bluetooth device integration
-- ✅ Added patient list and detail pages
-- ✅ Created QR scanner with camera support
-- ✅ Added queue ticket detail page with health assessments
-- ✅ Improved UI/UX with glassmorphism design
-- ✅ Added dual mode (Real device + Simulation)
-- ✅ Enhanced voice feedback and error handling
-
-### Version 1.0.0 (December 2024)
-- Initial monolithic application release
-- Basic patient management
-- Voice-guided interface
-- Queue system with QR codes
-- Dashboard and admin panel
-
----
-
-**Version**: 1.1.0  
-**Last Updated**: December 2024  
-**Status**: Production Ready  
-**Architecture**: Monolithic Django Application  
-**Deployment**: Single Server
+- [docs/device-testing.md](docs/device-testing.md): testing with real Omron Bluetooth devices
+- [docs/legacy/](docs/legacy/): notes from the earlier Windows-based setup. They are kept for reference and are not maintained.

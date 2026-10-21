@@ -1,29 +1,30 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+RUN groupadd --system aivin && useradd --system --gid aivin --home /app aivin
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Copy project
-COPY . .
+COPY --chown=aivin:aivin . .
 
-# Create logs directory
-RUN mkdir -p logs
+# collectstatic needs settings to import; these build-time values are not used at runtime.
+RUN SECRET_KEY=build-only FIELD_ENCRYPTION_KEY=$(python -c "import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())") \
+    python manage.py collectstatic --noinput \
+    && chown -R aivin:aivin /app/staticfiles
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || true
+USER aivin
 
-EXPOSE 8001
+EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8001", "--workers", "3", "health_kiosk.wsgi:application"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=4).status == 200 else 1)"
+
+ENTRYPOINT ["/app/docker/entrypoint.sh"]
+CMD ["gunicorn", "--config", "docker/gunicorn.conf.py", "health_kiosk.wsgi:application"]
