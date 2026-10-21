@@ -54,11 +54,13 @@ Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. Th
 
 The protocol implementation is vendored from [eigger/hass-omron](https://github.com/eigger/hass-omron) (MIT). Its HN-300T2 support is marked beta upstream.
 
-One-time pairing per device, from `monolith/`:
+Pair each device once, from **Devices** in the navbar (staff login):
 
-1. Remove the device from the OMRON connect app / phone Bluetooth settings first. A monitor talks to one host at a time.
-2. Hold the device's Bluetooth button until `-P-` blinks, then run `make devices-scan` to find its address.
-3. While `-P-` is still blinking, run `make devices-pair ADDRESS=<address> MODEL=HEM-6232T` (or `MODEL=HN-300T2`). The device shows `OK` when it worked.
+1. Remove the device from the OMRON connect app / phone Bluetooth settings first. A device talks to one host at a time.
+2. Hold the device's Bluetooth button until `-P-` blinks, click **Scan**, choose the model and click **Pair**. The device shows `OK` when it worked.
+3. Use **Test connection** (press the device's Bluetooth button first to wake it). It reads the latest stored measurement without saving it to any patient.
+
+The same is available from the terminal: `make devices-scan`, `make devices-pair ADDRESS=... MODEL=HEM-6232T`, `make devices-list`.
 
 During a check-in, the kiosk's weight and blood-pressure steps wait for the device and show the result automatically. Readings are only accepted if the device timestamp is after the step started; the gateway keeps the device clocks in sync. Check the gateway with `make gateway-logs`.
 
