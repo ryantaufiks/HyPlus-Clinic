@@ -58,9 +58,38 @@ class DisplayDataView(View):
                 "in_progress": [
                     {"queue_number": v.queue_number, "room": v.room, "doctor": _doctor_name(v.doctor)} for v in in_progress
                 ],
+                "rooms": _rooms(called, in_progress),
                 "waiting": [v.queue_number for v in queue.waiting_in_order()],
             }
         )
+
+
+def _rooms(called, in_progress):
+    """One row per on-duty doctor (even when free), plus any other room with a patient."""
+    active = {}
+    for visit in list(called) + list(in_progress):  # in progress wins over called
+        active[visit.doctor_id] = visit
+    rows, shown = [], set()
+    for doctor, room in queue.doctors_on_duty():
+        visit = active.get(doctor.pk)
+        rows.append(_room_row(room, doctor, visit))
+        shown.add(doctor.pk)
+    for doctor_id, visit in active.items():
+        if doctor_id not in shown:
+            rows.append(_room_row(visit.room, visit.doctor, visit))
+    return rows
+
+
+def _room_row(room, doctor, visit):
+    state = "available"
+    if visit is not None:
+        state = "in_progress" if visit.status == Visit.IN_CONSULTATION else "called"
+    return {
+        "room": room,
+        "doctor": _doctor_name(doctor),
+        "state": state,
+        "queue_number": visit.queue_number if visit else "",
+    }
 
 
 # --- Calling patients (doctors) --------------------------------------------------------
@@ -74,6 +103,16 @@ class DoctorActionMixin(LoginRequiredMixin, UserPassesTestMixin):
         if request.POST.get("next") == "queue" or visit is None:
             return redirect("kiosk:doctor-queue")
         return redirect("kiosk:visit-detail", visit.pk)
+
+
+class DutyView(DoctorActionMixin, View):
+    """A doctor marks themselves on or off duty (shown on the TV)."""
+
+    def post(self, request):
+        on_duty = request.POST.get("on_duty") == "1"
+        queue.set_on_duty(request.user, on_duty)
+        messages.info(request, "You are on duty." if on_duty else "You are off duty and no longer shown on the TV.")
+        return redirect("kiosk:doctor-queue")
 
 
 class CallNextView(DoctorActionMixin, View):

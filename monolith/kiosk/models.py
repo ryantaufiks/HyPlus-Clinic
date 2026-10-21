@@ -164,6 +164,8 @@ class StaffProfile(models.Model):
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     room = models.CharField("Consulting room", max_length=40, blank=True, help_text="Shown on the waiting-room TV, e.g. Room 1")
+    # Doctors on duty (with a room) are listed on the TV, even when their room is free.
+    on_duty = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.user} ({self.room or 'no room'})"

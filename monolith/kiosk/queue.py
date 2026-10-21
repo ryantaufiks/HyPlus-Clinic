@@ -4,10 +4,13 @@ All status changes go through these functions so the doctor's screen, the
 access-control tablet and the waiting-room TV always agree.
 """
 
+import re
+
 from django.db import transaction
 from django.utils import timezone
 
 from .models import AuditEvent, StaffProfile, Visit
+from .roles import is_doctor
 from .vitals import bp_category
 
 
@@ -31,8 +34,25 @@ def waiting_in_order():
     return sorted(visits, key=lambda v: (not urgent(v), v.queue_number))
 
 
+def doctors_on_duty():
+    """(doctor, room) for every active doctor who is on duty and has a room, by room name."""
+    profiles = StaffProfile.objects.filter(on_duty=True, user__is_active=True).exclude(room="").select_related("user")
+    pairs = [(p.user, p.room) for p in profiles if is_doctor(p.user)]
+    return sorted(pairs, key=lambda pair: (_natural(pair[1]), pair[0].get_full_name()))
+
+
+def _natural(text):
+    """'Room 2' before 'Room 10'."""
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", text)]
+
+
+def set_on_duty(user, on_duty):
+    StaffProfile.objects.update_or_create(user=user, defaults={"on_duty": on_duty})
+
+
 def call(visit, doctor):
     """Call a waiting patient to the doctor's room (or call them again)."""
+    set_on_duty(doctor, True)
     with transaction.atomic():
         visit = Visit.objects.select_for_update().get(pk=visit.pk)
         if visit.status not in (Visit.WAITING, Visit.CALLED):

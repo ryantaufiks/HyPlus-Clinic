@@ -39,6 +39,12 @@
         .tag { font-size: 1.8vh; font-weight: 700; border-radius: 99px; padding: 0.4vh 1.2vh; margin-left: 1vh; vertical-align: middle; }
         .tag.called { background: var(--aivin-warning); color: #3d2a00; }
         .tag.progress { background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
+        .tag.available { background: var(--aivin-good-soft); color: var(--aivin-good-ink); }
+        .row-item .room-name { font-size: 3.6vh; font-weight: 750; color: var(--aivin-ink); }
+        .row-item .room-name small { display: block; font-size: 2vh; color: var(--aivin-muted); font-weight: 500; }
+        .row-item .state { text-align: right; }
+        .row-item .state .num { display: block; }
+        .row-item.available .state { font-size: 2.6vh; }
         .waiting { background: var(--aivin-surface); }
         .chips { display: flex; flex-wrap: wrap; gap: 1.4vh; }
         .chip { font-size: 4.2vh; font-weight: 750; font-variant-numeric: tabular-nums; padding: 0.8vh 2.4vh; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); }
@@ -126,17 +132,17 @@ function render(data) {
         ? `<div class="number">${esc(latest.queue_number)}</div><div class="room"><i class="bi bi-arrow-right-circle"></i> ${esc(latest.room)}</div>${latest.doctor ? `<div class="doctor">${esc(latest.doctor)}</div>` : ""}`
         : `<div class="idle">Waiting for the next call…</div>`;
 
-    const rows = [
-        ...data.called.map((c) => ({ ...c, kind: "called" })),
-        ...data.in_progress.map((c) => ({ ...c, kind: "progress" })),
-    ];
-    document.getElementById("rooms").innerHTML = rows.length
-        ? rows.map((r) => `
-            <div class="row-item ${r.kind === "called" ? "called" : ""}">
-                <span class="num">${esc(r.queue_number)}<span class="tag ${r.kind}">${r.kind === "called" ? "Called" : "In progress"}</span></span>
-                <span class="where">${esc(r.room)}${r.doctor ? `<small>${esc(r.doctor)}</small>` : ""}</span>
-            </div>`).join("")
-        : `<div class="muted-line">No patients in the consulting rooms.</div>`;
+    const LABELS = { in_progress: ["progress", "In progress"], called: ["called", "Called"], available: ["available", "Available"] };
+    document.getElementById("rooms").innerHTML = data.rooms.length
+        ? data.rooms.map((r) => {
+            const [cls, label] = LABELS[r.state];
+            return `
+            <div class="row-item ${r.state === "called" ? "called" : ""} ${r.state === "available" ? "available" : ""}">
+                <span class="room-name">${esc(r.room)}${r.doctor ? `<small>${esc(r.doctor)}</small>` : ""}</span>
+                <span class="state">${r.queue_number ? `<span class="num">${esc(r.queue_number)}</span>` : ""}<span class="tag ${cls}">${label}</span></span>
+            </div>`;
+        }).join("")
+        : `<div class="muted-line">No doctors on duty.</div>`;
 
     document.getElementById("waiting").innerHTML = data.waiting.length
         ? data.waiting.map((n) => `<span class="chip">${esc(n)}</span>`).join("")

@@ -174,6 +174,46 @@ class CancelVisitTest(TestCase):
         self.assertNotContains(self.client.get(reverse("kiosk:visit-detail", args=[self.visit.pk])), "Cancel visit")
 
 
+class DisplayRoomsTest(TestCase):
+    def setUp(self):
+        today = timezone.localdate()
+        self.budi = user_with_role("budi", "doctor", room="Room 10")
+        self.siti = user_with_role("siti", "doctor", room="Room 2")
+        self.away = user_with_role("away", "doctor", room="Room 3")
+        StaffProfile.objects.filter(user=self.away).update(on_duty=False)
+        user_with_role("noroom", "doctor")
+        user_with_role("nurse", "nurse", room="Triage")
+        self.visit = Visit.objects.create(patient=Patient.objects.create(name="Ryan"), reason="r", queue_date=today, queue_number="A001")
+
+    def rooms(self):
+        return self.client.get(reverse("kiosk:display-data")).json()["rooms"]
+
+    def test_all_on_duty_rooms_in_natural_order(self):
+        self.assertEqual(
+            [(r["room"], r["doctor"], r["state"]) for r in self.rooms()],
+            [("Room 2", "Siti", "available"), ("Room 10", "Budi", "available")],
+        )
+
+    def test_room_states_follow_the_patient(self):
+        queue.call(self.visit, self.budi)
+        self.assertEqual([(r["room"], r["state"], r["queue_number"]) for r in self.rooms()][1], ("Room 10", "called", "A001"))
+        queue.admit(str(self.visit.token), None)
+        self.assertEqual(self.rooms()[1]["state"], "in_progress")
+
+    def test_duty_toggle_and_calling_puts_doctor_on_duty(self):
+        self.client.force_login(self.siti)
+        self.client.post(reverse("kiosk:doctor-duty"), {"on_duty": "0"})
+        self.assertEqual([r["room"] for r in self.rooms()], ["Room 10"])
+        self.assertContains(self.client.get(reverse("kiosk:doctor-queue")), "Off duty")
+        queue.call(self.visit, self.siti)
+        self.assertEqual([r["room"] for r in self.rooms()], ["Room 2", "Room 10"])
+
+    def test_off_duty_doctor_with_patient_still_shown(self):
+        queue.call(self.visit, self.budi)
+        StaffProfile.objects.filter(user=self.budi).update(on_duty=False)
+        self.assertIn(("Room 10", "called"), [(r["room"], r["state"]) for r in self.rooms()])
+
+
 class StaffRoomTest(TestCase):
     def test_doctor_needs_room(self):
         self.client.force_login(get_user_model().objects.create_superuser("admin", password="a-long-password-123"))

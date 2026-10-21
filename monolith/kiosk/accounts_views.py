@@ -67,6 +67,7 @@ class StaffListView(AdminRequiredMixin, TemplateView):
                 "user": u,
                 "role": ROLE_LABELS[role_of(u)],
                 "room": getattr(getattr(u, "profile", None), "room", ""),
+                "on_duty": getattr(getattr(u, "profile", None), "on_duty", True),
                 "activated": u.has_usable_password(),
             }
             for u in users

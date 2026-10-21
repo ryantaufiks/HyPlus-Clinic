@@ -266,6 +266,9 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
         )
         context["is_doctor"] = is_doctor(user)
         context["room"] = StaffProfile.room_for(user)
+        profile = StaffProfile.objects.filter(user=user).first()
+        context["on_duty"] = profile.on_duty if profile else True
+        context["has_room"] = bool(profile and profile.room)
         return context
 
 

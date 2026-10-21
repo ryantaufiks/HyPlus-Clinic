@@ -20,7 +20,7 @@
                 <tr class="{% if not m.user.is_active %}text-muted{% endif %}">
                     <td class="fw-semibold">{{ m.user.get_full_name|default:"—" }}{% if m.user == user %} <span class="text-muted fw-normal">(you)</span>{% endif %}</td>
                     <td>{{ m.user.username }}</td>
-                    <td><span class="status {% if m.role == 'Doctor' %}status-info{% elif m.role == 'Administrator' %}status-warning{% else %}status-neutral{% endif %}">{{ m.role }}</span>{% if m.room %} <span class="text-muted small">· {{ m.room }}</span>{% endif %}</td>
+                    <td><span class="status {% if m.role == 'Doctor' %}status-info{% elif m.role == 'Administrator' %}status-warning{% else %}status-neutral{% endif %}">{{ m.role }}</span>{% if m.room %} <span class="text-muted small">· {{ m.room }}{% if m.role == 'Doctor' %} · {% if m.on_duty %}on duty{% else %}off duty{% endif %}{% endif %}</span>{% endif %}</td>
                     <td>
                         {% if not m.user.is_active %}<span class="status status-neutral"><i class="bi bi-slash-circle"></i>Deactivated</span>
                         {% elif not m.activated %}<span class="status status-warning"><i class="bi bi-hourglass"></i>Waiting for setup</span>
