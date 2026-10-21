@@ -319,3 +319,18 @@ code { color: var(--aivin-primary-strong); }
     font-weight: 700; font-size: calc(var(--avatar-size, 36px) * 0.4); letter-spacing: 0.02em; user-select: none;
 }
 .with-avatar { display: inline-flex; align-items: center; gap: 0.6rem; }
+
+/* Grouped navigation menus */
+.app-menu { border: 1px solid var(--aivin-border); border-radius: var(--aivin-radius-sm); box-shadow: var(--aivin-shadow); padding: 0.4rem; min-width: 230px; }
+.app-menu .dropdown-item { display: flex; align-items: center; gap: 0.6rem; border-radius: 8px; padding: 0.5rem 0.75rem; color: var(--aivin-ink-2); font-weight: 550; }
+.app-menu .dropdown-item:hover { background: var(--aivin-surface-2); color: var(--aivin-ink); }
+.app-menu .dropdown-item.active, .app-menu .dropdown-item:active { background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
+.app-menu .dropdown-item.text-danger { color: var(--aivin-critical-ink) !important; }
+.app-nav .dropdown-toggle::after { margin-left: 0.1rem; vertical-align: 0.15em; }
+.app-nav .nav-profile { padding: 0.25rem 0.6rem 0.25rem 0.3rem !important; }
+@media (max-width: 991.98px) {
+    .app-nav { padding: 0.5rem 0; }
+    .app-nav .dropdown-menu { box-shadow: none; border: 0; padding-left: 1.2rem; }
+}
+.nav-pills { --bs-nav-pills-link-active-bg: var(--aivin-primary); --bs-nav-link-color: var(--aivin-ink-2); --bs-nav-link-hover-color: var(--aivin-ink); }
+.nav-pills .nav-link { border-radius: 999px; font-weight: 550; }

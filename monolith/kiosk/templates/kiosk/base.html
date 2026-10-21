@@ -89,11 +89,7 @@
                                 </form>
                             </li>
                             {% elif user.is_authenticated %}
-                            {% if user_can.use_kiosk %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'home' %}active{% endif %}" href="{% url 'kiosk:home' %}"><i class="bi bi-display"></i> Kiosk</a>
-                            </li>
-                            {% endif %}
+                            {# Main pages stay visible; the rest is grouped so the bar never overflows. #}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'dashboard' %}active{% endif %}" href="{% url 'kiosk:dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                             </li>
@@ -105,49 +101,51 @@
                                 <a class="nav-link {% if current == 'doctor-queue' or current == 'visit-detail' %}active{% endif %}" href="{% url 'kiosk:doctor-queue' %}"><i class="bi bi-clipboard2-pulse"></i> Consultations</a>
                             </li>
                             {% endif %}
-                            {% if user_can.review_registrations %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'submissions' %}active{% endif %}" href="{% url 'kiosk:submissions' %}"><i class="bi bi-inbox"></i> Registrations{% if pending_submissions %} <span class="badge rounded-pill text-bg-danger">{{ pending_submissions }}</span>{% endif %}</a>
+                            {% if user_can.use_kiosk or user_can.scan_tickets or user_can.review_registrations or user_can.manage_bookings or user_can.moderate_reviews %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle {% if current in front_desk_pages %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-door-open"></i> Front desk{% if front_desk_badge %} <span class="badge rounded-pill text-bg-danger">{{ front_desk_badge }}</span>{% endif %}</a>
+                                <ul class="dropdown-menu dropdown-menu-end app-menu">
+                                    {% if user_can.use_kiosk %}<li><a class="dropdown-item {% if current == 'home' %}active{% endif %}" href="{% url 'kiosk:home' %}"><i class="bi bi-display"></i> Kiosk</a></li>{% endif %}
+                                    {% if user_can.scan_tickets %}<li><a class="dropdown-item {% if current == 'qr-scanner' %}active{% endif %}" href="{% url 'kiosk:qr-scanner' %}"><i class="bi bi-qr-code-scan"></i> Scan ticket</a></li>{% endif %}
+                                    <li><a class="dropdown-item" href="{% url 'kiosk:display' %}" target="_blank"><i class="bi bi-tv"></i> TV display <i class="bi bi-box-arrow-up-right small text-muted ms-auto"></i></a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    {% if user_can.review_registrations %}<li><a class="dropdown-item {% if current == 'submissions' %}active{% endif %}" href="{% url 'kiosk:submissions' %}"><i class="bi bi-inbox"></i> Registrations{% if pending_submissions %}<span class="badge rounded-pill text-bg-danger ms-auto">{{ pending_submissions }}</span>{% endif %}</a></li>{% endif %}
+                                    {% if user_can.manage_bookings %}<li><a class="dropdown-item {% if current == 'bookings' %}active{% endif %}" href="{% url 'kiosk:bookings' %}"><i class="bi bi-calendar2-plus"></i> Bookings{% if new_bookings %}<span class="badge rounded-pill text-bg-danger ms-auto">{{ new_bookings }}</span>{% endif %}</a></li>{% endif %}
+                                    {% if user_can.moderate_reviews %}<li><a class="dropdown-item {% if current == 'reviews' %}active{% endif %}" href="{% url 'kiosk:reviews' %}"><i class="bi bi-star"></i> Reviews{% if pending_reviews %}<span class="badge rounded-pill text-bg-danger ms-auto">{{ pending_reviews }}</span>{% endif %}</a></li>{% endif %}
+                                </ul>
                             </li>
                             {% endif %}
-                            {% if user_can.manage_bookings %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'bookings' %}active{% endif %}" href="{% url 'kiosk:bookings' %}"><i class="bi bi-calendar2-plus"></i> Bookings{% if new_bookings %} <span class="badge rounded-pill text-bg-danger">{{ new_bookings }}</span>{% endif %}</a>
+                            {% if user_can.manage_devices or user_can.manage_staff %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle {% if current in settings_pages %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Settings"><i class="bi bi-gear"></i> <span class="d-lg-none d-xl-inline">Settings</span></a>
+                                <ul class="dropdown-menu dropdown-menu-end app-menu">
+                                    {% if user_can.manage_devices %}<li><a class="dropdown-item {% if current == 'devices' %}active{% endif %}" href="{% url 'kiosk:devices' %}"><i class="bi bi-bluetooth"></i> Devices</a></li>{% endif %}
+                                    {% if user_can.manage_staff %}
+                                    <li><a class="dropdown-item {% if current in settings_pages and current != 'devices' %}active{% endif %}" href="{% url 'kiosk:staff-list' %}"><i class="bi bi-person-badge"></i> Staff accounts</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin:kiosk_service_changelist' %}"><i class="bi bi-tags"></i> Services &amp; prices</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="bi bi-sliders"></i> Admin panel</a></li>
+                                    {% endif %}
+                                </ul>
                             </li>
                             {% endif %}
-                            {% if user_can.moderate_reviews %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'reviews' %}active{% endif %}" href="{% url 'kiosk:reviews' %}" title="Reviews"><i class="bi bi-star"></i> <span class="d-lg-none">Reviews</span>{% if pending_reviews %} <span class="badge rounded-pill text-bg-danger">{{ pending_reviews }}</span>{% endif %}</a>
-                            </li>
-                            {% endif %}
-                            {% if user_can.scan_tickets %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'qr-scanner' %}active{% endif %}" href="{% url 'kiosk:qr-scanner' %}" title="Scan ticket"><i class="bi bi-qr-code-scan"></i> <span class="d-lg-none">Scan ticket</span></a>
-                            </li>
-                            {% endif %}
-                            {% if user_can.manage_devices %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'devices' %}active{% endif %}" href="{% url 'kiosk:devices' %}" title="Devices"><i class="bi bi-bluetooth"></i> <span class="d-lg-none">Devices</span></a>
-                            </li>
-                            {% endif %}
-                            {% if user_can.manage_staff %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'staff-list' or current == 'staff-create' or current == 'staff-edit' %}active{% endif %}" href="{% url 'kiosk:staff-list' %}"><i class="bi bi-person-badge"></i> Staff</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'admin:index' %}" title="Admin"><i class="bi bi-gear"></i> <span class="d-lg-none">Admin</span></a>
-                            </li>
-                            {% endif %}
-                            <li class="nav-item">
-                                <a class="nav-link {% if current == 'my-profile' %}active{% endif %}" href="{% url 'kiosk:my-profile' %}" title="My profile">
-                                    {% avatar user 28 %}<span class="small"><span class="fw-semibold">{{ user.get_short_name|default:user.get_username }}</span> · {{ user_role }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <form method="post" action="{% url 'logout' %}" class="m-0">
-                                    {% csrf_token %}
-                                    <button type="submit" class="nav-link btn btn-link" title="Log out"><i class="bi bi-box-arrow-right"></i> <span class="d-lg-none">Log out</span></button>
-                                </form>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle nav-profile {% if current == 'my-profile' %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">{% avatar user 30 %}<span class="d-lg-none">{{ user.get_short_name|default:user.get_username }}</span></a>
+                                <ul class="dropdown-menu dropdown-menu-end app-menu">
+                                    <li class="px-3 py-2">
+                                        <div class="fw-semibold">{{ user.get_full_name|default:user.get_username }}</div>
+                                        <div class="small text-muted">{{ user_role }}</div>
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item {% if current == 'my-profile' %}active{% endif %}" href="{% url 'kiosk:my-profile' %}"><i class="bi bi-person-circle"></i> My profile</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'kiosk:landing' %}"><i class="bi bi-globe2"></i> Website</a></li>
+                                    <li>
+                                        <form method="post" action="{% url 'logout' %}" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right"></i> Log out</button>
+                                        </form>
+                                    </li>
+                                </ul>
                             </li>
                             {% else %}
                             {% if current != 'home' %}
