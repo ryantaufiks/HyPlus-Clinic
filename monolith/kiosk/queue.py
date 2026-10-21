@@ -23,14 +23,19 @@ def todays_queue():
     return Visit.objects.filter(queue_date=timezone.localdate()).exclude(queue_number="")
 
 
-def waiting_in_order(doctor=None):
+def waiting_in_order(doctor=None, arrived_only=True):
     """Waiting visits in calling order: critical blood pressure first, then queue number.
 
     With `doctor`, only the visits in that doctor's line: patients who chose
     them, patients who chose the first available doctor, and patients whose
     chosen doctor is no longer on duty (so nobody is left stranded).
+
+    Online tickets keep their number, so they keep their place, but they are
+    only callable (`arrived_only`) once the patient has checked in.
     """
     visits = todays_queue().filter(status=Visit.WAITING)
+    if arrived_only:
+        visits = visits.filter(checked_in_at__isnull=False)
     if doctor is not None:
         on_duty = [d.pk for d, _ in doctors_on_duty()]
         visits = visits.filter(
@@ -78,6 +83,8 @@ def call(visit, doctor):
         visit = Visit.objects.select_for_update().get(pk=visit.pk)
         if visit.status not in (Visit.WAITING, Visit.CALLED):
             raise QueueError(f"{visit.queue_number} is {visit.get_status_display().lower()} and cannot be called.")
+        if not visit.is_checked_in:
+            raise QueueError(f"{visit.queue_number} has not checked in at the clinic yet.")
         recall = visit.status == Visit.CALLED
         visit.status = Visit.CALLED
         visit.doctor = doctor
@@ -99,14 +106,46 @@ def call_next(doctor):
     return None
 
 
+def check_in(visit, actor=None):
+    """An online ticket holder has arrived at the clinic. Returns True if this checked them in."""
+    with transaction.atomic():
+        visit = Visit.objects.select_for_update().get(pk=visit.pk)
+        if visit.is_checked_in or visit.status != Visit.WAITING:
+            return False
+        visit.checked_in_at = timezone.now()
+        visit.save(update_fields=["checked_in_at"])
+        AuditEvent.record(actor, "queue.checked_in", visit=visit)
+    return True
+
+
+def not_arrived(doctor=None):
+    """Online tickets for today whose holders have not checked in yet, by number."""
+    visits = todays_queue().filter(status=Visit.WAITING, checked_in_at__isnull=True).select_related("patient", "requested_doctor")
+    if doctor is not None:
+        on_duty = [d.pk for d, _ in doctors_on_duty()]
+        visits = visits.filter(Q(requested_doctor=doctor) | Q(requested_doctor__isnull=True) | ~Q(requested_doctor__in=on_duty))
+    return list(visits.order_by("queue_number"))
+
+
 def admit(token, actor):
-    """The patient scanned their ticket at the consulting-room door."""
+    """The patient scanned their ticket at the consulting-room door.
+
+    An online ticket that has not been checked in yet is checked in instead
+    (the visit's `just_checked_in` is then True).
+    """
     with transaction.atomic():
         visit = Visit.objects.select_for_update().select_related("patient").filter(token=token).first()
         if visit is None:
             raise QueueError("This is not an AIVIN ticket.")
         if visit.queue_date != timezone.localdate():
             raise QueueError("This ticket is not for today.")
+        visit.just_checked_in = False
+        if visit.status == Visit.WAITING and not visit.is_checked_in:
+            visit.checked_in_at = timezone.now()
+            visit.save(update_fields=["checked_in_at"])
+            AuditEvent.record(actor, "queue.checked_in", visit=visit)
+            visit.just_checked_in = True
+            return visit
         if visit.status == Visit.WAITING:
             raise QueueError(f"{visit.queue_number} has not been called yet. Please wait for your number on the screen.")
         if visit.status == Visit.IN_CONSULTATION:
@@ -154,6 +193,6 @@ def position(visit):
     """
     if visit.status != Visit.WAITING:
         return None
-    order = [v.pk for v in waiting_in_order(chosen_doctor(visit))]
+    order = [v.pk for v in waiting_in_order(chosen_doctor(visit), arrived_only=False)]
     return order.index(visit.pk) if visit.pk in order else None
 

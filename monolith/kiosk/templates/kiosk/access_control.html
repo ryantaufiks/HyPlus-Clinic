@@ -83,7 +83,9 @@ async function check(text) {
             body: JSON.stringify({ token: match[0] }),
         });
         const data = await response.json();
-        if (data.ok) {
+        if (data.ok && data.checked_in) {
+            show(true, `<i class="bi bi-person-check"></i><div class="num mt-2">${esc(data.queue_number)}</div><div class="msg">Checked in. Please take a seat: your number will appear on the screen.</div>`, 5000);
+        } else if (data.ok) {
             show(true, `<i class="bi bi-door-open"></i><div class="num mt-2">${esc(data.queue_number)}</div><div class="msg">Please go in to ${esc(data.room)}${data.doctor ? `<br /><span style="font-weight:500">${esc(data.doctor)}</span>` : ""}</div>`, 5000);
         } else {
             show(false, `<i class="bi bi-hourglass-split"></i><div class="msg mt-3">${esc(data.message)}</div>`, 4500);

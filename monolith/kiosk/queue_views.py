@@ -184,6 +184,20 @@ class CallView(DoctorActionMixin, View):
         return self.back(request, visit)
 
 
+class CheckInView(CapabilityRequiredMixin, View):
+    """Front desk marks an online ticket holder as arrived."""
+
+    capability = "scan_tickets"
+
+    def post(self, request, pk):
+        visit = get_object_or_404(Visit, pk=pk)
+        if queue.check_in(visit, request.user):
+            messages.success(request, f"{visit.queue_number} checked in. They will be called in turn.")
+        if request.POST.get("next") == "queue":
+            return redirect("kiosk:doctor-queue")
+        return redirect("kiosk:visit-detail", visit.pk)
+
+
 class CancelVisitView(CapabilityRequiredMixin, View):
     """Cancel a queued visit with a reason (doctors, nurses, administrators)."""
 
@@ -224,6 +238,8 @@ class AdmitView(CapabilityRequiredMixin, View):
             return JsonResponse({"ok": False, "message": str(exc)}, status=400)
         except (json.JSONDecodeError, ValidationError, ValueError):
             return JsonResponse({"ok": False, "message": "This is not an AIVIN ticket."}, status=400)
+        if visit.just_checked_in:
+            return JsonResponse({"ok": True, "checked_in": True, "queue_number": visit.queue_number})
         return JsonResponse(
             {
                 "ok": True,
@@ -251,6 +267,7 @@ class VisitStatusView(View):
                 "status_label": visit.get_status_display(),
                 "room": visit.room,
                 "ahead": queue.position(visit),
+                "checked_in": visit.is_checked_in,
                 "today": visit.queue_date == timezone.localdate(),
             }
         )

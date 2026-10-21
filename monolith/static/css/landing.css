@@ -193,3 +193,14 @@
     .flow-node { margin-top: 0.85rem; }
 }
 @media (prefers-reduced-motion: reduce) { .flow-dot { display: none; } .flow-merge path { animation: none; } }
+
+/* Queue number today / book another day */
+.book-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1.5rem; }
+.book-switch a { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem 1.1rem; border-radius: var(--aivin-radius); border: 1px solid var(--aivin-border); background: var(--aivin-surface); color: var(--aivin-ink); text-decoration: none; }
+.book-switch a > .bi { font-size: 1.5rem; color: var(--aivin-muted); }
+.book-switch strong { display: block; }
+.book-switch small { display: block; color: var(--aivin-muted); }
+.book-switch a:hover { border-color: rgba(11, 122, 131, 0.4); }
+.book-switch a.active { border: 2px solid var(--aivin-primary); background: var(--aivin-primary-soft); }
+.book-switch a.active > .bi { color: var(--aivin-primary); }
+@media (max-width: 575.98px) { .book-switch { grid-template-columns: 1fr; } }

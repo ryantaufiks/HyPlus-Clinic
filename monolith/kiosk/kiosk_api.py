@@ -129,6 +129,33 @@ class VisitStartView(View):
         return JsonResponse(_visit_json(visit), status=201)
 
 
+@lookup_ratelimit
+class OnlineCheckInView(View):
+    """Check in an online ticket at the kiosk: queue number + last 4 digits of the WhatsApp number."""
+
+    def post(self, request):
+        from .portal_views import whatsapp_number
+
+        data = _body(request) or {}
+        number = normalise_patient_id(data.get("queue_number"))
+        last4 = "".join(c for c in str(data.get("phone_last4", "")) if c.isdigit())
+        visit = None
+        if number and len(last4) == 4:
+            visit = (
+                Visit.objects.select_related("patient", "requested_doctor")
+                .filter(queue_date=timezone.localdate(), queue_number=number, source=Visit.SOURCE_ONLINE, status=Visit.WAITING)
+                .first()
+            )
+            if visit and whatsapp_number(visit.contact_phone)[-4:] != last4:
+                visit = None
+        if visit is None:
+            return JsonResponse(
+                {"error": "We could not find that ticket for today. Check the number and digits, or ask the front desk."}, status=404
+            )
+        queue.check_in(visit)
+        return JsonResponse({**_visit_json(visit), "queue_number": visit.queue_number}, status=200)
+
+
 @kiosk_post_ratelimit
 class VisitFinishView(View):
     """Give the visit its queue number and the QR code for the ticket."""

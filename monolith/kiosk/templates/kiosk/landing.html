@@ -54,7 +54,7 @@
                     <p class="hero-lead" data-rise style="--i: 2">Book your consultation online, get your weight and blood pressure checked in about three minutes at our kiosk, and keep your diagnoses and prescriptions in one place.</p>
                     <div class="d-flex flex-wrap gap-2 mt-4" data-rise style="--i: 3">
                         <a class="btn btn-primary btn-lg btn-icon btn-glow" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
-                        <a class="btn btn-light btn-lg" href="#services">View services</a>
+                        <a class="btn btn-light btn-lg btn-icon" href="{% url 'kiosk:queue-ticket' %}"><i class="bi bi-ticket-perforated"></i> Queue number today</a>
                     </div>
                     {% if from_price is not None %}
                     <p class="hero-price" data-rise style="--i: 4">Services from <strong>SGD {{ from_price|floatformat:"-2" }}</strong> · you see every fee before you book</p>
@@ -112,7 +112,7 @@
             </div>
             <div class="row g-3">
                 {% for s in services %}
-                <div class="col-md-6 col-xl-3">
+                <div class="col-md-6 col-lg-4 col-xl">
                     <article class="service-card spotlight" data-reveal style="--i: {{ forloop.counter0 }}">
                         <span class="service-icon"><i class="bi {{ s.icon }}"></i></span>
                         <h3>{{ s.name }}</h3>
@@ -122,7 +122,10 @@
                             <span class="unit">{{ s.price_unit }}</span>
                             {% if not s.price_confirmed %}<span class="status status-neutral mt-1">Example price</span>{% endif %}
                         </div>
-                        {% if s.is_bookable %}<a class="btn btn-outline-primary w-100" href="{% url 'kiosk:book' %}?service={{ s.slug }}">Book</a>{% endif %}
+                        {% if s.slug == "clinic-consultation" %}
+                        <a class="btn btn-primary w-100 btn-icon justify-content-center" href="{% url 'kiosk:queue-ticket' %}"><i class="bi bi-ticket-perforated"></i> Queue number today</a>
+                        <a class="btn btn-link btn-sm w-100" href="{% url 'kiosk:book' %}?service={{ s.slug }}">or book another day</a>
+                        {% elif s.is_bookable %}<a class="btn btn-outline-primary w-100" href="{% url 'kiosk:book' %}?service={{ s.slug }}">Book</a>{% endif %}
                     </article>
                 </div>
                 {% empty %}
@@ -141,7 +144,7 @@
             </div>
             <div class="flow" role="list" aria-label="How a visit works">
                 <div class="flow-start" role="listitem" data-reveal>
-                    <div class="flow-entry"><i class="bi bi-globe2"></i><div><strong>Book online</strong><span>Confirmed on WhatsApp</span></div></div>
+                    <div class="flow-entry"><i class="bi bi-globe2"></i><div><strong>Queue online</strong><span>Number on your phone</span></div></div>
                     <div class="flow-entry"><i class="bi bi-person-walking"></i><div><strong>Walk in</strong><span>No appointment needed</span></div></div>
                 </div>
                 <div class="flow-merge" aria-hidden="true">
@@ -153,7 +156,7 @@
                     <span class="flow-num">1</span>
                     <span class="flow-icon"><i class="bi bi-display"></i></span>
                     <h3>Check in at the kiosk</h3>
-                    <p>Choose your doctor, step on the scale and measure your blood pressure.</p>
+                    <p>Walk-ins choose a doctor; online tickets just check in. Then the scale and blood pressure.</p>
                     <div class="flow-chips"><span><i class="bi bi-speedometer2"></i> Weight</span><span><i class="bi bi-heart-pulse"></i> Blood pressure</span><span><i class="bi bi-stopwatch"></i> ~3 min</span></div>
                 </div>
                 <div class="flow-link" aria-hidden="true"><span class="flow-dot"></span></div>

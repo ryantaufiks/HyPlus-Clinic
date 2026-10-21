@@ -118,3 +118,14 @@ class ReviewTest(TestCase):
         self.assertEqual(self.review(other).status_code, 404)
         self.review(rating=9)
         self.assertFalse(Review.objects.exists())
+
+
+class BookingChoicesTest(TestCase):
+    def test_booking_only_accepts_listed_doctors_and_services(self):
+        cache.clear()
+        nurse = user_with_role("nurse", "nurse")
+        response = self.client.post(reverse("kiosk:book"), booking_data(preferred_doctor=nurse.pk))
+        self.assertContains(response, "Select a valid choice")
+        Service.objects.filter(slug="video-consultation").update(is_active=False)
+        self.assertContains(self.client.post(reverse("kiosk:book"), booking_data()), "Select a valid choice")
+        self.assertFalse(BookingRequest.objects.exists())

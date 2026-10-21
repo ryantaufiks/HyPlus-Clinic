@@ -1,0 +1,61 @@
+{% extends 'kiosk/base.html' %}
+{% load static %}
+
+{% block title %}Queue number - AIVIN{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/landing.css' %}" />{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">See a doctor today</h1>
+        <p class="page-subtitle">Take a queue number from home and follow the queue on your phone.</p>
+    </div>
+</div>
+{% include 'kiosk/_book_switch.html' with active='queue' %}
+
+{% if not open %}
+<section class="surface text-center">
+    <div class="empty-state"><i class="bi bi-moon-stars"></i><strong>The online queue is closed right now</strong><br />No doctors are on duty at the moment. You can book another day instead.</div>
+    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book another day</a>
+</section>
+{% else %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <form method="post" class="surface" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-warning">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+            <div class="row g-3">
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.doctor %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.patient_id %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.name %}</div>
+                <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.phone %}</div>
+                <div class="col-12">{% include 'kiosk/_field.html' with field=form.reason %}</div>
+                <div class="d-none" aria-hidden="true">{{ form.website }}</div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ form.consent }}
+                        <label class="form-check-label" for="{{ form.consent.id_for_label }}">{{ form.consent.label }}</label>
+                        {% for error in form.consent.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4">
+                <span class="text-muted small"><i class="bi bi-people"></i> {{ waiting_count }} waiting now</span>
+                <button class="btn btn-primary btn-lg btn-icon"><i class="bi bi-ticket-perforated"></i> Get my queue number</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-lg-4">
+        <aside class="surface booking-aside">
+            <h2 class="section-title"><i class="bi bi-info-circle"></i> How it works</h2>
+            <ol class="small text-muted ps-3 mb-3">
+                <li class="mb-2">You get your number and a QR code straight away. Keep the page: it shows your place in the queue.</li>
+                <li class="mb-2">When you arrive, choose <strong>Online ticket</strong> at the kiosk and enter your number and the last 4 digits of your WhatsApp number, or show the QR at the front desk.</li>
+                <li>Your place is kept, but you are only called once you have checked in.</li>
+            </ol>
+            <p class="small text-muted mb-0"><i class="bi bi-exclamation-triangle"></i> For a medical emergency, call your local emergency number or go to the nearest emergency department.</p>
+        </aside>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -49,7 +49,7 @@ const IDLE_RESET_MS = 90000; // back to Welcome after the ticket is shown
 
 const state = {
     step: 0,
-    mode: "new",            // "new" | "returning"
+    mode: "new",            // "new" | "returning" | "online" (ticket taken on the website)
     patientId: "",          // returning: entered ID; after start: the visit's patient ID
     maskedName: "",         // returning: name shown for confirmation
     confirmed: false,       // returning: the patient confirmed the masked name
@@ -289,7 +289,9 @@ function go(step) {
     Voice.stop();
     DeviceReader.stop();
     render();
-    if (step === 1 && state.mode === "new") {
+    if (step === 1 && state.mode === "online") {
+        Voice.say("Please enter your queue number and the last four digits of your WhatsApp number.");
+    } else if (step === 1 && state.mode === "new") {
         Voice.say("Please tell me your full name.");
         setTimeout(() => Voice.listen("name"), 1800);
     } else if (step === 1) {
@@ -302,6 +304,30 @@ function go(step) {
         if (!state.bp) DeviceReader.start("bp", onBloodPressure);
     } else if (step === 4) {
         finish();
+    }
+}
+
+async function checkInOnline(event) {
+    event.preventDefault();
+    if (state.busy) return;
+    const number = document.getElementById("input-queue-number").value.replace(/\s+/g, "").toUpperCase();
+    const last4 = document.getElementById("input-last4").value.replace(/\D/g, "");
+    if (!number || last4.length !== 4) {
+        toast("Enter your queue number and the last 4 digits of your WhatsApp number.", "warning");
+        return;
+    }
+    state.busy = true;
+    try {
+        const visit = await postJson("{% url 'kiosk:api-online-checkin' %}", { queue_number: number, phone_last4: last4 });
+        state.visitToken = visit.token;
+        state.patientId = visit.patient_id;
+        state.name = visit.first_name;
+        Voice.say(`Welcome, ${visit.first_name}. You are checked in. Let's measure your vital signs.`);
+        go(2);
+    } catch (error) {
+        toast(error.message, "warning");
+    } finally {
+        state.busy = false;
     }
 }
 
@@ -555,6 +581,27 @@ function doctorView() {
         </div>`;
 }
 
+function onlineView() {
+    return `
+        <span class="kiosk-icon"><i class="bi bi-ticket-perforated"></i></span>
+        <h2 class="kiosk-title">Check in your online ticket</h2>
+        <p class="kiosk-lead">Enter the queue number on your phone and the last 4 digits of your WhatsApp number.</p>
+        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="checkInOnline(event)" novalidate>
+            <div>
+                <label for="input-queue-number">Queue number</label>
+                <input class="form-control form-control-xl text-center fw-bold" id="input-queue-number" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="A012" style="letter-spacing: 0.2em; font-size: 2rem; text-transform: uppercase" required />
+            </div>
+            <div>
+                <label for="input-last4">Last 4 digits of your WhatsApp number</label>
+                <input class="form-control form-control-xl text-center fw-bold" id="input-last4" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" style="letter-spacing: 0.4em; font-size: 2rem" required />
+            </div>
+            <div class="kiosk-actions justify-content-between">
+                <button type="button" class="btn btn-light btn-xl" onclick="reset()">Back</button>
+                <button type="submit" class="btn btn-primary btn-xl btn-icon">Check in <i class="bi bi-arrow-right"></i></button>
+            </div>
+        </form>`;
+}
+
 const views = {
     0: () => `
         <span class="kiosk-icon"><i class="bi bi-heart-pulse-fill"></i></span>
@@ -564,9 +611,10 @@ const views = {
             <button class="btn btn-primary btn-xl btn-icon" onclick="begin('new')"><i class="bi bi-person-plus"></i> First visit</button>
             <button class="btn btn-outline-primary btn-xl btn-icon" onclick="begin('returning')"><i class="bi bi-person-badge"></i> I have a Patient ID</button>
         </div>
+        <button class="btn btn-light btn-lg btn-icon" onclick="begin('online')"><i class="bi bi-ticket-perforated"></i> I took a queue number online</button>
         <p class="kiosk-hint mb-0"><i class="bi bi-shield-lock"></i> Your results are only shared with the clinic's nurses and doctors.</p>`,
 
-    1: () => state.doctors ? doctorView() : state.mode === "returning" ? returningView() : `
+    1: () => state.doctors ? doctorView() : state.mode === "online" ? onlineView() : state.mode === "returning" ? returningView() : `
         <span class="kiosk-icon"><i class="bi bi-person"></i></span>
         <h2 class="kiosk-title">About you</h2>
         <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answers."}</p>

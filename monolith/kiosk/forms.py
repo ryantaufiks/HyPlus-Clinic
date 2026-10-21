@@ -26,13 +26,20 @@ class BootstrapMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for name, field in self.fields.items():
+        for field in self.fields.values():
             css = "form-select" if isinstance(field.widget, forms.Select) else "form-control"
             if isinstance(field.widget, forms.CheckboxInput):
                 css = "form-check-input"
-            if self.is_bound and name in self.errors:
-                css += " is-invalid"
             field.widget.attrs["class"] = f"{field.widget.attrs.get('class', '')} {css}".strip()
+
+    def full_clean(self):
+        # Validate only when asked, never in __init__: subclasses still adjust
+        # choices and querysets after calling super().__init__().
+        super().full_clean()
+        for name in self.errors:
+            if name in self.fields:
+                widget = self.fields[name].widget
+                widget.attrs["class"] = f"{widget.attrs.get('class', '')} is-invalid".strip()
 
 
 ALLERGY_CHOICES = [("", "Select…"), ("no", "No known drug allergy"), ("yes", "Yes, allergic to a drug")]

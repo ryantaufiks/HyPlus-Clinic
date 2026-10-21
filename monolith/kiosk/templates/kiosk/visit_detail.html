@@ -38,11 +38,15 @@
         <div class="text-end">
             {% if visit.queue_number %}<div class="text-muted small fw-semibold">Queue</div><div class="ticket-number">{{ visit.queue_number }}</div>{% endif %}
             <span class="status {% if visit.status == 'completed' %}status-good{% elif visit.status == 'in_consultation' %}status-info{% elif visit.status == 'called' %}status-warning{% else %}status-neutral{% endif %} mt-2">{{ visit.get_status_display }}{% if visit.room and visit.status != 'waiting' %} · {{ visit.room }}{% endif %}</span>
+            {% if visit.status == 'waiting' and not visit.is_checked_in %}
+            <div class="mt-2"><span class="status status-warning"><i class="bi bi-ticket-perforated"></i>Online ticket · not arrived</span></div>
+            {% if user_can.scan_tickets %}<form method="post" action="{% url 'kiosk:visit-check-in' visit.pk %}" class="mt-2">{% csrf_token %}<button class="btn btn-sm btn-primary btn-icon"><i class="bi bi-person-check"></i> Check in</button></form>{% endif %}
+            {% endif %}
             {% if visit.status == 'waiting' %}<div class="text-muted small mt-1">For {% if visit.requested_doctor %}{{ visit.requested_doctor.get_full_name|default:visit.requested_doctor.get_username }}{% else %}the first available doctor{% endif %}</div>{% endif %}
             {% if user_can.cancel_visits and visit.is_open %}
             <button class="btn btn-sm btn-light btn-icon text-danger mt-2" data-cancel-url="{% url 'kiosk:visit-cancel' visit.pk %}" data-cancel-label="{{ visit.queue_number|default:'this visit' }}"><i class="bi bi-x-circle"></i> Cancel visit</button>
             {% endif %}
-            {% if can_edit and visit.status == 'waiting' or can_edit and visit.status == 'called' %}
+            {% if can_edit and visit.status == 'waiting' and visit.is_checked_in or can_edit and visit.status == 'called' %}
             <form method="post" action="{% url 'kiosk:visit-call' visit.pk %}" class="mt-2">{% csrf_token %}<button class="btn btn-sm btn-outline-primary btn-icon"><i class="bi bi-megaphone"></i> {% if visit.status == 'called' %}Call again{% else %}Call to my room{% endif %}</button></form>
             {% endif %}
         </div>

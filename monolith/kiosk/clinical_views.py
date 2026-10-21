@@ -275,6 +275,7 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
             context["my_line"] = [r for r in waiting_rows if r["line"] is None or r["line"].pk == user.pk]
             others = others.filter(Q(doctor=user) | Q(doctor__isnull=True, requested_doctor=user))
         context["others"] = rows(others.order_by("-called_at", "queue_number"))
+        context["not_arrived"] = queue.not_arrived(user if is_doctor(user) else None)
         context["is_doctor"] = is_doctor(user)
         context["room"] = StaffProfile.room_for(user)
         profile = StaffProfile.objects.filter(user=user).first()

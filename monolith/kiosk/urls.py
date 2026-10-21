@@ -8,6 +8,7 @@ urlpatterns = [
     # Public website
     path("", website_views.LandingView.as_view(), name="landing"),
     path("book/", website_views.BookingView.as_view(), name="book"),
+    path("queue/", website_views.QueueTicketView.as_view(), name="queue-ticket"),
     path("bookings/", website_views.BookingListView.as_view(), name="bookings"),
     path("bookings/<int:pk>/", website_views.BookingUpdateView.as_view(), name="booking-update"),
     path("reviews/", website_views.ReviewModerationView.as_view(), name="reviews"),
@@ -15,6 +16,7 @@ urlpatterns = [
     path("kiosk/", views.HomeView.as_view(), name="home"),
     path("api/kiosk/lookup/", kiosk_api.PatientLookupView.as_view(), name="api-patient-lookup"),
     path("api/kiosk/doctors/", kiosk_api.DoctorChoiceView.as_view(), name="api-doctors"),
+    path("api/kiosk/checkin/", kiosk_api.OnlineCheckInView.as_view(), name="api-online-checkin"),
     path("api/kiosk/visits/", kiosk_api.VisitStartView.as_view(), name="api-visit-start"),
     path("api/kiosk/visits/<uuid:token>/finish/", kiosk_api.VisitFinishView.as_view(), name="api-visit-finish"),
     path(
@@ -94,6 +96,7 @@ urlpatterns = [
     path("doctor/call-next/", queue_views.CallNextView.as_view(), name="call-next"),
     path("doctor/duty/", queue_views.DutyView.as_view(), name="doctor-duty"),
     path("visits/<int:pk>/call/", queue_views.CallView.as_view(), name="visit-call"),
+    path("visits/<int:pk>/check-in/", queue_views.CheckInView.as_view(), name="visit-check-in"),
     path("visits/<int:pk>/cancel/", queue_views.CancelVisitView.as_view(), name="visit-cancel"),
     path("visits/<int:pk>/", clinical_views.VisitDetailView.as_view(), name="visit-detail"),
     path(

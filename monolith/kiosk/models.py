@@ -131,6 +131,14 @@ class Visit(models.Model):
     requested_doctor = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    # Where the ticket was taken. Online tickets hold their place in the queue
+    # but are only called once the patient checks in at the clinic.
+    SOURCE_KIOSK = "kiosk"
+    SOURCE_ONLINE = "online"
+    SOURCE_CHOICES = [(SOURCE_KIOSK, "Kiosk"), (SOURCE_ONLINE, "Online")]
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=SOURCE_KIOSK)
+    checked_in_at = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    contact_phone = models.CharField("WhatsApp number", max_length=30, blank=True)
     room = models.CharField(max_length=40, blank=True)
     called_at = models.DateTimeField(null=True, blank=True)
     # Incremented on every call and recall, so the TV knows to announce again.
@@ -164,6 +172,10 @@ class Visit(models.Model):
 
     def __str__(self):
         return f"{self.queue_number or 'Visit'} · {self.patient.name}"
+
+    @property
+    def is_checked_in(self):
+        return self.checked_in_at is not None
 
     @property
     def is_open(self):

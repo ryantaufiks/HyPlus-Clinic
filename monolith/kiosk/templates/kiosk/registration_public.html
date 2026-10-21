@@ -28,6 +28,9 @@
         <p class="text-muted mb-0">Please ask a nurse at the clinic to complete your registration. Your Patient ID is <strong>{{ visit.patient.patient_id }}</strong>.</p>
     </section>
     {% else %}
+    {% if request.GET.new and visit.source == 'online' %}
+    <div class="alert alert-success d-flex gap-2"><i class="bi bi-bookmark-check fs-5"></i><div><strong>Your queue number is ready.</strong> Keep this page (bookmark or share it to yourself): it is your ticket and shows your place in the queue.</div></div>
+    {% endif %}
     <section class="surface text-center">
         <div class="text-muted fw-semibold small text-uppercase">Your ticket · {{ visit.created_at|date:"j M Y" }}</div>
         <div class="d-flex justify-content-center gap-4 my-2">
@@ -36,9 +39,15 @@
         </div>
         <div class="text-muted small"><i class="bi bi-person-vcard"></i> {% if visit.requested_doctor %}{{ visit.requested_doctor.get_full_name|default:visit.requested_doctor.get_username }}{% else %}First available doctor{% endif %}</div>
         <div id="live-status" class="status status-info fs-6 my-2" aria-live="polite">Checking your status…</div>
+        <div id="checkin-hint" class="alert alert-warning text-start small my-2 {% if visit.is_checked_in %}d-none{% endif %}">
+            <strong><i class="bi bi-geo-alt"></i> Check in when you arrive</strong> to be called: at the kiosk choose <strong>Online ticket</strong> and enter <strong>{{ visit.queue_number }}</strong> and the last 4 digits of your WhatsApp number, or show this QR code at the front desk. Your place in the queue is kept.
+        </div>
         <div><img src="{% url 'kiosk:visit-qr' visit.token %}" alt="Ticket QR code" width="200" height="200" class="qr-box p-2 mt-2" /></div>
         <p class="text-muted small mt-2 mb-2">Show this code at the consulting-room door when your number is called.</p>
-        <a class="btn btn-light btn-icon" href="{% url 'kiosk:visit-qr' visit.token %}?download=1"><i class="bi bi-download"></i> Save QR code</a>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a class="btn btn-light btn-icon" href="{% url 'kiosk:visit-qr' visit.token %}?download=1"><i class="bi bi-download"></i> Save QR code</a>
+            {% if visit.source == 'online' %}<button type="button" class="btn btn-light btn-icon" id="share-ticket"><i class="bi bi-share"></i> Share link</button>{% endif %}
+        </div>
     </section>
 
     <details class="surface" {% if not visit.patient.is_registered %}open{% endif %}>
@@ -65,16 +74,26 @@
             const d = await r.json();
             let text = d.status_label, cls = "status-neutral";
             if (!d.today) { text = "This ticket was for an earlier day"; }
+            else if (d.status === "waiting" && !d.checked_in) { text = d.ahead === 0 ? "Not checked in yet · you're next" : `Not checked in yet · ${d.ahead} patient${d.ahead === 1 ? "" : "s"} ahead of you`; cls = "status-warning"; }
             else if (d.status === "waiting") { text = d.ahead === 0 ? "You're next — please stay nearby" : `Waiting · ${d.ahead} patient${d.ahead === 1 ? "" : "s"} ahead of you`; cls = "status-info"; }
             else if (d.status === "called") { text = `Please go to ${d.room} now`; cls = "status-warning"; }
             else if (d.status === "in_consultation") { text = `In consultation · ${d.room}`; cls = "status-info"; }
             else if (d.status === "completed") { text = "Your consultation is complete"; cls = "status-good"; }
+            document.getElementById("checkin-hint").classList.toggle("d-none", d.checked_in !== false || d.status !== "waiting");
             el.className = `status ${cls} fs-6 my-2`;
             el.textContent = text;
         } catch (e) { /* keep the last status */ }
     }
     refresh();
     setInterval(refresh, 10000);
+    const share = document.getElementById("share-ticket");
+    if (share) share.addEventListener("click", async () => {
+        const url = location.origin + location.pathname;
+        try {
+            if (navigator.share) await navigator.share({ title: "My queue ticket", url });
+            else { await navigator.clipboard.writeText(url); share.innerHTML = '<i class="bi bi-check2"></i> Link copied'; }
+        } catch (e) { /* cancelled */ }
+    });
 })();
 </script>
 {% endif %}
