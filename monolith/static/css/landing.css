@@ -331,3 +331,10 @@
     .marquee-track { animation: none; width: auto; flex-wrap: wrap; }
     .marquee-track > [aria-hidden="true"] { display: none; }
 }
+
+/* The two entry cards sit at 25% and 75% of the row (space-around with two equal
+   cards), where the merge lines start; landing.js then aligns the lines to the
+   exact ports. */
+.flow-canvas .flow-start { align-self: stretch; justify-content: space-around; gap: 0; }
+.flow-canvas .flow-entry { min-height: 4.6rem; }
+@media (max-width: 991.98px) { .flow-canvas .flow-start { gap: 0; justify-content: space-around; } .flow-canvas .flow-start .flow-entry { flex: 0 1 46%; } }

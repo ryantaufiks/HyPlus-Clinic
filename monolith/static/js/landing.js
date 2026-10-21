@@ -51,6 +51,39 @@
         select(tabs[0]);
     }
 
+    /* ---- Flowchart: draw the merge lines from the entry ports to the kiosk node ---- */
+    const flow = document.querySelector(".flow-canvas .flow");
+    if (flow) {
+        const entries = flow.querySelectorAll(".flow-entry");
+        const node = flow.querySelector(".flow-node");
+        const drawMerge = () => {
+            const svg = [...flow.querySelectorAll(".flow-merge svg")].find((el) => el.getBoundingClientRect().width > 0);
+            if (!svg || entries.length !== 2 || !node) return;
+            const box = svg.getBoundingClientRect();
+            const target = node.getBoundingClientRect();
+            const ends = [...entries].map((e) => e.getBoundingClientRect());
+            const vertical = svg.classList.contains("merge-v");
+            const w = box.width, h = box.height;
+            let d;
+            if (vertical) {  // phones: from the bottom of each card down to the top of the node
+                const x = ends.map((r) => r.left + r.width / 2 - box.left);
+                const to = target.left + target.width / 2 - box.left;
+                d = x.map((from) => `M${from} 0 C${from} ${h / 2} ${to} ${h / 2} ${to} ${h}`).join(" ");
+            } else {  // desktop: from the right of each card to the node's left port
+                const y = ends.map((r) => r.top + r.height / 2 - box.top);
+                const to = target.top + target.height / 2 - box.top;
+                d = y.map((from) => `M0 ${from} C${w / 2} ${from} ${w / 2} ${to} ${w} ${to}`).join(" ");
+            }
+            svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+            svg.setAttribute("preserveAspectRatio", "none");
+            svg.querySelector("path").setAttribute("d", d);
+        };
+        drawMerge();
+        if ("ResizeObserver" in window) new ResizeObserver(drawMerge).observe(flow);
+        window.addEventListener("load", drawMerge);
+        flow.addEventListener("transitionend", drawMerge);  // after the scroll-reveal slide-in
+    }
+
     /* ---- Spotlight on cards ----------------------------------------------- */
     document.querySelectorAll(".spotlight").forEach((card) => {
         card.addEventListener("pointermove", (event) => {
