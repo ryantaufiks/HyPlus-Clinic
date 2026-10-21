@@ -11,9 +11,9 @@
         <title>{% block title %}Hy+ Clinic — Smart AI clinic{% endblock %}</title>
 
         <link rel="manifest" href="{% static 'manifest.json' %}" />
-        <link rel="icon" type="image/svg+xml" href="{% static 'img/hyplus-mark.svg' %}" />
-    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
-        <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}" />
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-32x32.png' %}" />
+        <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
+        <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}" />
 
         <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" />
         <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
@@ -67,7 +67,7 @@
             <nav class="navbar navbar-expand-lg">
                 <div class="container">
                     <a class="brand" href="{% if current == 'home' %}{% url 'kiosk:home' %}{% elif user_can.staff_area %}{% url 'kiosk:dashboard' %}{% else %}{% url 'kiosk:landing' %}{% endif %}">
-                        {% if current == 'home' %}{% include 'kiosk/_brand.html' with tag='AIVIN Vital Intake' %}{% else %}{% include 'kiosk/_brand.html' with tag='Smart AI clinic' %}{% endif %}
+                        {% if current == 'home' %}{% include 'kiosk/_brand.html' with tag='AIVIN Vital Intake' %}{% else %}{% include 'kiosk/_brand.html' %}{% endif %}
                     </a>
                     <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#app-nav" aria-controls="app-nav" aria-expanded="false" aria-label="Menu">
                         <i class="bi bi-list fs-3"></i>

@@ -1,4 +1,5 @@
 {% extends 'kiosk/base.html' %}
+{% load static %}
 
 {% block title %}Hy+ Clinic — Check-in{% endblock %}
 
@@ -604,7 +605,7 @@ function onlineView() {
 
 const views = {
     0: () => `
-        <span class="kiosk-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+        <img class="kiosk-logo" src="{% static 'img/hyplus-mark.png' %}" alt="Hy+ Clinic" width="150" height="95" />
         <h1 class="kiosk-title">Welcome</h1>
         <p class="kiosk-lead">Let's check your weight and blood pressure before you see the doctor. It takes about 3 minutes.</p>
         <div class="kiosk-actions">

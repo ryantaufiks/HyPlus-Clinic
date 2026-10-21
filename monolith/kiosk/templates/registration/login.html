@@ -1,4 +1,5 @@
 {% extends 'kiosk/base.html' %}
+{% load static %}
 
 {% block title %}Staff login - Hy+ Clinic{% endblock %}
 
@@ -6,7 +7,7 @@
 <div class="auth-card">
     <section class="surface">
         <div class="text-center mb-4">
-            <span class="brand-mark mb-3" style="width: 56px; height: 56px; font-size: 1.6rem; border-radius: 16px"><i class="bi bi-heart-pulse-fill"></i></span>
+            <img class="brand-mark-img mb-3" src="{% static 'img/hyplus-mark.png' %}" alt="Hy+ Clinic" width="96" height="61" />
             <h1 class="h4 mb-1">Staff login</h1>
             <p class="text-muted small mb-0">Patient data is only available to nurses, doctors and administrators.</p>
         </div>
