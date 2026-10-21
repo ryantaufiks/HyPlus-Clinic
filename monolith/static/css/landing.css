@@ -338,3 +338,6 @@
 .flow-canvas .flow-start { align-self: stretch; justify-content: space-around; gap: 0; }
 .flow-canvas .flow-entry { min-height: 4.6rem; }
 @media (max-width: 991.98px) { .flow-canvas .flow-start { gap: 0; justify-content: space-around; } .flow-canvas .flow-start .flow-entry { flex: 0 1 46%; } }
+
+/* Service picture (uploaded in the admin), edge to edge at the top of the card */
+.service-image { display: block; width: calc(100% + 3rem); max-width: none; height: auto; aspect-ratio: 16 / 10; object-fit: cover; margin: -1.5rem -1.5rem 0.4rem; border-radius: 20px 20px 0 0; background: var(--aivin-primary-soft); }

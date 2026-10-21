@@ -1,4 +1,4 @@
-"""Profile photos: processing uploads and the initials shown when there is none."""
+"""Uploaded images (profile photos, service pictures) and the initials shown when there is no photo."""
 
 import hashlib
 import uuid
@@ -16,8 +16,8 @@ COLORS = ["#0b7a83", "#2a62b8", "#7a4fc4", "#b4436c", "#9a5412", "#2f7d32", "#5c
 TITLES = {"dr", "dr.", "drg", "drg.", "prof", "prof.", "mr", "mr.", "mrs", "mrs.", "ms", "ms."}
 
 
-def process_photo(upload):
-    """A square 256×256 JPEG of the upload: rotated upright, centre-cropped, no metadata."""
+def process_photo(upload, size=(SIZE, SIZE), quality=85):
+    """A JPEG of the upload at `size` (square 256 by default): upright, centre-cropped, no metadata."""
     if upload.size > MAX_UPLOAD_BYTES:
         raise ValidationError("The photo is larger than 5 MB.")
     try:
@@ -33,9 +33,9 @@ def process_photo(upload):
         raise ValidationError("The photo is too large.")
 
     image = ImageOps.exif_transpose(image)  # phones store rotation in EXIF
-    image = ImageOps.fit(image.convert("RGB"), (SIZE, SIZE), Image.LANCZOS)
+    image = ImageOps.fit(image.convert("RGB"), size, Image.LANCZOS)
     out = BytesIO()
-    image.save(out, format="JPEG", quality=85, optimize=True)  # a fresh file: EXIF (incl. GPS) is dropped
+    image.save(out, format="JPEG", quality=quality, optimize=True, progressive=True)  # a fresh file: EXIF (incl. GPS) is dropped
     return ContentFile(out.getvalue(), name=f"{uuid.uuid4().hex}.jpg")
 
 

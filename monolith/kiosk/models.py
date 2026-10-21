@@ -461,6 +461,11 @@ class Service(models.Model):
     price_sgd = models.DecimalField("Price (SGD)", max_digits=8, decimal_places=2)
     price_unit = models.CharField(max_length=40, default="per consultation", help_text='e.g. "per consultation"')
     icon = models.CharField(max_length=40, default="bi-heart-pulse", help_text="Bootstrap icon class, e.g. bi-camera-video")
+    # Shown on the home page instead of the icon. Uploads are cropped to 16:10 (960×600).
+    image = models.ImageField(
+        upload_to="services/", blank=True,
+        help_text="Illustration or photo for the home page (JPG, PNG or WebP, up to 5 MB). Cropped to 16:10 around the centre.",
+    )
     price_confirmed = models.BooleanField(
         default=False, help_text='Until ticked, the website marks the price as "example price".'
     )

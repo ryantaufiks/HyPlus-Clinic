@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import reverse
 
+from .avatars import process_photo
 from .models import (
     AuditEvent,
     BookingRequest,
@@ -190,11 +191,38 @@ class SiteConfigurationAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+SERVICE_IMAGE_SIZE = (960, 600)  # 16:10, sharp on high-density screens at card width
+
+
+class ServiceAdminForm(forms.ModelForm):
+    class Meta:
+        model = Service
+        fields = "__all__"
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        if image and image is not getattr(self.instance, "image", None) and hasattr(image, "content_type"):
+            # A new upload: rotate upright, crop to 16:10, re-encode without metadata.
+            return process_photo(image, size=SERVICE_IMAGE_SIZE, quality=82)
+        return image
+
+
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ["name", "price_sgd", "price_unit", "price_confirmed", "is_featured", "is_bookable", "is_active", "sort_order"]
+    form = ServiceAdminForm
+    list_display = ["name", "has_image", "price_sgd", "price_unit", "price_confirmed", "is_featured", "is_bookable", "is_active", "sort_order"]
     list_editable = ["price_sgd", "price_confirmed", "is_featured", "is_bookable", "is_active", "sort_order"]
     prepopulated_fields = {"slug": ["name"]}
+
+    @admin.display(boolean=True, description="Image")
+    def has_image(self, obj):
+        return bool(obj.image)
+
+    def save_model(self, request, obj, form, change):
+        old = Service.objects.filter(pk=obj.pk).values_list("image", flat=True).first() if change else None
+        super().save_model(request, obj, form, change)
+        if old and old != obj.image.name:
+            obj.image.storage.delete(old)  # replaced or cleared
 
 
 @admin.register(BookingRequest)

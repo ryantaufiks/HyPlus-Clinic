@@ -12,6 +12,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -90,6 +91,16 @@ def review_summary(ratings):
 
 
 # --- Home page --------------------------------------------------------------------------------
+
+
+def service_image(request, pk):
+    """The picture of an active service (public: it is shown on the home page)."""
+    service = get_object_or_404(Service, pk=pk, is_active=True)
+    if not service.image:
+        raise Http404
+    response = FileResponse(service.image.open("rb"), content_type="image/jpeg")
+    response["Cache-Control"] = "public, max-age=604800"  # the URL changes with every new upload
+    return response
 
 
 class LandingView(TemplateView):

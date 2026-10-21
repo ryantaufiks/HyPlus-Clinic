@@ -115,7 +115,11 @@
                 {% for s in services %}
                 <div class="col-md-6 col-lg-4 col-xl">
                     <article class="service-card spotlight" data-reveal style="--i: {{ forloop.counter0 }}">
+                        {% if s.image %}
+                        <img class="service-image" src="{% url 'kiosk:service-image' s.pk %}?v={{ s.image.name|slice:'-16:' }}" alt="{{ s.name }}" width="960" height="600" loading="lazy" decoding="async" />
+                        {% else %}
                         <span class="service-icon"><i class="bi {{ s.icon }}"></i></span>
+                        {% endif %}
                         <h3>{{ s.name }}</h3>
                         <p>{{ s.summary }}</p>
                         <div class="service-price">
