@@ -1,21 +1,43 @@
 import base64
 import io
 import json
-import uuid
+import logging
 
 import qrcode
-from django.contrib import messages
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import connection
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView, TemplateView
+from django_ratelimit.decorators import ratelimit
 
 from .models import Measurement, Patient, QueueTicket
 
+logger = logging.getLogger(__name__)
 
+kiosk_api_ratelimit = method_decorator(
+    ratelimit(key="ip", rate=settings.KIOSK_API_RATE, method="POST", block=True),
+    name="post",
+)
+
+
+def server_error(message):
+    logger.exception(message)
+    return JsonResponse({"error": "Internal server error"}, status=500)
+
+
+def healthz(request):
+    """Liveness/readiness probe used by Docker."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT 1")
+    return JsonResponse({"status": "ok"})
+
+
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class HomeView(TemplateView):
     """Main kiosk interface"""
 
@@ -27,7 +49,7 @@ class HomeView(TemplateView):
         return context
 
 
-@method_decorator(csrf_exempt, name="dispatch")
+@kiosk_api_ratelimit
 class PatientCreateAPIView(View):
     """API endpoint to create a new patient"""
 
@@ -55,11 +77,13 @@ class PatientCreateAPIView(View):
             )
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        except Http404:
+            raise
+        except Exception:
+            return server_error("Failed to create patient")
 
 
-@method_decorator(csrf_exempt, name="dispatch")
+@kiosk_api_ratelimit
 class MeasurementCreateAPIView(View):
     """API endpoint to create a new measurement"""
 
@@ -95,11 +119,13 @@ class MeasurementCreateAPIView(View):
             )
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        except Http404:
+            raise
+        except Exception:
+            return server_error("Failed to create measurement")
 
 
-@method_decorator(csrf_exempt, name="dispatch")
+@kiosk_api_ratelimit
 class QueueGenerateAPIView(View):
     """API endpoint to generate a queue ticket"""
 
@@ -160,11 +186,13 @@ class QueueGenerateAPIView(View):
             )
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        except Http404:
+            raise
+        except Exception:
+            return server_error("Failed to generate queue ticket")
 
 
-class PatientListView(ListView):
+class PatientListView(LoginRequiredMixin, ListView):
     """List all patients"""
 
     model = Patient
@@ -173,14 +201,14 @@ class PatientListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().prefetch_related("queue_tickets")
         search = self.request.GET.get("search")
         if search:
             queryset = queryset.filter(name__icontains=search)
         return queryset
 
 
-class PatientDetailView(DetailView):
+class PatientDetailView(LoginRequiredMixin, DetailView):
     """View patient details with measurements and queue tickets"""
 
     model = Patient
@@ -205,7 +233,7 @@ class PatientDetailView(DetailView):
         return context
 
 
-class QueueTicketDetailView(DetailView):
+class QueueTicketDetailView(LoginRequiredMixin, DetailView):
     """View queue ticket details"""
 
     model = QueueTicket
@@ -219,7 +247,7 @@ class QueueTicketDetailView(DetailView):
         return get_object_or_404(QueueTicket, qr_code_data=qr_code)
 
 
-class DashboardView(TemplateView):
+class DashboardView(LoginRequiredMixin, TemplateView):
     """Dashboard for viewing all data"""
 
     template_name = "kiosk/dashboard.html"
@@ -253,13 +281,13 @@ class DashboardView(TemplateView):
         return context
 
 
-class QRScannerView(TemplateView):
+class QRScannerView(LoginRequiredMixin, TemplateView):
     """QR code scanner for doctors"""
 
     template_name = "kiosk/qr_scanner.html"
 
 
-class TestVisualizationsView(TemplateView):
+class TestVisualizationsView(LoginRequiredMixin, TemplateView):
     """Test page for Three.js visualizations"""
 
     template_name = "kiosk/test-visualizations.html"

@@ -2,6 +2,8 @@ import uuid
 
 from django.db import models
 
+from .crypto import decrypt, encrypt
+
 
 class Patient(models.Model):
     name = models.CharField(max_length=100, db_index=True)
@@ -69,3 +71,50 @@ class QueueTicket(models.Model):
             models.Index(fields=["is_active", "status", "-priority"]),
             models.Index(fields=["patient", "-created_at"]),
         ]
+
+
+class SiteConfiguration(models.Model):
+    """Singleton holding runtime settings managed from the admin.
+
+    Secrets are stored encrypted (see kiosk.crypto) and are never shown back
+    in the admin; only a masked hint is displayed.
+    """
+
+    openai_api_key_encrypted = models.TextField(blank=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "System settings"
+        verbose_name_plural = "System settings"
+
+    def __str__(self):
+        return "System settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def openai_api_key(self):
+        return decrypt(self.openai_api_key_encrypted)
+
+    @openai_api_key.setter
+    def openai_api_key(self, value):
+        self.openai_api_key_encrypted = encrypt(value) if value else ""
+
+    @property
+    def openai_api_key_hint(self):
+        key = self.openai_api_key
+        if not key:
+            return ""
+        return f"{key[:3]}…{key[-4:]}"
+
+
+def get_openai_api_key():
+    """The OpenAI API key configured in the admin, or "" if none is set."""
+    return SiteConfiguration.load().openai_api_key

@@ -472,6 +472,11 @@
 
 {% block extra_js %}
 <script>
+function getCsrfToken() {
+    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+}
+
 // Application State
 const AppState = {
     currentStep: 0,
@@ -606,6 +611,7 @@ async function createPatientRecord() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken(),
             },
             body: JSON.stringify({
                 name: AppState.patientName,
@@ -641,6 +647,7 @@ async function createMeasurement(data) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken(),
             },
             body: JSON.stringify({
                 patient_id: AppState.patientId,
@@ -675,6 +682,7 @@ async function generateQueueTicket() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken(),
             },
             body: JSON.stringify({
                 patient_id: AppState.patientId,
