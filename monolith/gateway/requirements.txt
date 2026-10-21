@@ -1,0 +1,8 @@
+bleak==3.0.2
+blesession==0.9.0
+dbus-fast==5.2.0
+cryptography==50.0.2
+sensor-state-data==2.20.0
+bluetooth-sensor-state-data==1.9.0
+home-assistant-bluetooth==2.0.0
+httpx==0.28.1

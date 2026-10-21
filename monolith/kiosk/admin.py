@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import reverse
 
-from .models import Measurement, Patient, QueueTicket, SiteConfiguration
+from .models import DeviceReading, Measurement, Patient, QueueTicket, SiteConfiguration
 
 admin.site.site_header = "AIVIN administration"
 admin.site.site_title = "AIVIN admin"
@@ -27,9 +27,10 @@ class MeasurementAdmin(admin.ModelAdmin):
         "systolic_bp",
         "diastolic_bp",
         "heart_rate_bpm",
+        "source",
         "measured_at",
     ]
-    list_filter = ["measured_at"]
+    list_filter = ["source", "measured_at"]
     search_fields = ["patient__name"]
     readonly_fields = ["measured_at"]
     date_hierarchy = "measured_at"
@@ -45,6 +46,19 @@ class QueueTicketAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     autocomplete_fields = ["patient"]
     list_editable = ["is_active"]
+
+
+@admin.register(DeviceReading)
+class DeviceReadingAdmin(admin.ModelAdmin):
+    list_display = ["kind", "device_model", "measured_at", "systolic_bp", "diastolic_bp", "heart_rate_bpm", "weight_kg", "measurement"]
+    list_filter = ["kind", "device_model", "measured_at"]
+    readonly_fields = [f.name for f in DeviceReading._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class SiteConfigurationForm(forms.ModelForm):

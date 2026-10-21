@@ -46,6 +46,7 @@ class HomeView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = "AIVIN"
+        context["simulation_enabled"] = settings.DEBUG
         return context
 
 
@@ -85,9 +86,15 @@ class PatientCreateAPIView(View):
 
 @kiosk_api_ratelimit
 class MeasurementCreateAPIView(View):
-    """API endpoint to create a new measurement"""
+    """Record a simulated measurement. Only available with DEBUG on.
+
+    Real measurements come from medical devices through the BLE gateway and
+    are claimed via the device-reading API, never typed in by the kiosk.
+    """
 
     def post(self, request):
+        if not settings.DEBUG:
+            return JsonResponse({"error": "Simulated measurements are disabled"}, status=403)
         try:
             data = json.loads(request.body)
             patient_id = data.get("patient_id") or data.get("patient")
@@ -99,6 +106,7 @@ class MeasurementCreateAPIView(View):
 
             measurement = Measurement.objects.create(
                 patient=patient,
+                source=Measurement.SOURCE_SIMULATED,
                 weight_kg=data.get("weight_kg"),
                 systolic_bp=data.get("systolic_bp"),
                 diastolic_bp=data.get("diastolic_bp"),

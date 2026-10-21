@@ -477,6 +477,105 @@ function getCsrfToken() {
     return match ? decodeURIComponent(match[1]) : "";
 }
 
+const SIMULATION_ENABLED = {{ simulation_enabled|yesno:"true,false" }};
+
+// Reads measurements from the OMRON devices via the server's BLE gateway.
+// The kiosk announces which kind it waits for, polls for a reading taken
+// after the step started, and claims it for the current patient.
+const DeviceReader = {
+    timer: null,
+    kind: null,
+    since: null,
+    lastWait: 0,
+
+    start(kind, onReading) {
+        this.stop();
+        this.kind = kind;
+        this.since = new Date().toISOString();
+        this.lastWait = 0;
+        const tick = async () => {
+            if (this.kind !== kind) return;
+            try {
+                await this.poll(kind, onReading);
+            } catch (error) {
+                console.warn("Device poll failed:", error);
+                setDeviceStatus("Connection problem, retrying…", "warning");
+            }
+            if (this.kind === kind) this.timer = setTimeout(tick, 2000);
+        };
+        tick();
+    },
+
+    stop() {
+        this.kind = null;
+        clearTimeout(this.timer);
+        this.timer = null;
+    },
+
+    async poll(kind, onReading) {
+        const headers = { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() };
+        if (Date.now() - this.lastWait > 60000) {
+            const wait = await fetch("/api/devices/wait/", {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ kind }),
+            });
+            if (wait.ok) this.lastWait = Date.now();
+        }
+        const params = new URLSearchParams({ kind, since: this.since });
+        const response = await fetch(`/api/devices/readings/latest/?${params}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!data.reading) {
+            setDeviceStatus(
+                data.gateway_online
+                    ? "Waiting for the device… The result appears here automatically."
+                    : "Device service is offline. Please ask a nurse for help.",
+                data.gateway_online ? "info" : "danger",
+            );
+            return;
+        }
+        const claim = await fetch(`/api/devices/readings/${data.reading.id}/claim/`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ patient_id: AppState.patientId }),
+        });
+        if (claim.status === 409 || claim.status === 410) return; // taken or expired; keep waiting
+        if (!claim.ok) throw new Error(`Claim failed: HTTP ${claim.status}`);
+        if (this.kind !== kind) return;
+        this.stop();
+        onReading((await claim.json()).reading);
+    },
+};
+
+function setDeviceStatus(text, level) {
+    const el = document.getElementById("device-status");
+    if (el) {
+        el.className = `alert alert-${level} mt-3`;
+        el.textContent = text;
+    }
+}
+
+function onWeightReading(reading) {
+    AppState.weightKg = reading.weight_kg;
+    updateDebugPanel();
+    speak(`Your weight is ${AppState.weightKg} kilograms. Thank you.`);
+    renderStep();
+    setTimeout(() => {
+        speak("Now, we will check your blood pressure. Please sit down comfortably.");
+    }, 2000);
+}
+
+function onBloodPressureReading(reading) {
+    AppState.systolicBp = reading.systolic_bp;
+    AppState.diastolicBp = reading.diastolic_bp;
+    AppState.heartRateBpm = reading.heart_rate_bpm;
+    updateDebugPanel();
+    const pulse = AppState.heartRateBpm ? ` Heart rate is ${AppState.heartRateBpm} beats per minute.` : "";
+    speak(`Your blood pressure is ${AppState.systolicBp} over ${AppState.diastolicBp}.${pulse} Thank you for your patience.`);
+    renderStep();
+}
+
 // Application State
 const AppState = {
     currentStep: 0,
@@ -734,6 +833,13 @@ function moveToStep(step) {
     AppState.currentStep = step;
     updateStepIndicator(step);
     renderStep();
+    if (step === 2 && !AppState.weightKg) {
+        DeviceReader.start("weight", onWeightReading);
+    } else if (step === 3 && !AppState.systolicBp) {
+        DeviceReader.start("bp", onBloodPressureReading);
+    } else {
+        DeviceReader.stop();
+    }
 }
 
 // Render Step Content
@@ -833,10 +939,10 @@ function renderWeightStep() {
         <p class="lead mb-4">
             Please step onto the scale for your weight measurement. Make sure to remove any heavy items from your pockets.
             <br>
-            <strong>Step 1:</strong> Stand on the scale and wait for the measurement to stabilize.
-            <br>
-            <strong>Step 2:</strong> After the measurement is complete, click the button below to retrieve the results.
+            Stand still on the scale until the number on the scale stops changing.
+            The result appears here automatically.
         </p>
+        ${!AppState.weightKg ? `<div id="device-status" class="alert alert-info mt-3">Waiting for the scale…</div>` : ''}
         ${AppState.weightKg ? `
             <div class="measurement-result new-measurement" id="weight-result">
                 <div class="measurement-label">Your weight:</div>
@@ -845,9 +951,9 @@ function renderWeightStep() {
             </div>
         ` : ''}
         <div class="control-buttons">
-            ${!AppState.isProcessing && !AppState.weightKg ? `
+            ${SIMULATION_ENABLED && !AppState.isProcessing && !AppState.weightKg ? `
                 <button class="btn btn-primary btn-lg" onclick="simulateWeightMeasurement()">
-                    <i class="bi bi-cpu"></i> Simulate Measurement
+                    <i class="bi bi-cpu"></i> Simulate Measurement (testing)
                 </button>
             ` : ''}
             ${AppState.weightKg ? `
@@ -868,10 +974,10 @@ function renderBloodPressureStep() {
         <p class="lead mb-4">
             Please use the blood pressure monitor for your reading. Sit comfortably and relax for a minute before measuring.
             <br>
-            <strong>Important:</strong> After the measurement is complete on the device,
-            click the button below within 3-5 seconds to retrieve the data.<br>
-            <small class="text-warning">⚠️ The device broadcasts data for only a few seconds after measurement!</small>
+            Wrap the cuff around your wrist at heart level and press START on the monitor.
+            Keep still until it finishes. The result appears here automatically.
         </p>
+        ${!AppState.systolicBp ? `<div id="device-status" class="alert alert-info mt-3">Waiting for the blood pressure monitor…</div>` : ''}
         ${AppState.systolicBp && AppState.diastolicBp ? `
             <div class="measurement-result new-measurement" id="bp-result">
                 <div class="measurement-label">Blood Pressure:</div>
@@ -888,9 +994,9 @@ function renderBloodPressureStep() {
             </div>
         ` : ''}
         <div class="control-buttons">
-            ${!AppState.isProcessing && !AppState.systolicBp ? `
+            ${SIMULATION_ENABLED && !AppState.isProcessing && !AppState.systolicBp ? `
                 <button class="btn btn-primary btn-lg" onclick="simulateBloodPressureMeasurement()">
-                    <i class="bi bi-cpu"></i> Simulate Measurement
+                    <i class="bi bi-cpu"></i> Simulate Measurement (testing)
                 </button>
             ` : ''}
             ${AppState.systolicBp ? `
@@ -950,6 +1056,7 @@ function startHealthCheck() {
 
 // Simulate Weight Measurement (fallback for testing)
 async function simulateWeightMeasurement() {
+    DeviceReader.stop();
     AppState.isProcessing = true;
     showProcessing();
     speak("Simulating weight measurement. Please wait.");
@@ -992,6 +1099,7 @@ async function simulateWeightMeasurement() {
 
 // Simulate Blood Pressure Measurement (fallback for testing)
 async function simulateBloodPressureMeasurement() {
+    DeviceReader.stop();
     AppState.isProcessing = true;
     showProcessing();
     speak("Simulating blood pressure measurement. Please wait.");
@@ -1052,6 +1160,7 @@ function resetKiosk() {
     console.log("=== RESETTING KIOSK ===");
     console.log("Previous state:", JSON.parse(JSON.stringify(AppState)));
 
+    DeviceReader.stop();
     AppState.currentStep = 0;
     AppState.patientId = null;
     AppState.patientName = "";

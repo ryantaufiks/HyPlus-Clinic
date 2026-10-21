@@ -1,7 +1,7 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from kiosk.models import Patient, QueueTicket, SiteConfiguration, get_openai_api_key
@@ -59,6 +59,7 @@ class KioskApiCsrfTest(TestCase):
         )
         self.assertEqual(response.status_code, 201)
 
+    @override_settings(DEBUG=True)
     def test_unknown_patient_returns_404(self):
         response = self.client.post(
             reverse("kiosk:api-measurement-create"),

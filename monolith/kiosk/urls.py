@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import device_views, views
 
 app_name = "kiosk"
 
@@ -20,6 +20,28 @@ urlpatterns = [
         "api/queue/generate/",
         views.QueueGenerateAPIView.as_view(),
         name="api-queue-generate",
+    ),
+    path("api/devices/wait/", device_views.DeviceWaitView.as_view(), name="api-device-wait"),
+    path(
+        "api/devices/readings/latest/",
+        device_views.LatestDeviceReadingView.as_view(),
+        name="api-device-reading-latest",
+    ),
+    path(
+        "api/devices/readings/<int:pk>/claim/",
+        device_views.ClaimDeviceReadingView.as_view(),
+        name="api-device-reading-claim",
+    ),
+    # Internal API for the BLE gateway (bearer token)
+    path(
+        "internal/gateway/heartbeat/",
+        device_views.GatewayHeartbeatView.as_view(),
+        name="internal-gateway-heartbeat",
+    ),
+    path(
+        "internal/device-readings/",
+        device_views.DeviceReadingIngestView.as_view(),
+        name="internal-device-reading",
     ),
     # Patient management
     path("patients/", views.PatientListView.as_view(), name="patient-list"),

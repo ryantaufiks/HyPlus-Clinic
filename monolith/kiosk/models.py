@@ -23,9 +23,17 @@ class Patient(models.Model):
 
 
 class Measurement(models.Model):
+    SOURCE_DEVICE = "device"
+    SOURCE_SIMULATED = "simulated"
+    SOURCE_CHOICES = [
+        (SOURCE_DEVICE, "Medical device"),
+        (SOURCE_SIMULATED, "Simulated (testing only)"),
+    ]
+
     patient = models.ForeignKey(
         Patient, on_delete=models.CASCADE, related_name="measurements"
     )
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_DEVICE)
     weight_kg = models.FloatField(null=True, blank=True)
     systolic_bp = models.IntegerField(null=True, blank=True)
     diastolic_bp = models.IntegerField(null=True, blank=True)
@@ -71,6 +79,46 @@ class QueueTicket(models.Model):
             models.Index(fields=["is_active", "status", "-priority"]),
             models.Index(fields=["patient", "-created_at"]),
         ]
+
+
+class DeviceReading(models.Model):
+    """A measurement received from a Bluetooth device via the BLE gateway.
+
+    It belongs to no patient until the kiosk claims it, which creates the
+    patient's Measurement. A reading can be claimed once.
+    """
+
+    KIND_BLOOD_PRESSURE = "bp"
+    KIND_WEIGHT = "weight"
+    KIND_CHOICES = [(KIND_BLOOD_PRESSURE, "Blood pressure"), (KIND_WEIGHT, "Weight")]
+
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    device_address = models.CharField(max_length=17)
+    device_model = models.CharField(max_length=40)
+    measured_at = models.DateTimeField(help_text="Time reported by the device")
+    received_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    systolic_bp = models.IntegerField(null=True, blank=True)
+    diastolic_bp = models.IntegerField(null=True, blank=True)
+    heart_rate_bpm = models.IntegerField(null=True, blank=True)
+    weight_kg = models.FloatField(null=True, blank=True)
+    measurement = models.OneToOneField(
+        Measurement,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="device_reading",
+    )
+
+    class Meta:
+        ordering = ["-measured_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["device_address", "kind", "measured_at"], name="unique_device_reading"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} from {self.device_model} at {self.measured_at}"
 
 
 class SiteConfiguration(models.Model):

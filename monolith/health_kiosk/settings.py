@@ -50,6 +50,9 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 # SECRET_KEY does not make stored secrets unreadable.
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
 
+# Shared secret the BLE gateway uses for the internal device API.
+GATEWAY_TOKEN = env("GATEWAY_TOKEN", "")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -179,7 +182,7 @@ X_FRAME_OPTIONS = "DENY"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
-    SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
+    SECURE_REDIRECT_EXEMPT = [r"^healthz/$", r"^internal/"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     # Host-only HSTS: the parent domain is shared with other apps.

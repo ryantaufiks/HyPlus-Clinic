@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 import json
 from kiosk.models import Patient
@@ -32,6 +32,7 @@ class PatientAPITest(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+@override_settings(DEBUG=True)  # simulated measurements are DEBUG-only
 class MeasurementAPITest(TestCase):
     def setUp(self):
         self.client = Client()

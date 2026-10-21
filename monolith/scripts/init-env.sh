@@ -17,6 +17,7 @@ sed \
     -e "s|^SECRET_KEY=.*|SECRET_KEY=$(gen 64)|" \
     -e "s|^FIELD_ENCRYPTION_KEY=.*|FIELD_ENCRYPTION_KEY=$(fernet)|" \
     -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(gen 32)|" \
+    -e "s|^GATEWAY_TOKEN=.*|GATEWAY_TOKEN=$(gen 32)|" \
     .env.example > .env
 
 echo "Created .env with new secrets (mode 600). Review ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS."
