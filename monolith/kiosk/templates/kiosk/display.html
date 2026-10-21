@@ -8,49 +8,69 @@
     <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
     <link rel="stylesheet" href="{% static 'css/aivin.css' %}" />
     <style>
-        /* Sized for a 1080p TV seen from across the waiting room. */
+        /* Sized in viewport units for a 16:9 TV seen from across the waiting room. */
         *, *::before, *::after { box-sizing: border-box; }
         html, body { height: 100%; margin: 0; }
         body { display: block; background: var(--aivin-bg); overflow: hidden; cursor: none; }
-        .tv { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; gap: 2vh; padding: 2.5vh 3vw; }
+        .tv { height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 2vh; padding: 2.4vh 2.6vw; }
+
         .tv-head { display: flex; justify-content: space-between; align-items: center; }
-        .tv-head .brand-mark { width: 5vh; height: 5vh; font-size: 3vh; border-radius: 1.2vh; }
+        .tv-head .brand-mark { width: 5.2vh; height: 5.2vh; font-size: 3vh; border-radius: 1.3vh; }
         .tv-head .brand-name { font-size: 3.6vh; }
-        .tv-head .brand-tag { font-size: 1.8vh; }
-        .tv-clock { font-size: 5vh; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--aivin-ink); text-align: right; line-height: 1; }
-        .tv-date { font-size: 2vh; color: var(--aivin-muted); text-align: right; }
-        .tv-main { display: grid; grid-template-columns: 1.35fr 1fr; gap: 2.5vh; min-height: 0; }
-        .panel { background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 2.4vh; box-shadow: var(--aivin-shadow); padding: 3vh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-        .panel h2 { font-size: 2.6vh; text-transform: uppercase; letter-spacing: 0.08em; color: var(--aivin-muted); margin: 0 0 2vh; font-weight: 700; }
-        .calling { justify-content: center; align-items: center; text-align: center; background: var(--aivin-primary); border-color: var(--aivin-primary); color: #fff; }
-        .calling h2 { color: rgba(255,255,255,0.8); }
-        .calling .number { font-size: 22vh; font-weight: 850; line-height: 1; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
-        .calling .room { font-size: 6vh; font-weight: 700; margin-top: 1vh; }
-        .calling .doctor { font-size: 3vh; opacity: 0.85; }
-        .calling .idle { font-size: 4vh; opacity: 0.85; }
-        .calling.flash { animation: flash 1s ease-in-out 3; }
-        @keyframes flash { 50% { background: var(--aivin-primary-strong); transform: scale(1.01); } }
-        .rows { display: flex; flex-direction: column; gap: 1.4vh; }
-        .row-item { display: flex; justify-content: space-between; align-items: center; padding: 1.4vh 2vh; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); }
-        .row-item .num { font-size: 5vh; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--aivin-ink); }
-        .row-item .where { font-size: 3vh; font-weight: 650; color: var(--aivin-ink-2); text-align: right; }
-        .row-item .where small { display: block; font-size: 2vh; color: var(--aivin-muted); font-weight: 500; }
-        .row-item.called { background: var(--aivin-warning-soft); border-color: var(--aivin-warning); }
-        .tag { font-size: 1.8vh; font-weight: 700; border-radius: 99px; padding: 0.4vh 1.2vh; margin-left: 1vh; vertical-align: middle; }
+        .tv-head .brand-tag { font-size: 1.9vh; }
+        .tv-clock { font-size: 5.4vh; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--aivin-ink); text-align: right; line-height: 1; }
+        .tv-date { font-size: 2vh; color: var(--aivin-muted); text-align: right; margin-top: 0.4vh; }
+
+        .tv-main { display: grid; grid-template-columns: 1.1fr 1fr; gap: 2.2vh; min-height: 0; }
+        .panel { background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 2.4vh; box-shadow: var(--aivin-shadow); padding: 2.8vh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+        .panel-title { font-size: 2.3vh; text-transform: uppercase; letter-spacing: 0.1em; color: var(--aivin-muted); margin: 0 0 1.8vh; font-weight: 700; display: flex; align-items: center; gap: 1vh; }
+
+        /* Now calling */
+        .calling { background: linear-gradient(160deg, var(--aivin-primary) 0%, var(--aivin-primary-strong) 100%); border: 0; color: #fff; text-align: center; justify-content: center; align-items: center; position: relative; }
+        .calling .panel-title { color: rgba(255, 255, 255, 0.82); position: absolute; top: 2.8vh; left: 0; right: 0; justify-content: center; }
+        .calling .number { font-size: 21vh; font-weight: 850; line-height: 0.95; letter-spacing: 0.03em; font-variant-numeric: tabular-nums; }
+        .calling .call-room { font-size: 5.6vh; font-weight: 750; margin-top: 1.4vh; display: inline-flex; align-items: center; gap: 1.4vh; }
+        .calling .doctor { margin-top: 2.6vh; display: inline-flex; align-items: center; gap: 1.6vh; background: rgba(255, 255, 255, 0.14); border-radius: 99px; padding: 0.9vh 2.6vh 0.9vh 0.9vh; font-size: 3vh; font-weight: 650; }
+        .calling .idle { font-size: 4vh; opacity: 0.9; max-width: 80%; margin: 0 auto; }
+        .calling .idle .bi { display: block; font-size: 9vh; margin-bottom: 1.5vh; opacity: 0.8; }
+        .calling.flash { animation: flash 0.9s ease-in-out 3; }
+        @keyframes flash { 50% { filter: brightness(1.25); transform: scale(1.012); } }
+
+        /* Faces: the doctor's photo, or their initials */
+        .face { border-radius: 50%; object-fit: cover; flex: none; background: var(--aivin-surface-2); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 750; }
+        .calling .face { width: 8vh; height: 8vh; font-size: 3.2vh; border: 0.4vh solid rgba(255, 255, 255, 0.85); }
+
+        /* Rooms */
+        .rooms { display: flex; flex-direction: column; gap: 1.4vh; min-height: 0; }
+        .room { display: grid; grid-template-columns: auto 1fr auto; gap: 2vh; align-items: center; padding: 1.4vh 1.8vh; border-radius: 1.8vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); border-left: 0.8vh solid var(--aivin-good); }
+        .room .face { width: 8.5vh; height: 8.5vh; font-size: 3.2vh; }
+        .room-name { font-size: 3.4vh; font-weight: 750; color: var(--aivin-ink); line-height: 1.1; }
+        .room-doctor { font-size: 2.2vh; color: var(--aivin-ink-2); margin-top: 0.3vh; }
+        .room-state { text-align: right; }
+        .room-state .num { font-size: 5.4vh; font-weight: 850; font-variant-numeric: tabular-nums; color: var(--aivin-ink); line-height: 1; display: block; }
+        .tag { display: inline-block; font-size: 1.9vh; font-weight: 750; border-radius: 99px; padding: 0.4vh 1.4vh; margin-top: 0.6vh; }
+        .room.called { background: var(--aivin-warning-soft); border-color: var(--aivin-warning); border-left-color: var(--aivin-warning); }
+        .room.in_progress { border-left-color: var(--aivin-primary); }
         .tag.called { background: var(--aivin-warning); color: #3d2a00; }
-        .tag.progress { background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
+        .tag.in_progress { background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
         .tag.available { background: var(--aivin-good-soft); color: var(--aivin-good-ink); }
-        .row-item .room-name { font-size: 3.6vh; font-weight: 750; color: var(--aivin-ink); }
-        .row-item .room-name small { display: block; font-size: 2vh; color: var(--aivin-muted); font-weight: 500; }
-        .row-item .state { text-align: right; }
-        .row-item .state .num { display: block; }
-        .row-item.available .state { font-size: 2.6vh; }
-        .waiting { background: var(--aivin-surface); }
-        .chips { display: flex; flex-wrap: wrap; gap: 1.4vh; }
-        .chip { font-size: 4.2vh; font-weight: 750; font-variant-numeric: tabular-nums; padding: 0.8vh 2.4vh; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); }
+        /* More rooms than fit comfortably: tighter cards. */
+        .rooms.compact { gap: 1vh; }
+        .rooms.compact .room { padding: 0.9vh 1.4vh; }
+        .rooms.compact .room .face { width: 6vh; height: 6vh; font-size: 2.4vh; }
+        .rooms.compact .room-name { font-size: 2.8vh; }
+        .rooms.compact .room-state .num { font-size: 4.2vh; }
+
+        /* Next in line */
+        .waiting { flex-direction: row; align-items: center; gap: 2.4vh; padding: 2vh 2.8vh; }
+        .waiting .panel-title { margin: 0; white-space: nowrap; }
+        /* Up to 10 numbers, always on one row. */
+        .chips { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 1.2vh; align-items: center; }
+        .chip { font-size: 3.6vh; font-weight: 800; font-variant-numeric: tabular-nums; padding: 0.7vh 0; text-align: center; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); color: var(--aivin-ink); white-space: nowrap; }
+        .chip.next { background: var(--aivin-primary-soft); border-color: var(--aivin-primary); color: var(--aivin-primary-strong); }
+        .chip-more { font-size: 2.6vh; font-weight: 650; color: var(--aivin-muted); white-space: nowrap; }
         .muted-line { font-size: 2.6vh; color: var(--aivin-muted); }
-        .tv-foot { display: grid; grid-template-columns: auto 1fr; gap: 2vh; align-items: center; }
-        .tv-foot .label { font-size: 2.6vh; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--aivin-muted); }
+
         #start { position: fixed; inset: 0; background: rgba(15, 29, 43, 0.75); display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; }
         #start div { background: var(--aivin-surface); border-radius: 2vh; padding: 4vh 5vw; text-align: center; font-size: 3vh; }
         #start .bi { font-size: 7vh; color: var(--aivin-primary); display: block; margin-bottom: 1vh; }
@@ -62,25 +82,26 @@
     <header class="tv-head">
         <span class="brand">
             <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-            <span><span class="brand-name">AIVIN</span><span class="brand-tag">Please wait for your number</span></span>
+            <span><span class="brand-name">AIVIN</span><span class="brand-tag">Please wait for your number to be called</span></span>
         </span>
         <div><div class="tv-clock" id="clock">--:--</div><div class="tv-date" id="date"></div></div>
     </header>
 
     <main class="tv-main">
         <section class="panel calling" id="calling" aria-live="assertive">
-            <h2>Now calling</h2>
-            <div id="calling-body"><div class="idle">Waiting for the next call…</div></div>
+            <div class="panel-title"><i class="bi bi-megaphone-fill"></i> Now calling</div>
+            <div id="calling-body"></div>
         </section>
         <section class="panel">
-            <h2>In the consulting rooms</h2>
-            <div class="rows" id="rooms"></div>
+            <div class="panel-title"><i class="bi bi-door-open"></i> Consulting rooms</div>
+            <div class="rooms" id="rooms"></div>
         </section>
     </main>
 
-    <footer class="tv-foot">
-        <div class="label"><i class="bi bi-hourglass-split"></i> Waiting</div>
+    <footer class="panel waiting">
+        <div class="panel-title"><i class="bi bi-hourglass-split"></i> Next in line</div>
         <div class="chips" id="waiting"></div>
+        <div class="chip-more" id="waiting-more"></div>
     </footer>
 </div>
 <div id="start" role="button" tabindex="0"><div><i class="bi bi-volume-up"></i>Tap to start the display<br /><small class="text-muted">This enables the call chime</small></div></div>
@@ -89,16 +110,22 @@
 <script>
 const TZ = "{{ app_time_zone|escapejs }}";
 const DATA_URL = "{% url 'kiosk:display-data' %}";
+const MAX_WAITING = 10;
 const announced = new Set();
 let firstLoad = true;
 let audio = null;
 
 function esc(v) { const d = document.createElement("div"); d.textContent = v == null ? "" : String(v); return d.innerHTML; }
 
+function face(f, name) {
+    if (f && f.photo) return `<img class="face" src="${esc(f.photo)}" alt="${esc(name)}" />`;
+    return `<span class="face" style="background:${esc((f && f.color) || "#6f7b88")}">${esc((f && f.initials) || "")}</span>`;
+}
+
 function tick() {
     const now = new Date();
     document.getElementById("clock").textContent = now.toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
-    document.getElementById("date").textContent = now.toLocaleDateString("en-GB", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+    document.getElementById("date").textContent = now.toLocaleDateString("en-GB", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
 function chime() {
@@ -118,7 +145,7 @@ function chime() {
 }
 
 // A new call (or recall): "ting tong" and a flash of the Now calling panel.
-function announce(call) {
+function announce() {
     chime();
     const panel = document.getElementById("calling");
     panel.classList.remove("flash");
@@ -126,36 +153,44 @@ function announce(call) {
     panel.classList.add("flash");
 }
 
+const TAGS = { in_progress: "In progress", called: "Called", available: "Available" };
+
 function render(data) {
     const latest = data.called[0];
     document.getElementById("calling-body").innerHTML = latest
-        ? `<div class="number">${esc(latest.queue_number)}</div><div class="room"><i class="bi bi-arrow-right-circle"></i> ${esc(latest.room)}</div>${latest.doctor ? `<div class="doctor">${esc(latest.doctor)}</div>` : ""}`
-        : `<div class="idle">Waiting for the next call…</div>`;
+        ? `<div class="number">${esc(latest.queue_number)}</div>
+           <div class="call-room"><i class="bi bi-arrow-right-circle-fill"></i> ${esc(latest.room)}</div>
+           ${latest.doctor ? `<div><span class="doctor">${face(latest.face, latest.doctor)}${esc(latest.doctor)}</span></div>` : ""}`
+        : `<div class="idle"><i class="bi bi-hourglass"></i>Your number will appear here when it is called.</div>`;
 
-    const LABELS = { in_progress: ["progress", "In progress"], called: ["called", "Called"], available: ["available", "Available"] };
-    document.getElementById("rooms").innerHTML = data.rooms.length
-        ? data.rooms.map((r) => {
-            const [cls, label] = LABELS[r.state];
-            return `
-            <div class="row-item ${r.state === "called" ? "called" : ""} ${r.state === "available" ? "available" : ""}">
-                <span class="room-name">${esc(r.room)}${r.doctor ? `<small>${esc(r.doctor)}</small>` : ""}</span>
-                <span class="state">${r.queue_number ? `<span class="num">${esc(r.queue_number)}</span>` : ""}<span class="tag ${cls}">${label}</span></span>
-            </div>`;
-        }).join("")
+    const rooms = document.getElementById("rooms");
+    rooms.classList.toggle("compact", data.rooms.length > 4);
+    rooms.innerHTML = data.rooms.length
+        ? data.rooms.map((r) => `
+            <div class="room ${r.state}">
+                ${face(r.face, r.doctor)}
+                <div><div class="room-name">${esc(r.room)}</div><div class="room-doctor">${esc(r.doctor)}</div></div>
+                <div class="room-state">${r.queue_number ? `<span class="num">${esc(r.queue_number)}</span>` : ""}<span class="tag ${r.state}">${TAGS[r.state]}</span></div>
+            </div>`).join("")
         : `<div class="muted-line">No doctors on duty.</div>`;
 
-    document.getElementById("waiting").innerHTML = data.waiting.length
-        ? data.waiting.map((n) => `<span class="chip">${esc(n)}</span>`).join("")
-        : `<span class="muted-line">Nobody is waiting.</span>`;
+    const shown = data.waiting.slice(0, MAX_WAITING);
+    const more = data.waiting.length - shown.length;
+    document.getElementById("waiting").innerHTML = shown.length
+        ? shown.map((n, i) => `<span class="chip ${i === 0 ? "next" : ""}">${esc(n)}</span>`).join("")
+        : `<span class="muted-line" style="grid-column: 1 / -1">Nobody is waiting.</span>`;
+    document.getElementById("waiting-more").textContent = more > 0 ? `+${more} more` : "";
 
-    // Announce calls (and recalls) that are new since the last poll; on the
+    // Chime for calls (and recalls) that are new since the last poll; on the
     // first load only remember them, so opening the TV does not replay old calls.
-    data.called.slice().reverse().forEach((call) => {
+    let fresh = false;
+    data.called.forEach((call) => {
         if (!announced.has(call.call_id)) {
             announced.add(call.call_id);
-            if (!firstLoad) announce(call);
+            fresh = fresh || !firstLoad;
         }
     });
+    if (fresh) announce();
     firstLoad = false;
 }
 

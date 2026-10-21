@@ -33,6 +33,7 @@ urlpatterns = [
     # Waiting-room TV (public: queue numbers and rooms only)
     path("display/", queue_views.DisplayView.as_view(), name="display"),
     path("display/data/", queue_views.DisplayDataView.as_view(), name="display-data"),
+    path("display/photos/<int:user_id>/", queue_views.display_doctor_photo, name="display-photo"),
     path("ticket/<uuid:qr_code>/", clinical_views.legacy_ticket_redirect, name="ticket-detail"),
     # Internal API for the BLE gateway (bearer token)
     path(

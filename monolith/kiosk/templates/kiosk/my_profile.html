@@ -16,7 +16,7 @@
         </div>
         {% url 'kiosk:my-profile' as action %}
         {% include 'kiosk/_photo_form.html' with action=action has_photo=profile.photo %}
-        <p class="text-muted small mt-3 mb-0">Your photo is shown to clinic staff and to your patients in their portal. It is never shown on the waiting-room TV.</p>
+        <p class="text-muted small mt-3 mb-0">Your photo is shown to clinic staff and to your patients in their portal.{% if user_is_doctor %} While you are on duty it is also shown on the waiting-room TV next to your room.{% endif %}</p>
     </section>
 </div>
 {% endblock %}

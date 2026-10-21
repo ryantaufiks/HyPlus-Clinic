@@ -67,7 +67,7 @@ Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{
 ## Queue, TV display and access control
 
 1. The kiosk prints (or shows) the ticket: queue number, Patient ID and QR code. Patients who scan it on their phone see their place in the queue, can save the QR code and complete their registration.
-2. The waiting-room TV opens `/display/` (no login; it shows queue numbers and rooms only). Tap once to enable the chime. It lists every doctor on duty with their room (In progress, Called or Available); doctors switch **On duty / Off duty** on the Consultations page.
+2. The waiting-room TV opens `/display/` (no login; it shows queue numbers and rooms only). Tap once to enable the chime. It lists every doctor on duty with their photo (or initials) and room (In progress, Called or Available), and the next 10 numbers in line; doctors switch **On duty / Off duty** on the Consultations page. Only on-duty doctors' photos are served to the TV; patient photos never are.
 3. A doctor presses **Call next** (or **Call** on a patient) under Consultations. The TV plays a chime and shows the number and the doctor's room. Each doctor's room is set under **Staff**.
 4. At the consulting-room door, staff scan the ticket under **Scan ticket** (access control). It turns green only for called patients, and the visit becomes **In progress** on the TV and on the doctor's screen.
 5. The doctor records the diagnosis and prescription and presses **Complete & call next**; the TV moves on to the next number. Critical blood pressure is called first.
@@ -84,7 +84,7 @@ Patients can have their own account to see their visits, vital signs (with chart
 
 ## Profile photos
 
-Staff upload their photo under **My profile** (their name, top right); patients upload theirs in the portal. Without a photo, the person's initials are shown on a colour that stays the same for them. Uploads (JPG/PNG/WebP up to 5 MB) are rotated upright, cropped square to 256×256 and re-saved without metadata, so location data in phone photos is removed. Photos are never public: patient photos are visible to clinic staff and the patient only, staff photos to signed-in users, and none appear on the TV.
+Staff upload their photo under **My profile** (their name, top right); patients upload theirs in the portal. Without a photo, the person's initials are shown on a colour that stays the same for them. Uploads (JPG/PNG/WebP up to 5 MB) are rotated upright, cropped square to 256×256 and re-saved without metadata, so location data in phone photos is removed. Photos are never public: patient photos are visible to clinic staff and the patient only, staff photos to signed-in users; the TV shows only the photos of doctors on duty.
 
 ## Medical devices (OMRON)
 

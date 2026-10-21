@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +19,8 @@ from django.views.generic import TemplateView
 from django_ratelimit.decorators import ratelimit
 
 from . import queue
-from .models import Visit
+from .avatars import color, initials
+from .models import StaffProfile, Visit
 from .roles import CapabilityRequiredMixin, is_doctor
 
 
@@ -27,6 +28,18 @@ def _doctor_name(user):
     if user is None:
         return ""
     return user.get_full_name() or user.get_username()
+
+
+def _doctor_face(user):
+    """Photo URL (public TV endpoint) or initials and colour for a doctor."""
+    if user is None:
+        return {"photo": "", "initials": "", "color": ""}
+    profile = StaffProfile.objects.filter(user=user).first()
+    photo = ""
+    if profile and profile.photo:
+        photo = reverse("kiosk:display-photo", args=[user.pk]) + "?v=" + profile.photo.name.rsplit("/", 1)[-1][:12]
+    name = _doctor_name(user)
+    return {"photo": photo, "initials": initials(name), "color": color(f"user-{user.pk}")}
 
 
 # --- Waiting-room TV (public: queue numbers and rooms only, never patient names) --------
@@ -50,6 +63,7 @@ class DisplayDataView(View):
                         "queue_number": v.queue_number,
                         "room": v.room,
                         "doctor": _doctor_name(v.doctor),
+                        "face": _doctor_face(v.doctor),
                         "called_at": v.called_at.isoformat(),
                         "call_id": f"{v.pk}-{v.call_count}",
                     }
@@ -87,9 +101,26 @@ def _room_row(room, doctor, visit):
     return {
         "room": room,
         "doctor": _doctor_name(doctor),
+        "face": _doctor_face(doctor),
         "state": state,
         "queue_number": visit.queue_number if visit else "",
     }
+
+
+def display_doctor_photo(request, user_id):
+    """Public, for the TV: the photo of a doctor who is on duty or seeing a patient today.
+
+    No other photo (patients, other staff, doctors off duty) is served here.
+    """
+    profile = get_object_or_404(StaffProfile.objects.select_related("user"), user_id=user_id)
+    shown = any(doctor.pk == profile.user_id for doctor, _ in queue.doctors_on_duty()) or queue.todays_queue().filter(
+        doctor_id=profile.user_id, status__in=[Visit.CALLED, Visit.IN_CONSULTATION]
+    ).exists()
+    if not (shown and profile.photo):
+        raise Http404
+    response = FileResponse(profile.photo.open("rb"), content_type="image/jpeg")
+    response["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 # --- Calling patients (doctors) --------------------------------------------------------
