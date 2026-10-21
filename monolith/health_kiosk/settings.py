@@ -53,6 +53,8 @@ FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
 # Public address of the app (e.g. https://aivin.example.com), used in the ticket
 # QR code so patients' phones can open it. Falls back to the request's host.
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", "").rstrip("/")
+# Former public host names, redirected to PUBLIC_BASE_URL (they must also be in ALLOWED_HOSTS).
+REDIRECT_HOSTS = env_list("REDIRECT_HOSTS")
 
 # Shared secret the BLE gateway uses for the internal device API.
 GATEWAY_TOKEN = env("GATEWAY_TOKEN", "")

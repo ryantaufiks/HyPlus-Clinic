@@ -17,6 +17,11 @@ class PublicHostHttpsRedirectMiddleware:
 
     def __call__(self, request):
         public = urlsplit(settings.PUBLIC_BASE_URL)
+        host = request.get_host().rsplit(":", 1)[0]
+        # Old public domains (REDIRECT_HOSTS) move to the current one, keeping
+        # the path, so links and printed ticket QR codes keep working.
+        if settings.PUBLIC_BASE_URL and host in settings.REDIRECT_HOSTS:
+            return HttpResponsePermanentRedirect(settings.PUBLIC_BASE_URL + request.get_full_path())
         if (
             public.scheme == "https"
             and not request.is_secure()
