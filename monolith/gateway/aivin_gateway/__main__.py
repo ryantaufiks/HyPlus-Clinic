@@ -117,8 +117,16 @@ class CommandError(Exception):
     """A command failed for a reason worth showing to staff as-is."""
 
 
+async def find_with_new_scanner(address: str, since: float) -> BLEDevice | None:
+    """Rediscovery for the CLI, where no other scan is running."""
+    return await BleakScanner.find_device_by_address(address, timeout=20)
+
+
 async def pair_device(
-    device: BLEDevice, model: str | None = None, advertised_services: list[str] | None = None
+    device: BLEDevice,
+    model: str | None = None,
+    advertised_services: list[str] | None = None,
+    rediscover=find_with_new_scanner,
 ) -> tuple[store.PairedDevice, str | None]:
     """Run OMRON pairing (device must show -P-) and persist the result.
 
@@ -126,14 +134,19 @@ async def pair_device(
     the one `model` names: names like "BLESmart_0001…" do not reveal it, and
     pairing with the wrong profile fails. Returns the paired device and the
     model number the device reported.
+
+    `rediscover(address, since)` returns the device again after its host bond
+    was removed. BlueZ allows one discovery session per process, so the
+    running gateway passes one that waits on its own scanner.
     """
     # A device in -P- mode expects a fresh bond. One left on the host from an
     # earlier (possibly failed) attempt makes the new pairing fail, so drop it
     # and pick the device up again from its next advertisement.
     if await _bluez_is_paired(device):
         log.info("Removing old host bond for %s before pairing", device.address)
+        removed_at = time.time()
         await _bluez_remove_device(device)
-        device = await BleakScanner.find_device_by_address(device.address, timeout=20)
+        device = await rediscover(device.address, removed_at)
         if device is None:
             raise CommandError("The device stopped advertising. Put it back in -P- mode and pair again.")
 
@@ -231,6 +244,16 @@ class Gateway:
             time.time(),
             list(adv.service_uuids),
         )
+
+    async def wait_for_advertisement(self, address: str, since: float, timeout: float = 20) -> BLEDevice | None:
+        """The device from the running scanner's first advertisement after `since`."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            entry = self.nearby.get(address)
+            if entry is not None and entry[4] > since:
+                return entry[0]
+            await asyncio.sleep(0.5)
+        return None
 
     def nearby_device(self, address: str, max_age: float = NEARBY_SECONDS):
         entry = self.nearby.get(address)
@@ -353,7 +376,9 @@ class Gateway:
         async with self.ble_lock:
             try:
                 async with asyncio.timeout(POLL_TIMEOUT_SECONDS):
-                    paired, reported = await pair_device(entry[0], model, entry[5])
+                    paired, reported = await pair_device(
+                        entry[0], model, entry[5], rediscover=self.wait_for_advertisement
+                    )
             except TimeoutError:
                 raise CommandError("Pairing timed out. Put the device back in -P- mode and try again.") from None
         self.register(paired)

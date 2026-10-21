@@ -63,7 +63,7 @@ class GatewayCommandTest(unittest.IsolatedAsyncioTestCase):
             "aivin_gateway.__main__.pair_device", mock.AsyncMock(return_value=(paired, "HEM-6232T"))
         ) as pair:
             result = await self.gateway.cmd_pair({"address": "AA:BB:CC:DD:EE:01", "model": ""})
-        pair.assert_awaited_once_with(device, None, [])
+        self.assertEqual(pair.await_args.args, (device, None, []))
         self.assertEqual(
             result, {"address": "AA:BB:CC:DD:EE:01", "model": "HEM-6232T", "reported_model": "HEM-6232T"}
         )
@@ -83,6 +83,23 @@ class GatewayCommandTest(unittest.IsolatedAsyncioTestCase):
         await self.gateway.cmd_remove({"address": paired.address})
         self.assertEqual(store.load(), {})
         self.assertNotIn(paired.address, self.gateway.devices)
+
+    async def test_wait_for_advertisement_uses_running_scanner(self):
+        since = time.time()
+        device = BLEDevice("AA:BB:CC:DD:EE:01", "HEM-6232T", None)
+        self.gateway.on_advertisement(device, advertisement())
+        self.assertIs(await self.gateway.wait_for_advertisement("AA:BB:CC:DD:EE:01", since - 1, timeout=1), device)
+        self.assertIsNone(await self.gateway.wait_for_advertisement("AA:BB:CC:DD:EE:01", time.time() + 5, timeout=0.6))
+
+    async def test_pair_rediscovers_through_running_scanner(self):
+        device = BLEDevice("AA:BB:CC:DD:EE:01", "HEM-6232T", None)
+        self.gateway.on_advertisement(device, advertisement())
+        paired = store.PairedDevice(address="AA:BB:CC:DD:EE:01", model="HEM-6232T", kind="bp")
+        with mock.patch(
+            "aivin_gateway.__main__.pair_device", mock.AsyncMock(return_value=(paired, "HEM-6232T"))
+        ) as pair:
+            await self.gateway.cmd_pair({"address": "AA:BB:CC:DD:EE:01", "model": ""})
+        self.assertEqual(pair.await_args.kwargs["rediscover"], self.gateway.wait_for_advertisement)
 
     async def test_test_times_out_when_device_asleep(self):
         paired = store.PairedDevice(address="AA:BB:CC:DD:EE:01", model="HEM-6232T", kind="bp")
@@ -181,14 +198,15 @@ class PairDeviceTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_old_bond_is_removed_first(self):
         fresh = BLEDevice("C9:3F:DA:E0:01:4C", "BLESmart_00010412C93FDAE0014C", None)
+        rediscover = mock.AsyncMock(return_value=fresh)
         with (
             mock.patch("aivin_gateway.__main__._bluez_is_paired", mock.AsyncMock(return_value=True)),
             mock.patch("aivin_gateway.__main__._bluez_remove_device", mock.AsyncMock(return_value=True)) as remove,
-            mock.patch("aivin_gateway.__main__.BleakScanner.find_device_by_address", mock.AsyncMock(return_value=fresh)),
             self.probe_reports("HN-300T2") as fetch,
         ):
-            await pair_device(self.device)
+            await pair_device(self.device, rediscover=rediscover)
         remove.assert_awaited_once_with(self.device)
+        self.assertEqual(rediscover.await_args.args[0], "C9:3F:DA:E0:01:4C")
         self.assertIs(fetch.await_args.args[0], fresh)
 
     async def test_connection_failure(self):
