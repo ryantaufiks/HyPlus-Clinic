@@ -236,3 +236,47 @@
 }
 .flow-canvas .flow-link::after { display: none; }
 @media (max-width: 575.98px) { .flow-canvas .flow-entry > .bi { display: none; } .flow-canvas .flow-entry { justify-content: center; text-align: center; } }
+
+/* ---- Platform features ---------------------------------------------------------------
+ * Grouped by who uses them. With the script, tabs show one group at a time;
+ * without it, every group is listed.
+ */
+.features { margin-top: 3rem; padding: 2rem; border-radius: 24px; background: linear-gradient(180deg, var(--aivin-surface-2), var(--aivin-surface)); border: 1px solid var(--aivin-border); }
+.features-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 0.5rem 2rem; margin-bottom: 1.4rem; }
+.features-head h3 { font-size: 1.4rem; font-weight: 750; margin: 0; }
+.features-head p { color: var(--aivin-ink-2); margin: 0; }
+.feature-tabs { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.3rem; border-radius: 99px; background: var(--aivin-surface); border: 1px solid var(--aivin-border); margin-bottom: 1.4rem; }
+.feature-tabs[hidden] { display: none; }
+.feature-tabs button { border: 0; background: transparent; border-radius: 99px; padding: 0.5rem 1rem; font-weight: 600; color: var(--aivin-ink-2); display: inline-flex; align-items: center; gap: 0.45rem; transition: background 0.15s, color 0.15s; }
+.feature-tabs button:hover { color: var(--aivin-ink); }
+.feature-tabs button.active { background: var(--aivin-primary); color: #fff; box-shadow: 0 4px 14px rgba(11, 122, 131, 0.3); }
+.feature-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.9rem; }
+.feature-panel + .feature-panel { margin-top: 1.6rem; }
+.feature-panel-title { grid-column: 1 / -1; font-size: 1rem; font-weight: 700; color: var(--aivin-primary-strong); margin: 0; display: flex; gap: 0.45rem; align-items: center; }
+.js-tabs .feature-panel + .feature-panel { margin-top: 0; }
+.js-tabs .feature-panel-title { display: none; }
+.js-tabs .feature-panel:not(.active) { display: none; }
+.js-tabs .feature-panel.active { animation: feature-in 0.35s ease both; }
+@keyframes feature-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.feature { display: flex; gap: 0.85rem; padding: 1.05rem; border-radius: var(--aivin-radius); background: var(--aivin-surface); border: 1px solid var(--aivin-border); transition: border-color 0.15s, transform 0.15s; }
+.feature:hover { border-color: rgba(11, 122, 131, 0.35); transform: translateY(-1px); }
+.feature > .bi { flex: none; width: 2.4rem; height: 2.4rem; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; color: var(--aivin-primary); background: var(--aivin-primary-soft); }
+.feature h4 { font-size: 0.98rem; font-weight: 700; margin: 0.1rem 0 0.25rem; }
+.feature p { font-size: 0.88rem; color: var(--aivin-ink-2); margin: 0; }
+@media (max-width: 991.98px) { .feature-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 575.98px) {
+    .features { padding: 1.2rem; }
+    .feature-panel { grid-template-columns: 1fr; }
+    .feature-tabs { display: flex; border-radius: 16px; }
+    .feature-tabs button { flex: 1 1 auto; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .js-tabs .feature-panel.active { animation: none; } }
+
+/* AI features on the roadmap */
+.soon { display: inline-block; vertical-align: 0.1em; margin-left: 0.3rem; font-size: 0.66rem; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.12rem 0.45rem; border-radius: 99px; color: #5b3fd1; background: #ece8ff; }
+.feature-tabs .tab-ai .soon { margin-left: 0.1rem; }
+.feature-tabs button.tab-ai.active { background: linear-gradient(120deg, #5b3fd1, var(--aivin-primary)); }
+.feature-tabs button.tab-ai.active .soon { color: #fff; background: rgba(255, 255, 255, 0.22); }
+.feature-soon > .bi { color: #5b3fd1; background: #ece8ff; }
+.feature-soon { border-style: dashed; }
+.feature-note { grid-column: 1 / -1; margin: 0; font-size: 0.88rem; color: var(--aivin-ink-2); }

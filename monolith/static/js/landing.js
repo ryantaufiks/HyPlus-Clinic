@@ -25,6 +25,32 @@
         revealed.forEach((el) => el.classList.add("is-visible"));
     }
 
+    /* ---- Feature tabs ------------------------------------------------------ */
+    const features = document.querySelector(".features");
+    if (features) {
+        const tabs = [...features.querySelectorAll("[role=tab]")];
+        const select = (tab, focus) => {
+            tabs.forEach((t) => {
+                const on = t === tab;
+                t.classList.toggle("active", on);
+                t.setAttribute("aria-selected", on);
+                t.tabIndex = on ? 0 : -1;
+                document.getElementById(t.getAttribute("aria-controls")).classList.toggle("active", on);
+            });
+            if (focus) tab.focus();
+        };
+        tabs.forEach((tab, i) => {
+            tab.addEventListener("click", () => select(tab));
+            tab.addEventListener("keydown", (event) => {
+                const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+                if (step) select(tabs[(i + step + tabs.length) % tabs.length], true);
+            });
+        });
+        features.classList.add("js-tabs");
+        features.querySelector("[role=tablist]").hidden = false;
+        select(tabs[0]);
+    }
+
     /* ---- Spotlight on cards ----------------------------------------------- */
     document.querySelectorAll(".spotlight").forEach((card) => {
         card.addEventListener("pointermove", (event) => {
