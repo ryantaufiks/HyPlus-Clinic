@@ -286,3 +286,4 @@
 .new { display: inline-block; vertical-align: 0.1em; margin-left: 0.3rem; font-size: 0.66rem; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.12rem 0.45rem; border-radius: 99px; color: #fff; background: linear-gradient(120deg, #5b3fd1, var(--aivin-primary)); }
 .feature-wide { grid-column: span 2; }
 @media (max-width: 575.98px) { .feature-wide { grid-column: auto; } }
+.feature-full { grid-column: 1 / -1; }

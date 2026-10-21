@@ -51,7 +51,7 @@
                 <div class="col-lg-7">
                     <span class="eyebrow" data-rise><i class="bi bi-shield-check"></i> Registered doctors · Records kept private</span>
                     <h1 class="hero-title" data-rise style="--i: 1">See a doctor,<br /><span>without the wait.</span></h1>
-                    <p class="hero-lead" data-rise style="--i: 2">Book your consultation online, get your weight and blood pressure checked in about three minutes at our kiosk, and keep your diagnoses and prescriptions in one place.</p>
+                    <p class="hero-lead" data-rise style="--i: 2">Book your consultation online, get your health check done in minutes at our smart kiosk with connected medical devices, and keep your results, diagnoses and prescriptions in one place.</p>
                     <div class="d-flex flex-wrap gap-2 mt-4" data-rise style="--i: 3">
                         <a class="btn btn-primary btn-lg btn-icon btn-glow" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
                         <a class="btn btn-light btn-lg" href="#services">View services</a>
@@ -78,7 +78,7 @@
                         <div class="today-empty"><i class="bi bi-moon-stars"></i><div><div class="fw-semibold">No doctors on duty right now</div><div class="small text-muted">Book ahead and we'll confirm your time on WhatsApp.</div></div></div>
                         {% endfor %}
                         <div class="today-steps">
-                            <span><i class="bi bi-speedometer2"></i> Vitals in ~3 min</span>
+                            <span><i class="bi bi-heart-pulse"></i> Health check in minutes</span>
                             <span><i class="bi bi-phone"></i> Queue on your phone</span>
                         </div>
                     </div>
@@ -95,10 +95,10 @@
                 <p>A clinic visit that respects your time, with the doctor fully prepared when you walk in.</p>
             </div>
             <div class="row g-3">
-                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 0"><i class="bi bi-heart-pulse"></i><h3>Vitals before you sit down</h3><p>Weight and blood pressure are measured automatically and sent straight to your doctor.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 0"><i class="bi bi-heart-pulse"></i><h3>Health checks before you sit down</h3><p>Connected medical devices measure your vital signs and send them straight to your doctor.</p></div></div>
                 <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-person-check"></i><h3>Choose your doctor</h3><p>See the doctor you prefer, or the first one available for the shortest wait.</p></div></div>
                 <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-phone"></i><h3>Follow the queue</h3><p>Scan your ticket to see your place in line, so you can wait where you like.</p></div></div>
-                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 3"><i class="bi bi-folder2-open"></i><h3>Your records, always with you</h3><p>Diagnoses, prescriptions and blood pressure trends in your own patient portal.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 3"><i class="bi bi-folder2-open"></i><h3>Your records, always with you</h3><p>Diagnoses, prescriptions and health-check trends in your own patient portal.</p></div></div>
             </div>
 
             <div class="features" data-reveal>
@@ -118,17 +118,18 @@
                     <div class="feature"><i class="bi bi-person-check"></i><div><h4>Choose your doctor</h4><p>Pick a doctor on duty, or the first available for the shortest wait.</p></div></div>
                     <div class="feature"><i class="bi bi-phone"></i><div><h4>Live queue on your phone</h4><p>See how many are ahead of you; your number appears on the clinic TV with a chime.</p></div></div>
                     <div class="feature"><i class="bi bi-qr-code"></i><div><h4>QR ticket</h4><p>One code to check in, open the consulting-room door and follow your visit.</p></div></div>
-                    <div class="feature"><i class="bi bi-folder2-open"></i><div><h4>Patient portal</h4><p>Your visits, diagnoses, blood pressure and weight charts, and printable prescriptions.</p></div></div>
+                    <div class="feature"><i class="bi bi-folder2-open"></i><div><h4>Patient portal</h4><p>Your visits, diagnoses, health-check trends and printable prescriptions.</p></div></div>
                     <div class="feature"><i class="bi bi-pencil-square"></i><div><h4>Register from your phone</h4><p>Complete your details from home; the clinic checks them before they are saved.</p></div></div>
                 </div>
                 <div class="feature-panel" role="tabpanel" id="panel-kiosk" aria-labelledby="tab-kiosk">
                     <h3 class="feature-panel-title"><i class="bi bi-display"></i> At the kiosk · AIVIN</h3>
-                    <div class="feature"><i class="bi bi-bluetooth"></i><div><h4>Readings straight from the devices</h4><p>The scale and blood pressure monitor send results over Bluetooth: no typing, no mistakes.</p></div></div>
+                    <div class="feature"><i class="bi bi-bluetooth"></i><div><h4>Connected medical devices</h4><p>Wireless devices send results straight to the kiosk: no typing, no transcription mistakes.</p></div></div>
                     <div class="feature"><i class="bi bi-mic"></i><div><h4>Answer by voice</h4><p>Say your name and why you came; the kiosk fills in the form for you.</p></div></div>
-                    <div class="feature"><i class="bi bi-heart-pulse"></i><div><h4>Blood pressure, explained</h4><p>Every reading is classified with ACC/AHA guidelines and shown to the doctor.</p></div></div>
-                    <div class="feature"><i class="bi bi-exclamation-triangle"></i><div><h4>Urgent patients first</h4><p>A very high blood pressure moves the patient to the front of the queue.</p></div></div>
-                    <div class="feature"><i class="bi bi-printer"></i><div><h4>Ticket in three minutes</h4><p>A printed or on-screen ticket with queue number, doctor and QR code.</p></div></div>
+                    <div class="feature"><i class="bi bi-heart-pulse"></i><div><h4>Results, explained</h4><p>Every reading is checked against clinical guidelines, such as ACC/AHA for blood pressure, and flagged for the doctor.</p></div></div>
+                    <div class="feature"><i class="bi bi-exclamation-triangle"></i><div><h4>Urgent patients first</h4><p>A reading that needs urgent attention, such as a very high blood pressure, moves the patient to the front of the queue.</p></div></div>
+                    <div class="feature"><i class="bi bi-printer"></i><div><h4>Ticket in minutes</h4><p>A printed or on-screen ticket with queue number, doctor and QR code.</p></div></div>
                     <div class="feature"><i class="bi bi-people"></i><div><h4>Works for walk-ins and online tickets</h4><p>New patients, returning patients by Patient ID, and online queue numbers.</p></div></div>
+                    <div class="feature feature-soon feature-full"><i class="bi bi-plus-circle-dotted"></i><div><h4>More health checks <span class="soon">Coming soon</span></h4><p>Pulse oximetry (SpO₂), and blood glucose, uric acid and cholesterol from one portable all-in-one meter, all on wireless devices that send results straight to your record.</p></div></div>
                 </div>
                 <div class="feature-panel" role="tabpanel" id="panel-team" aria-labelledby="tab-team">
                     <h3 class="feature-panel-title"><i class="bi bi-clipboard2-pulse"></i> For doctors &amp; staff</h3>
@@ -136,7 +137,7 @@
                     <div class="feature"><i class="bi bi-journal-medical"></i><div><h4>Doctor's workspace</h4><p>History, allergies and vital-sign trends on one screen; diagnosis with ICD-10 codes.</p></div></div>
                     <div class="feature"><i class="bi bi-capsule"></i><div><h4>Safer prescriptions</h4><p>Structured prescriptions with an automatic check against the patient's drug allergies.</p></div></div>
                     <div class="feature"><i class="bi bi-megaphone"></i><div><h4>One-tap calling</h4><p>Call the next patient in your own line; the TV and the patient's phone update instantly.</p></div></div>
-                    <div class="feature"><i class="bi bi-graph-up"></i><div><h4>Live clinic dashboard</h4><p>Check-ins, waiting patients, blood pressure alerts and device status in real time.</p></div></div>
+                    <div class="feature"><i class="bi bi-graph-up"></i><div><h4>Live clinic dashboard</h4><p>Check-ins, waiting patients, abnormal readings and device status in real time.</p></div></div>
                     <div class="feature"><i class="bi bi-inbox"></i><div><h4>Front desk tools</h4><p>Bookings confirmed on WhatsApp, registration approvals and review moderation.</p></div></div>
                     <div class="feature"><i class="bi bi-shield-lock"></i><div><h4>Secure by design</h4><p>Role-based access, an audit trail of every change, and encrypted sensitive settings.</p></div></div>
                     <div class="feature"><i class="bi bi-calendar-week"></i><div><h4>Weekly doctor schedules</h4><p>Each doctor sets their consulting hours and days off; bookings outside them are refused automatically.</p></div></div>
@@ -208,8 +209,8 @@
                     <span class="flow-num">1</span>
                     <span class="flow-icon"><i class="bi bi-display"></i></span>
                     <h3>Check in at the kiosk</h3>
-                    <p>Walk-ins choose a doctor; online tickets just check in. Then the scale and blood pressure.</p>
-                    <div class="flow-chips"><span><i class="bi bi-speedometer2"></i> Weight</span><span><i class="bi bi-heart-pulse"></i> Blood pressure</span><span><i class="bi bi-stopwatch"></i> ~3 min</span></div>
+                    <p>Walk-ins choose a doctor; online tickets just check in. Then a quick health check with connected devices.</p>
+                    <div class="flow-chips"><span><i class="bi bi-heart-pulse"></i> Vital signs</span><span><i class="bi bi-bluetooth"></i> Connected devices</span><span><i class="bi bi-stopwatch"></i> ~3 min</span></div>
                 </div>
                 <div class="flow-link" aria-hidden="true"><span class="flow-dot"></span></div>
 
@@ -218,7 +219,7 @@
                     <span class="flow-icon"><i class="bi bi-ticket-perforated"></i></span>
                     <h3>Get your ticket</h3>
                     <p>Your queue number and QR code. Follow your place in line on your phone.</p>
-                    <div class="flow-decision"><i class="bi bi-exclamation-triangle-fill"></i> Very high blood pressure? You are seen first.</div>
+                    <div class="flow-decision"><i class="bi bi-exclamation-triangle-fill"></i> An urgent reading? You are seen first.</div>
                 </div>
                 <div class="flow-link" aria-hidden="true"><span class="flow-dot"></span></div>
 
