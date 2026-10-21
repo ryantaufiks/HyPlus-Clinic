@@ -50,6 +50,7 @@ class Patient(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="patient_record"
     )
     portal_consent_at = models.DateTimeField(null=True, blank=True)
+    photo = models.ImageField(upload_to="avatars/patients/", blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.patient_id})"
@@ -172,6 +173,7 @@ class StaffProfile(models.Model):
     room = models.CharField("Consulting room", max_length=40, blank=True, help_text="Shown on the waiting-room TV, e.g. Room 1")
     # Doctors on duty (with a room) are listed on the TV, even when their room is free.
     on_duty = models.BooleanField(default=True)
+    photo = models.ImageField(upload_to="avatars/staff/", blank=True)
 
     def __str__(self):
         return f"{self.user} ({self.room or 'no room'})"

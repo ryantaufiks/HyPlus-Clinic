@@ -17,7 +17,8 @@ COPY --chown=aivin:aivin . .
 # collectstatic needs settings to import; these build-time values are not used at runtime.
 RUN SECRET_KEY=build-only FIELD_ENCRYPTION_KEY=$(python -c "import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())") \
     python manage.py collectstatic --noinput \
-    && chown -R aivin:aivin /app/staticfiles
+    && chown -R aivin:aivin /app/staticfiles \
+    && mkdir -p /app/media && chown aivin:aivin /app/media
 
 USER aivin
 

@@ -307,3 +307,15 @@ code { color: var(--aivin-primary-strong); }
     body { background: #fff; }
     .surface { box-shadow: none; border-color: #ccc; }
 }
+
+/* ---- Avatars ------------------------------------------------------------------------------------------- */
+
+.avatar {
+    width: var(--avatar-size, 36px); height: var(--avatar-size, 36px); border-radius: 50%; flex: none;
+    object-fit: cover; display: inline-flex; vertical-align: middle; background: var(--aivin-surface-2);
+}
+.avatar-initials {
+    align-items: center; justify-content: center; background: var(--avatar-bg, var(--aivin-primary)); color: #fff;
+    font-weight: 700; font-size: calc(var(--avatar-size, 36px) * 0.4); letter-spacing: 0.02em; user-select: none;
+}
+.with-avatar { display: inline-flex; align-items: center; gap: 0.6rem; }

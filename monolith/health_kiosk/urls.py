@@ -4,7 +4,7 @@ from django.urls import include, path, reverse_lazy
 from django.utils.text import format_lazy
 from django_ratelimit.decorators import ratelimit
 
-from kiosk import portal_views
+from kiosk import avatar_views, portal_views
 from kiosk.portal_views import RoleAwareLoginView
 from kiosk.views import healthz
 
@@ -29,6 +29,7 @@ urlpatterns = [
     # Patient portal
     path("portal/", portal_views.PortalHomeView.as_view(), name="portal-home"),
     path("portal/login/", portal_views.PortalLoginView.as_view(), name="portal-login"),
+    path("portal/photo/", avatar_views.PortalPhotoView.as_view(), name="portal-photo"),
     path("portal/setup/<uidb64>/<token>/", portal_views.PortalSetupView.as_view(), name="portal-setup"),
     path(
         "portal/visits/<int:pk>/prescription/",

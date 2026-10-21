@@ -1,0 +1,22 @@
+{% extends 'kiosk/base.html' %}
+{% load avatars %}
+
+{% block title %}My profile - AIVIN{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 640px">
+    <div class="page-header"><div><h1 class="page-title">My profile</h1></div></div>
+    <section class="surface">
+        <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
+            {% avatar user 120 %}
+            <div>
+                <div class="fs-4 fw-semibold">{{ user.get_full_name|default:user.get_username }}</div>
+                <div class="text-muted">{{ role }}{% if profile.room %} · {{ profile.room }}{% endif %} · username {{ user.get_username }}</div>
+            </div>
+        </div>
+        {% url 'kiosk:my-profile' as action %}
+        {% include 'kiosk/_photo_form.html' with action=action has_photo=profile.photo %}
+        <p class="text-muted small mt-3 mb-0">Your photo is shown to clinic staff and to your patients in their portal. It is never shown on the waiting-room TV.</p>
+    </section>
+</div>
+{% endblock %}

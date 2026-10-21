@@ -1,7 +1,7 @@
 COMPOSE := docker compose
 BACKUP_DIR := backups
 
-.PHONY: init-env up down restart logs ps migrate createsuperuser shell test backup restore \
+.PHONY: init-env up down restart logs ps migrate createsuperuser shell test backup restore restore-media \
 	gateway-logs restart-gateway devices-scan devices-pair devices-list
 
 init-env:        ## Create .env with generated secrets
@@ -35,10 +35,16 @@ test:
 	$(COMPOSE) run --rm -e DEBUG=true --entrypoint python web manage.py test
 	$(COMPOSE) run --rm --no-deps --entrypoint python gateway -m unittest discover -s tests -t .
 
-backup:          ## Dump the database to backups/aivin-YYYYmmdd-HHMMSS.sql.gz
+backup:          ## Database dump and profile photos into backups/
 	@mkdir -p $(BACKUP_DIR) && chmod 700 $(BACKUP_DIR)
-	$(COMPOSE) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' | gzip > $(BACKUP_DIR)/aivin-$$(date +%Y%m%d-%H%M%S).sql.gz
-	@ls -1t $(BACKUP_DIR) | head -1
+	@stamp=$$(date +%Y%m%d-%H%M%S); \
+	$(COMPOSE) exec -T db sh -c 'pg_dump -U "$$POSTGRES_USER" "$$POSTGRES_DB"' | gzip > $(BACKUP_DIR)/aivin-$$stamp.sql.gz && \
+	$(COMPOSE) exec -T web tar -czf - -C /app media > $(BACKUP_DIR)/aivin-media-$$stamp.tar.gz && \
+	ls -1 $(BACKUP_DIR)/*$$stamp*
+
+restore-media:   ## Restore photos: make restore-media FILE=backups/aivin-media-....tar.gz
+	@test -n "$(FILE)" || (echo "usage: make restore-media FILE=..." && exit 1)
+	$(COMPOSE) exec -T web tar -xzf - -C /app < $(FILE)
 
 restore:         ## Restore a dump: make restore FILE=backups/aivin-....sql.gz
 	@test -n "$(FILE)" || (echo "usage: make restore FILE=..." && exit 1)

@@ -1,4 +1,5 @@
 {% extends 'kiosk/base.html' %}
+{% load avatars %}
 
 {% block title %}Consultations - AIVIN{% endblock %}
 
@@ -41,6 +42,7 @@
     <div class="d-flex flex-wrap justify-content-between gap-3 align-items-center">
         <div class="d-flex gap-3 align-items-center">
             <div class="now-number">{{ v.queue_number }}</div>
+            {% avatar v.patient 56 %}
             <div>
                 <span class="status status-info"><i class="bi bi-person-check-fill"></i>With you now</span>
                 <div class="fs-5 fw-semibold mt-1">{{ v.patient.name }} <span class="text-muted fs-6">· {{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}</span></div>
@@ -64,6 +66,7 @@
     <div class="d-flex flex-wrap justify-content-between gap-3 align-items-center">
         <div class="d-flex gap-3 align-items-center">
             <div class="now-number">{{ v.queue_number }}</div>
+            {% avatar v.patient 56 %}
             <div>
                 <span class="status status-warning"><i class="bi bi-megaphone-fill"></i>Called {{ v.called_at|time:"H:i" }}{% if v.call_count > 1 %} · {{ v.call_count }}×{% endif %}</span>
                 <div class="fs-5 fw-semibold mt-1">{{ v.patient.name }}</div>
@@ -90,8 +93,10 @@
                 <tr>
                     <td><strong class="fs-5">{{ v.queue_number }}</strong></td>
                     <td>
+                        <div class="with-avatar">{% avatar v.patient 36 %}<div>
                         <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:visit-detail' v.pk %}">{{ v.patient.name }}</a>
                         <div class="small text-muted">{{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}{% if v.patient.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
+                        </div></div>
                     </td>
                     <td class="text-truncate" style="max-width: 240px">{{ v.reason }}</td>
                     <td class="num">{% if vit.bp %}{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}<div><span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% else %}–{% endif %}</td>

@@ -1,4 +1,5 @@
 {% extends 'kiosk/base.html' %}
+{% load avatars %}
 {% load static %}
 
 {% block title %}My health - AIVIN{% endblock %}
@@ -6,7 +7,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Hello, {{ patient.name }}</h1>
+        <h1 class="page-title with-avatar">{% avatar patient 64 %}Hello, {{ patient.name }}</h1>
         <p class="page-subtitle"><span class="status status-info">{{ patient.patient_id }}</span> · your health record at the clinic</p>
     </div>
 </div>
@@ -42,7 +43,9 @@
                 <dt class="col-5 text-muted fw-semibold">ID document</dt><dd class="col-7">{% if patient.id_type %}{{ patient.get_id_type_display }} ···{{ patient.id_last4 }}{% else %}—{% endif %}</dd>
                 <dt class="col-5 text-muted fw-semibold">Height</dt><dd class="col-7">{% if patient.height_cm %}{{ patient.height_cm|floatformat:0 }} cm{% else %}—{% endif %}</dd>
             </dl>
-            <p class="text-muted small mb-0">To correct your details, ask the clinic's front desk.</p>
+            <p class="text-muted small">To correct your details, ask the clinic's front desk.</p>
+            {% url 'portal-photo' as action %}
+            {% include 'kiosk/_photo_form.html' with action=action has_photo=patient.photo %}
         </section>
     </div>
 
@@ -88,7 +91,7 @@
     </div>
     {% if v.diagnosis %}
     <div class="mb-2"><span class="text-muted small">Diagnosis</span><div class="fw-semibold">{{ v.diagnosis }}{% if v.diagnosis_code %} <span class="status status-neutral">{{ v.diagnosis_code }}</span>{% endif %}</div>
-        {% if v.doctor %}<div class="text-muted small">{{ v.doctor.get_full_name|default:v.doctor.get_username }}</div>{% endif %}</div>
+        {% if v.doctor %}<div class="text-muted small with-avatar mt-1">{% avatar v.doctor 24 %}{{ v.doctor.get_full_name|default:v.doctor.get_username }}</div>{% endif %}</div>
     {% endif %}
     {% if v.prescriptions.all %}
     {% include 'kiosk/_prescription_list.html' with items=v.prescriptions.all %}

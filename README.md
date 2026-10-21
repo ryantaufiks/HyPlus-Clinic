@@ -82,6 +82,10 @@ Patients can have their own account to see their visits, vital signs (with chart
 - Front desk, nurses and administrators can send a new link (password reset) or disable access. Patient accounts never appear in, and cannot be turned into, staff accounts; every staff page refuses them.
 - Health data is "specific personal data" under Indonesia's UU PDP (No. 27/2022): have the clinic review the privacy notice text in `kiosk/templates/kiosk/portal_setup.html`.
 
+## Profile photos
+
+Staff upload their photo under **My profile** (their name, top right); patients upload theirs in the portal. Without a photo, the person's initials are shown on a colour that stays the same for them. Uploads (JPG/PNG/WebP up to 5 MB) are rotated upright, cropped square to 256×256 and re-saved without metadata, so location data in phone photos is removed. Photos are never public: patient photos are visible to clinic staff and the patient only, staff photos to signed-in users, and none appear on the TV.
+
 ## Medical devices (OMRON)
 
 Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. They are read by the BLE gateway (`monolith/gateway`) on the server's own Bluetooth adapter, so **the devices must be within Bluetooth range of the server** (same room, roughly 5–10 m). Tablets and phones only need a browser.
@@ -123,8 +127,9 @@ Run these commands from `monolith/`:
 |---|---|
 | `make ps` / `make logs` | Container status and app logs |
 | `make up` | Rebuild and redeploy after pulling new code (migrations run automatically) |
-| `make backup` | Write a gzipped `pg_dump` to `monolith/backups/` (git-ignored) |
+| `make backup` | Write a gzipped `pg_dump` and an archive of profile photos to `monolith/backups/` (git-ignored) |
 | `make restore FILE=backups/<file>.sql.gz` | Restore a dump |
+| `make restore-media FILE=backups/aivin-media-<stamp>.tar.gz` | Restore profile photos |
 | `make down` | Stop the stack. Data is kept in the `aivin_pgdata` volume. |
 
 Schedule `make backup` (for example a daily cron job), and copy the backups and `.env` off the server.

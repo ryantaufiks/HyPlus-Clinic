@@ -23,6 +23,8 @@ services:
     env_file: .env
     environment:
       POSTGRES_HOST: db
+    volumes:
+      - media:/app/media  # profile photos
     depends_on:
       db:
         condition: service_healthy
@@ -50,3 +52,4 @@ services:
 volumes:
   pgdata:
   gateway_data:
+  media:

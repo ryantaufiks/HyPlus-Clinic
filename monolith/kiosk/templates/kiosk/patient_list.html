@@ -1,4 +1,5 @@
 {% extends 'kiosk/base.html' %}
+{% load avatars %}
 
 {% block title %}Patients - AIVIN{% endblock %}
 
@@ -36,8 +37,10 @@
                 {% with p=row.patient v=row.vitals %}
                 <tr class="row-link" data-href="{% url 'kiosk:patient-detail' p.pk %}">
                     <td>
+                        <div class="with-avatar">{% avatar p 36 %}<div>
                         <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:patient-detail' p.pk %}">{{ p.name }}</a>
                         <div class="text-muted small">{{ p.patient_id }}{% if p.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
+                        </div></div>
                     </td>
                     <td>
                         {% if row.pending %}<span class="status status-warning"><i class="bi bi-inbox"></i>Pending review</span>

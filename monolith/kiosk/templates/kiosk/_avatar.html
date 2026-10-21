@@ -1,0 +1,1 @@
+{% if url %}<img class="avatar" src="{{ url }}" width="{{ size }}" height="{{ size }}" alt="{{ name }}" loading="lazy" style="--avatar-size: {{ size }}px" />{% else %}<span class="avatar avatar-initials" role="img" aria-label="{{ name }}" style="--avatar-size: {{ size }}px; --avatar-bg: {{ color }}">{{ initials }}</span>{% endif %}

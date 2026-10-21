@@ -169,6 +169,12 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Uploaded profile photos. They are never served directly from MEDIA_URL:
+# kiosk.avatar_views serves them after checking who is asking.
+MEDIA_ROOT = Path(env("MEDIA_ROOT", str(BASE_DIR / "media")))
+MEDIA_URL = "/media/"
+DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
+
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {

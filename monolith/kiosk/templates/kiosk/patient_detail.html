@@ -1,4 +1,5 @@
 {% extends 'kiosk/base.html' %}
+{% load avatars %}
 {% load static %}
 
 {% block title %}{{ patient.name }} - AIVIN{% endblock %}
@@ -8,7 +9,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">{{ patient.name }}</h1>
+        <h1 class="page-title with-avatar">{% avatar patient 56 %}{{ patient.name }}</h1>
         <p class="page-subtitle">
             <span class="status status-info">{{ patient.patient_id }}</span>
             {% if pending_submission %}<a class="status status-warning text-decoration-none" {% if user_can.review_registrations %}href="{% url 'kiosk:submissions' %}"{% endif %}><i class="bi bi-inbox"></i>Details pending review</a>
