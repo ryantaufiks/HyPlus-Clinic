@@ -336,8 +336,8 @@ code { color: var(--aivin-primary-strong); }
 .nav-pills .nav-link { border-radius: 999px; font-weight: 550; }
 
 /* Hy+ Clinic logo (static/img, made from the artwork in static/brand) */
-.brand-logo { height: 46px; width: auto; display: block; }
+.brand-logo { height: 48px; width: auto; display: block; }
 .brand-tag-side { margin: 0 0 0 0.75rem; padding-left: 0.75rem; border-left: 1px solid var(--aivin-border); font-size: 0.8rem; font-weight: 600; color: var(--aivin-ink-2); line-height: 1.2; max-width: 11rem; }
 .brand-mark-img { height: 56px; width: auto; }
 .kiosk-logo { height: 84px; width: auto; }
-@media (max-width: 575.98px) { .brand-logo { height: 38px; } .brand-tag-side { display: none; } }
+@media (max-width: 575.98px) { .brand-logo { height: 40px; } .brand-tag-side { display: none; } }

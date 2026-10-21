@@ -8,8 +8,9 @@ from PIL import Image, ImageChops
 
 src, img_dir, icon_dir = sys.argv[1:4]
 
-def crop(im, margin=0.0):
-    box = im.getchannel("A").point(lambda a: 255 if a > 8 else 0).getbbox()
+def crop(im, margin=0.0, threshold=8):
+    # Trim to the visible artwork; a higher threshold also drops faint anti-aliasing halos.
+    box = im.getchannel("A").point(lambda a: 255 if a > threshold else 0).getbbox()
     im = im.crop(box)
     if margin:
         m = round(max(im.size) * margin)
@@ -22,11 +23,11 @@ def fit_height(im, h):
     return im.resize((round(im.width * h / im.height), h), Image.LANCZOS)
 
 # 1. Main logo (Hy+ Hyplus Clinic) for headers; 3x the largest display height.
-logo = crop(Image.open(f"{src}/hyplus_mainlogo.png").convert("RGBA"), 0.02)
+logo = crop(Image.open(f"{src}/hyplus_mainlogo.png").convert("RGBA"), threshold=40)
 fit_height(logo, 180).save(f"{img_dir}/hyplus-logo.png", optimize=True)
 
 # 2. The Hy+ mark alone (transparent) for the kiosk and compact places.
-mark = crop(Image.open(f"{src}/hyplus_logoicon.png").convert("RGBA"), 0.02)
+mark = crop(Image.open(f"{src}/hyplus_logoicon.png").convert("RGBA"), threshold=40)
 fit_height(mark, 360).save(f"{img_dir}/hyplus-mark.png", optimize=True)
 
 # 3. App icon with its own rounded corners ("any" purpose icons and favicons).
