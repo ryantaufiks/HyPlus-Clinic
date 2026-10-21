@@ -1,9 +1,17 @@
 name: aivin
 
+# Container logs are rotated: at most 5 files of 10 MB per service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -20,6 +28,7 @@ services:
     build: .
     image: aivin-web:latest
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
       POSTGRES_HOST: db
@@ -37,6 +46,7 @@ services:
     build: ./gateway
     image: aivin-gateway:latest
     restart: unless-stopped
+    logging: *logging
     environment:
       AIVIN_URL: http://web:8000
       GATEWAY_TOKEN: ${GATEWAY_TOKEN}

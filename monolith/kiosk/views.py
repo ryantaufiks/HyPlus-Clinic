@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import connection
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractHour
@@ -21,10 +22,23 @@ from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
 logger = logging.getLogger(__name__)
 
 def healthz(request):
-    """Liveness/readiness probe used by Docker."""
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT 1")
-    return JsonResponse({"status": "ok"})
+    """Readiness probe for Docker and the uptime monitor: the database and the cache must work."""
+    checks = {}
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        checks["database"] = "ok"
+    except Exception:
+        logger.exception("Health check: database")
+        checks["database"] = "error"
+    try:
+        cache.set("healthz", "1", 30)
+        checks["cache"] = "ok" if cache.get("healthz") == "1" else "error"
+    except Exception:
+        logger.exception("Health check: cache")
+        checks["cache"] = "error"
+    healthy = all(value == "ok" for value in checks.values())
+    return JsonResponse({"status": "ok" if healthy else "error", "checks": checks}, status=200 if healthy else 503)
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")

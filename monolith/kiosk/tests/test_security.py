@@ -137,4 +137,17 @@ class SiteConfigurationAdminTest(TestCase):
 class HealthzTest(TestCase):
     def test_healthz(self):
         response = self.client.get(reverse("healthz"))
-        self.assertEqual(response.json(), {"status": "ok"})
+        self.assertEqual(response.json(), {"status": "ok", "checks": {"database": "ok", "cache": "ok"}})
+
+    def test_healthz_reports_a_broken_cache(self):
+        from unittest import mock
+
+        with mock.patch("kiosk.views.cache.get", return_value=None):
+            response = self.client.get(reverse("healthz"))
+        self.assertEqual((response.status_code, response.json()["checks"]["cache"]), (503, "error"))
+
+    def test_sentry_scrubs_patient_data(self):
+        from health_kiosk.settings import _scrub_event
+
+        event = {"request": {"url": "/patients/", "data": {"name": "Dewi"}, "query_string": "q=Dewi", "cookies": {"sessionid": "x"}}}
+        self.assertEqual(_scrub_event(event, None)["request"], {"url": "/patients/"})

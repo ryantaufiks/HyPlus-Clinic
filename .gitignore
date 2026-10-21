@@ -35,3 +35,6 @@ Thumbs.db
 
 # Database backups
 backups/
+
+# Watchdog alert secrets
+monolith/scripts/monitor.env

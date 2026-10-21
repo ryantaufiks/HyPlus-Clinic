@@ -221,6 +221,32 @@ OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")
 
 # --- Logging -------------------------------------------------------------------------
 
+# --- Error tracking (optional): set SENTRY_DSN to send errors to Sentry --------------------
+SENTRY_DSN = env("SENTRY_DSN", "")
+
+
+def _scrub_event(event, hint):
+    """Send stack traces, never patient data: drop request bodies, query strings and cookies."""
+    request = event.get("request") or {}
+    for key in ("data", "query_string", "cookies"):
+        request.pop(key, None)
+    return event
+
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        environment=env("SENTRY_ENVIRONMENT", "production"),
+        send_default_pii=False,
+        max_request_body_size="never",
+        traces_sample_rate=float(env("SENTRY_TRACES_SAMPLE_RATE", "0")),
+        before_send=_scrub_event,
+    )
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
