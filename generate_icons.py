@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate PWA icons for AI Nurse Health Kiosk
+Generate PWA icons for AIVIN
 Creates all required icon sizes from a base image or generates simple icons
 """
 
@@ -195,7 +195,7 @@ def create_favicon(output_dir):
 def main():
     """Main function"""
     print("=" * 50)
-    print("AI Nurse PWA Icon Generator")
+    print("AIVIN PWA Icon Generator")
     print("=" * 50)
     print()
 

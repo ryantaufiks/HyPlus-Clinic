@@ -1,8 +1,8 @@
-// AI Nurse Health Kiosk - Service Worker
+// AIVIN (AI-Vital Intake) - Service Worker
 // Version 1.0.0
 
-const CACHE_NAME = 'ai-nurse-v1.0.0';
-const RUNTIME_CACHE = 'ai-nurse-runtime-v1.0.0';
+const CACHE_NAME = 'aivin-v1.0.0';
+const RUNTIME_CACHE = 'aivin-runtime-v1.0.0';
 
 // Files to cache for offline support
 const STATIC_CACHE_URLS = [
@@ -197,7 +197,7 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-        self.registration.showNotification('AI Nurse', options)
+        self.registration.showNotification('AIVIN', options)
     );
 });
 

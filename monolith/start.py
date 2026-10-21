@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
-Quick Start Script for Health Check Kiosk
+Quick Start Script for AIVIN
 ==========================================
 
-This script helps you quickly start the Health Check Kiosk monolithic application.
+This script helps you quickly start the AIVIN monolithic application.
 It checks dependencies, runs migrations, and starts the development server.
 
 Usage:
@@ -193,7 +193,7 @@ def start_server():
 
     print_success("Server is starting...")
     print("\n" + "=" * 60)
-    print("  Health Check Kiosk is now running!")
+    print("  AIVIN is now running!")
     print("=" * 60)
     print("\nAccess the application at:")
     print("  • Kiosk Interface:  http://127.0.0.1:8000/")
@@ -211,13 +211,13 @@ def start_server():
         subprocess.run([python_exec, "manage.py", "runserver", "0.0.0.0:8000"])
     except KeyboardInterrupt:
         print("\n\nServer stopped.")
-        print_success("Thank you for using Health Check Kiosk!")
+        print_success("Thank you for using AIVIN!")
 
 
 def main():
     """Main function"""
     print("\n" + "=" * 60)
-    print("  HEALTH CHECK KIOSK - QUICK START")
+    print("  AIVIN - QUICK START")
     print("=" * 60)
 
     # Change to script directory

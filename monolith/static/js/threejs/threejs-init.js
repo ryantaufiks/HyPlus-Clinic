@@ -1,5 +1,5 @@
 /**
- * Three.js Initialization for AI Nurse Health Kiosk
+ * Three.js Initialization for AIVIN
  * This script initializes Three.js scene, camera, and renderer
  */
 

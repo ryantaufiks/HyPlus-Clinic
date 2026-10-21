@@ -1,6 +1,6 @@
 {
-  "appId": "com.ainurse.healthkiosk",
-  "appName": "AI Nurse Health Kiosk",
+  "appId": "com.aivin.kiosk",
+  "appName": "AIVIN",
   "webDir": "monolith/static",
   "bundledWebRuntime": false,
   "server": {

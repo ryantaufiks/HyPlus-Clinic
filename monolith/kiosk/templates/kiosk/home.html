@@ -1,7 +1,7 @@
 
 ```{% extends 'kiosk/base.html' %}
 
-{% block title %}Health Check Kiosk - Welcome{% endblock %}
+{% block title %}AIVIN - Welcome{% endblock %}
 
 {% block extra_css %}
 <!-- Three.js Animation CSS -->
@@ -757,7 +757,7 @@ function renderStep() {
 function renderWelcomeStep() {
     const html = `
         <i class="bi bi-heart-pulse-fill icon-large"></i>
-        <h1 class="mb-4">Welcome to Health Check Kiosk</h1>
+        <h1 class="mb-4">Welcome to AIVIN</h1>
         <p class="lead mb-4">
             I'm your AI health assistant. I'll guide you through a simple health check-up process.
             The entire process should take about 5 minutes.
@@ -777,7 +777,7 @@ function renderWelcomeStep() {
     `;
     contentArea.innerHTML = html;
     speak(
-        "Hello, and welcome to the Health Check Kiosk. I will be guiding you through the process today.",
+        "Hello, I'm AIVIN, your health check assistant. I will be guiding you through the process today.",
     );
 }
 

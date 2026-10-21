@@ -1,8 +1,8 @@
 {
-  "name": "ai-nurse-health-kiosk",
+  "name": "aivin",
   "version": "1.0.0",
-  "description": "AI-powered health check kiosk with voice guidance and Bluetooth device integration",
-  "author": "AI Nurse Team",
+  "description": "AI-assisted pre-consultation kiosk that measures vital signs, records them automatically and prepares a summary for the doctor, reducing nurse workload",
+  "author": "AIVIN Team",
   "license": "MIT",
   "main": "index.js",
   "scripts": {
@@ -28,8 +28,8 @@
     "@capacitor/cli": "^5.5.1"
   },
   "capacitor": {
-    "appId": "com.ainurse.healthkiosk",
-    "appName": "AI Nurse Health Kiosk",
+    "appId": "com.aivin.kiosk",
+    "appName": "AIVIN",
     "webDir": "monolith/static",
     "plugins": {
       "SplashScreen": {
@@ -38,6 +38,10 @@
     }
   },
   "keywords": [
+    "aivin",
+    "vital-signs",
+    "triage",
+    "nurse",
     "health",
     "medical",
     "kiosk",
@@ -50,7 +54,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/ai-nurse"
+    "url": "https://github.com/yourusername/aivin"
   },
   "engines": {
     "node": ">=14.0.0",

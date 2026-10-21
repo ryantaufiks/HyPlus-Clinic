@@ -1,7 +1,7 @@
 {
-  "name": "AI Nurse Health Kiosk",
-  "short_name": "AI Nurse",
-  "description": "AI-powered health check kiosk with voice guidance and Bluetooth device integration",
+  "name": "AIVIN — AI-Vital Intake",
+  "short_name": "AIVIN",
+  "description": "AI-assisted pre-consultation kiosk that measures vital signs, records them automatically and prepares a summary for the doctor, reducing nurse workload",
   "version": "1.0.0",
   "start_url": "/",
   "display": "standalone",
