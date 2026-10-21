@@ -1,10 +1,12 @@
-# AI Health Check Kiosk - Monolithic Application
+# AIVIN — AI-Vital Intake
 
-A complete, production-ready health check kiosk system built with Django and modern web technologies. This monolithic application guides patients through preliminary health checks using AI voice assistance and Bluetooth medical devices.
+**Kiosk pemeriksaan tanda vital mandiri untuk tahap pra-konsultasi.**
+
+Before a patient sees the doctor, a nurse usually measures their vital signs, writes them down, and passes the notes on to the doctor. AIVIN takes over this intake step: an AI voice assistant guides the patient, Bluetooth medical devices take the measurements, everything is recorded automatically, and the doctor receives the results ready for further examination. The goal is to **reduce nurse workload**, not to replace nurses.
 
 ## 🎯 Overview
 
-The Health Check Kiosk is a full-stack monolithic application designed to run on tablets in kiosk mode. It provides:
+AIVIN is a full-stack monolithic application designed to run on tablets in kiosk mode. It provides:
 - AI-powered voice interaction for patient guidance
 - Bluetooth integration with Omron medical devices
 - Automated queue management with QR codes
@@ -61,6 +63,19 @@ AI_Nurse/
 ├── docs/                     # Additional documentation
 └── README.md                 # This file
 ```
+
+### 🔑 Configure secrets (required)
+
+Secrets are read from `monolith/.env`, which is **not** committed to git. Before the first run:
+
+```bash
+cd monolith
+copy .env.example .env      # Windows (use `cp` on Linux/macOS)
+```
+
+Then edit `monolith/.env` and set at least `SECRET_KEY` (generate one with
+`python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`)
+and, if you use AI features, `OPENAI_API_KEY`.
 
 ## 🚀 Quick Start (Windows)
 

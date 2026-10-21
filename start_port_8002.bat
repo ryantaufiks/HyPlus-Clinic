@@ -1,9 +1,9 @@
 @echo off
-title AI Nurse - Server Port 8002 (Cloudflare Tunnel)
+title AIVIN - Server Port 8002 (Cloudflare Tunnel)
 color 0A
 
 echo ========================================
-echo    AI NURSE - HEALTH KIOSK SERVER
+echo    AIVIN - HEALTH KIOSK SERVER
 echo    Running on Port 8002
 echo    For Cloudflare Tunnel
 echo ========================================

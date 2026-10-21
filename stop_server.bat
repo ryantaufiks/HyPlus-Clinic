@@ -1,9 +1,9 @@
 @echo off
-title Stop AI Nurse Server
+title Stop AIVIN Server
 color 0C
 
 echo ========================================
-echo    STOPPING AI NURSE SERVER
+echo    STOPPING AIVIN SERVER
 echo ========================================
 echo.
 

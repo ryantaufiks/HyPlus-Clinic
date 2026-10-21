@@ -1,9 +1,9 @@
 @echo off
-title AI Nurse - Health Kiosk Server
+title AIVIN - Health Kiosk Server
 color 0A
 
 echo ========================================
-echo    AI NURSE - HEALTH KIOSK SERVER
+echo    AIVIN - HEALTH KIOSK SERVER
 echo ========================================
 echo.
 echo Starting server on port 8001...

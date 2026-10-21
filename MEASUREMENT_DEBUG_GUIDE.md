@@ -1,4 +1,4 @@
-# 🔍 Measurement Debugging Guide - AI Nurse Health Kiosk
+# 🔍 Measurement Debugging Guide - AIVIN
 
 ## 📊 Overview
 

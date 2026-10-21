@@ -1,4 +1,4 @@
-# 📱 PWA Testing Guide - AI Nurse Health Kiosk
+# 📱 PWA Testing Guide - AIVIN
 
 ## ✅ PWA is Ready!
 

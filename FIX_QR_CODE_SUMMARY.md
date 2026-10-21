@@ -1,4 +1,4 @@
-# 🔧 QR Code Fix Summary - AI Nurse Health Kiosk
+# 🔧 QR Code Fix Summary - AIVIN
 
 ## ❌ Original Problem
 

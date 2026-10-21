@@ -1,4 +1,4 @@
-# Health Check Kiosk - Updates Documentation
+# AIVIN - Updates Documentation
 
 ## Latest Updates (December 2024)
 

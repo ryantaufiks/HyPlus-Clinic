@@ -1,14 +1,14 @@
 @echo off
-title AI Nurse - APK Build Setup
+title AIVIN - APK Build Setup
 color 0B
 
 cls
 echo ========================================
-echo    AI NURSE - APK BUILD SETUP
+echo    AIVIN - APK BUILD SETUP
 echo ========================================
 echo.
 echo This script will help you build an Android APK
-echo for the AI Nurse Health Kiosk application.
+echo for the AIVIN application.
 echo.
 echo ========================================
 echo.
@@ -79,7 +79,7 @@ REM Check if Capacitor is initialized
 echo [5/8] Checking Capacitor setup...
 if not exist "capacitor.config.json" (
     echo [INFO] Initializing Capacitor...
-    npx cap init "AI Nurse Health Kiosk" "com.ainurse.healthkiosk" --web-dir="monolith/static"
+    npx cap init "AIVIN" "com.aivin.kiosk" --web-dir="monolith/static"
     echo     Capacitor initialized!
 ) else (
     echo     Capacitor already initialized

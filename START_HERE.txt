@@ -1,6 +1,6 @@
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
-║           🏥 AI NURSE - HEALTH KIOSK SYSTEM 🏥                ║
+║           🏥 AIVIN - HEALTH KIOSK SYSTEM 🏥                ║
 ║                                                                ║
 ║                    QUICK START GUIDE                           ║
 ║                                                                ║

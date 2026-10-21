@@ -1,4 +1,4 @@
-# 📱 APK Build Guide - AI Nurse Health Kiosk
+# 📱 APK Build Guide - AIVIN
 
 Complete guide to build an Android APK and deploy with Cloudflare Tunnel for remote access.
 
@@ -125,12 +125,12 @@ npm install @capacitor/core @capacitor/cli @capacitor/android
 ### Step 3: Initialize Capacitor
 
 ```bash
-npx cap init "AI Nurse Health Kiosk" "com.ainurse.healthkiosk"
+npx cap init "AIVIN" "com.aivin.kiosk"
 ```
 
 Answer the prompts:
-- Package ID: `com.ainurse.healthkiosk`
-- App Name: `AI Nurse Health Kiosk`
+- Package ID: `com.aivin.kiosk`
+- App Name: `AIVIN`
 - Web directory: `monolith/static`
 
 ### Step 4: Add Android Platform
@@ -471,7 +471,7 @@ npx cap sync android
 Edit `android/app/src/main/res/values/strings.xml`:
 ```xml
 <resources>
-    <string name="app_name">AI Nurse</string>
+    <string name="app_name">AIVIN</string>
 </resources>
 ```
 
@@ -737,7 +737,7 @@ adb logcat
 adb install app-release.apk
 
 # Uninstall app
-adb uninstall com.ainurse.healthkiosk
+adb uninstall com.aivin.kiosk
 
 # Check Bluetooth permissions
 adb shell dumpsys bluetooth_manager
@@ -809,7 +809,7 @@ adb shell dumpsys bluetooth_manager
 
 ## 🎉 Success!
 
-Your AI Nurse Health Kiosk is now available as:
+Your AIVIN is now available as:
 - ✅ **PWA** - Install from browser
 - ✅ **APK** - Native Android app
 - ✅ **Web** - Access via Cloudflare

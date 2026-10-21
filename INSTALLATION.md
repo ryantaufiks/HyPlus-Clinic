@@ -1,6 +1,6 @@
-# 📦 Installation Guide - AI Nurse Health Kiosk
+# 📦 Installation Guide - AIVIN
 
-Complete installation guide for setting up the AI Nurse Health Kiosk system.
+Complete installation guide for setting up the AIVIN system.
 
 ---
 

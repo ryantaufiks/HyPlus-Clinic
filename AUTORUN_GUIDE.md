@@ -1,4 +1,4 @@
-# 🚀 Autorun Scripts Guide - AI Nurse Health Kiosk
+# 🚀 Autorun Scripts Guide - AIVIN
 
 ## 📋 Available Scripts
 
@@ -175,7 +175,7 @@ python manage.py runserver 0.0.0.0:8080
 - Right-click pada `quick_start.bat`
 - Pilih "Create shortcut"
 - Drag shortcut ke Desktop
-- Rename sesuai keinginan (misal: "🏥 AI Nurse")
+- Rename sesuai keinginan (misal: "🏥 AIVIN")
 
 ### 2. Pin to Taskbar
 - Buat shortcut seperti di atas
@@ -218,7 +218,7 @@ Jika masih ada masalah:
 
 ```
 ╔═══════════════════════════════════════════════╗
-║         AI NURSE - QUICK REFERENCE           ║
+║         AIVIN - QUICK REFERENCE           ║
 ╠═══════════════════════════════════════════════╣
 ║ START SERVER:                                 ║
 ║   → Double-click: quick_start.bat            ║

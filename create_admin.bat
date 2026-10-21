@@ -1,10 +1,10 @@
 @echo off
-title Create Admin User - AI Nurse
+title Create Admin User - AIVIN
 color 0D
 
 cls
 echo ========================================
-echo    AI NURSE - CREATE ADMIN USER
+echo    AIVIN - CREATE ADMIN USER
 echo ========================================
 echo.
 echo This script will help you create a superuser

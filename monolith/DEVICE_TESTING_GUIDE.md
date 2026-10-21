@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for testing the Health Check Kiosk with real Omron Bluetooth medical devices.
+This guide provides step-by-step instructions for testing AIVIN with real Omron Bluetooth medical devices.
 
 ## 🩺 Supported Devices
 

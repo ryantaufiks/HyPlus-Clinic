@@ -1,4 +1,4 @@
-# 📱 Mobile Issues Fix Guide - AI Nurse Health Kiosk
+# 📱 Mobile Issues Fix Guide - AIVIN
 
 ## 🔍 Issues Identified
 

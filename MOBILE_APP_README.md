@@ -1,4 +1,4 @@
-# 📱 Mobile App Setup - AI Nurse Health Kiosk
+# 📱 Mobile App Setup - AIVIN
 
 Quick guide to get the mobile app running on Android devices.
 

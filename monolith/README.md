@@ -1,4 +1,4 @@
-# Health Check Kiosk - Monolithic Application
+# AIVIN - Monolithic Application
 
 A complete monolithic Django application for health check kiosks with AI voice assistance and Bluetooth device integration.
 

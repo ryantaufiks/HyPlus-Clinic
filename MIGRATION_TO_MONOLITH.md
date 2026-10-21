@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-The AI Health Check Kiosk project has been successfully migrated from a microservices architecture (separate Django backend + Flutter frontend) to a **monolithic Django application**. This migration significantly improves development efficiency, testing, and deployment.
+The AIVIN project has been successfully migrated from a microservices architecture (separate Django backend + Flutter frontend) to a **monolithic Django application**. This migration significantly improves development efficiency, testing, and deployment.
 
 ## 📋 What Changed
 

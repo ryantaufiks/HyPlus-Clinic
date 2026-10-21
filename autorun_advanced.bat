@@ -1,11 +1,11 @@
 @echo off
-title AI Nurse - Health Kiosk Server (Advanced)
+title AIVIN - Health Kiosk Server (Advanced)
 color 0B
 
 :MENU
 cls
 echo ========================================
-echo    AI NURSE - HEALTH KIOSK SERVER
+echo    AIVIN - HEALTH KIOSK SERVER
 echo           ADVANCED LAUNCHER
 echo ========================================
 echo.
@@ -217,7 +217,7 @@ goto :eof
 :EXIT
 cls
 echo.
-echo Thank you for using AI Nurse Health Kiosk!
+echo Thank you for using AIVIN!
 echo.
 timeout /t 2 >nul
 exit

@@ -1,4 +1,4 @@
-# AI Health Check Kiosk - Project Index
+# AIVIN - Project Index
 
 ## 📂 Project Structure
 

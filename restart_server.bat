@@ -1,9 +1,9 @@
 @echo off
-title Restart AI Nurse Server
+title Restart AIVIN Server
 color 0E
 
 echo ========================================
-echo    RESTARTING AI NURSE SERVER
+echo    RESTARTING AIVIN SERVER
 echo ========================================
 echo.
 

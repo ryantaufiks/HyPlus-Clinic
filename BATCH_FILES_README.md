@@ -1,6 +1,6 @@
-# 🚀 Batch Files Reference - AI Nurse Health Kiosk
+# 🚀 Batch Files Reference - AIVIN
 
-Quick reference guide for all available batch files to manage your AI Nurse server.
+Quick reference guide for all available batch files to manage your AIVIN server.
 
 ---
 
@@ -303,7 +303,7 @@ autorun_advanced.bat → Option [4]
 ```
 1. Right-click quick_start.bat
 2. "Send to" → "Desktop (create shortcut)"
-3. Rename to "🏥 AI Nurse"
+3. Rename to "🏥 AIVIN"
 4. Double-click anytime to start!
 ```
 

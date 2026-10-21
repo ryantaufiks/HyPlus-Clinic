@@ -1,14 +1,14 @@
 @echo off
-title Install AI Nurse Packages
+title Install AIVIN Packages
 color 0B
 
 cls
 echo ========================================
-echo    AI NURSE - PACKAGE INSTALLATION
+echo    AIVIN - PACKAGE INSTALLATION
 echo ========================================
 echo.
 echo This script will install all required
-echo Python packages for the AI Nurse system.
+echo Python packages for the AIVIN system.
 echo.
 echo ========================================
 echo.
