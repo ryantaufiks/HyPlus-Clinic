@@ -48,6 +48,14 @@ Then, in the Cloudflare Zero Trust dashboard, add a public hostname to the tunne
 
 Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{"status": "ok"}`.
 
+## Patients, registration and doctors
+
+- **Patient ID**: every patient gets a 5-character ID (e.g. `K7M2Q`), shown on the kiosk ticket. Returning patients choose *I have a Patient ID* at the kiosk.
+- **Ticket QR code** links to `PUBLIC_BASE_URL/v/<token>/`. Staff who scan it while signed in open the visit. A patient who scans it with their phone gets a form to complete their registration. The form never shows stored data, expires after 7 days, and its answers wait in **Registrations** until staff approve them.
+- **Staff** (any account) can register and edit patients, review registrations and see records. Merging duplicate records needs a staff (`is_staff`) account.
+- **Doctors**: add the user to the **Doctor** group in Admin → Users. Only doctors (and superusers) can record diagnoses and prescriptions. Prescriptions are checked by name against the patient's recorded drug allergies; cross-reactivity between drug classes is not detected.
+- Only the last 4 characters of an ID document are stored. Changes to registration and medical data are recorded in an audit log shown on each patient's page.
+
 ## Medical devices (OMRON)
 
 Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. They are read by the BLE gateway (`monolith/gateway`) on the server's own Bluetooth adapter, so **the devices must be within Bluetooth range of the server** (same room, roughly 5–10 m). Tablets and phones only need a browser.
