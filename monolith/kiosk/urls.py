@@ -96,6 +96,7 @@ urlpatterns = [
     path("doctor/call-next/", queue_views.CallNextView.as_view(), name="call-next"),
     path("doctor/duty/", queue_views.DutyView.as_view(), name="doctor-duty"),
     path("visits/<int:pk>/call/", queue_views.CallView.as_view(), name="visit-call"),
+    path("visits/<int:pk>/ai-summary/", clinical_views.VisitAISummaryView.as_view(), name="visit-ai-summary"),
     path("visits/<int:pk>/check-in/", queue_views.CheckInView.as_view(), name="visit-check-in"),
     path("visits/<int:pk>/cancel/", queue_views.CancelVisitView.as_view(), name="visit-cancel"),
     path("visits/<int:pk>/", clinical_views.VisitDetailView.as_view(), name="visit-detail"),

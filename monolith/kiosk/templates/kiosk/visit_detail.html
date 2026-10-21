@@ -1,6 +1,6 @@
 {% extends 'kiosk/base.html' %}
 {% load avatars %}
-{% load static %}
+{% load static ai_format %}
 
 {% block title %}{{ visit.queue_number|default:"Visit" }} · {{ patient.name }} - Hy+ Clinic{% endblock %}
 
@@ -12,6 +12,13 @@
     .profile-list { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
     .profile-list dt { color: var(--aivin-muted); font-weight: 550; }
     .profile-list dd { margin: 0; }
+    .ai-summary { border: 1px solid #d9d2ff; background: linear-gradient(180deg, #f6f3ff, var(--aivin-surface) 60%); }
+    .ai-summary .section-title .bi { color: #5b3fd1; }
+    .ai-text { font-size: 0.93rem; line-height: 1.5; }
+    .ai-text h3 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--aivin-muted); margin: 0.7rem 0 0.2rem; }
+    .ai-text h3:first-child { margin-top: 0; }
+    .ai-text ul { margin: 0; padding-left: 1.1rem; }
+    .ai-text p { margin: 0 0 0.3rem; }
 </style>
 {% endblock %}
 
@@ -76,6 +83,26 @@
 
 <div class="row g-4 mt-0">
     <div class="col-lg-5">
+        {% if can_edit or visit.ai_summary %}
+        <section class="surface ai-summary" id="ai-summary">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <h2 class="section-title mb-2"><i class="bi bi-stars"></i> AI pre-consultation summary</h2>
+                {% if can_edit and ai_available %}
+                <form method="post" action="{% url 'kiosk:visit-ai-summary' visit.pk %}" class="m-0" data-ai-form>{% csrf_token %}
+                    <button class="btn btn-sm {% if visit.ai_summary %}btn-light{% else %}btn-primary{% endif %} btn-icon text-nowrap"><i class="bi {% if visit.ai_summary %}bi-arrow-repeat{% else %}bi-stars{% endif %}"></i> <span>{% if visit.ai_summary %}Regenerate{% else %}Generate{% endif %}</span></button>
+                </form>
+                {% endif %}
+            </div>
+            {% if visit.ai_summary %}
+            <div class="ai-text">{{ visit.ai_summary|ai_summary }}</div>
+            <p class="small text-muted mt-2 mb-0"><i class="bi bi-info-circle"></i> Draft by AI ({{ visit.ai_summary_model }}), {{ visit.ai_summary_at|date:"j M, H:i" }}{% if visit.ai_summary_by %}, requested by {{ visit.ai_summary_by.get_full_name|default:visit.ai_summary_by.get_username }}{% endif %}. Review before use: it does not diagnose.</p>
+            {% elif ai_available %}
+            <p class="small text-muted mb-0">A short summary of the complaint, today's vitals, history, allergies and recent prescriptions, prepared before you see the patient. Only de-identified data is sent to the AI: never the patient's name, ID, phone or address.</p>
+            {% else %}
+            <p class="small text-muted mb-0">Not set up yet: an administrator can add an OpenAI API key under {% if user.is_superuser %}<a href="{% url 'admin:index' %}">Admin › System settings</a>{% else %}Admin › System settings{% endif %}.</p>
+            {% endif %}
+        </section>
+        {% endif %}
         <section class="surface">
             <h2 class="section-title"><i class="bi bi-chat-left-text"></i> Reason for visit</h2>
             <p class="symptoms mb-0">{{ visit.reason }}</p>
@@ -224,6 +251,11 @@
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
 <script>
+document.querySelectorAll("[data-ai-form]").forEach((form) => form.addEventListener("submit", () => {
+    const button = form.querySelector("button");
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Generating…';
+}));
 (function () {
     const rows = document.getElementById("rx-rows");
     if (!rows) return;

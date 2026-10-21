@@ -24,8 +24,9 @@ from .forms import (
     allergy_conflicts,
 )
 from . import queue
-from .models import AuditEvent, Measurement, Patient, PatientSubmission, StaffProfile, Visit
-from .roles import CapabilityRequiredMixin, StaffAreaMixin, can, is_doctor
+from . import ai
+from .models import AuditEvent, Measurement, Patient, PatientSubmission, StaffProfile, Visit, get_openai_api_key
+from .roles import CapabilityRequiredMixin, DoctorRequiredMixin, StaffAreaMixin, can, is_doctor
 from .portal_views import render_invite
 from .views import latest_vitals
 
@@ -284,6 +285,26 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
         return context
 
 
+@method_decorator(ratelimit(key="user", rate="10/m", method="POST", block=True), name="post")
+class VisitAISummaryView(DoctorRequiredMixin, View):
+    """Generate (or regenerate) the AI pre-consultation summary for the doctor."""
+
+    def post(self, request, pk):
+        visit = get_object_or_404(Visit.objects.select_related("patient"), pk=pk)
+        try:
+            text, model = ai.generate_summary(visit)
+        except ai.AIError as exc:
+            messages.error(request, str(exc))
+            return redirect("kiosk:visit-detail", visit.pk)
+        visit.ai_summary = text
+        visit.ai_summary_model = model[:60]
+        visit.ai_summary_at = timezone.now()
+        visit.ai_summary_by = request.user
+        visit.save(update_fields=["ai_summary", "ai_summary_model", "ai_summary_at", "ai_summary_by"])
+        AuditEvent.record(request.user, "visit.ai_summary", visit=visit, model=visit.ai_summary_model)
+        return redirect(reverse("kiosk:visit-detail", args=[visit.pk]) + "#ai-summary")
+
+
 class VisitDetailView(StaffAreaMixin, View):
     """The doctor's workspace for one visit; read-only for other staff."""
 
@@ -299,6 +320,7 @@ class VisitDetailView(StaffAreaMixin, View):
             "vitals": latest_vitals(visit.measurements.order_by("-measured_at")),
             "previous_visits": patient.visits.exclude(pk=visit.pk).prefetch_related("prescriptions").select_related("doctor")[:10],
             "can_edit": is_doctor(request.user),
+            "ai_available": bool(get_openai_api_key()),
             "form": form or DiagnosisForm(instance=visit),
             "formset": formset or PrescriptionFormSet(instance=visit),
             "conflicts": conflicts or [],

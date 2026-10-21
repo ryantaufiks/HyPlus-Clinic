@@ -213,6 +213,8 @@ SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 # Rate limiting for the public kiosk API.
 RATELIMIT_IP_META_KEY = "kiosk.ratelimit.client_ip"
 KIOSK_API_RATE = env("KIOSK_API_RATE", "60/m")
+# Model for the AI pre-consultation summary (the API key is set in the admin).
+OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")
 
 # --- Logging -------------------------------------------------------------------------
 

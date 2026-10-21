@@ -160,6 +160,14 @@ class Visit(models.Model):
     )
     diagnosed_at = models.DateTimeField(null=True, blank=True)
 
+    # AI pre-consultation summary for the doctor (see kiosk.ai); a draft to review.
+    ai_summary = models.TextField(blank=True)
+    ai_summary_model = models.CharField(max_length=60, blank=True)
+    ai_summary_at = models.DateTimeField(null=True, blank=True)
+    ai_summary_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
     class Meta:
         ordering = ["-created_at"]
         constraints = [

@@ -280,3 +280,7 @@
 .feature-soon > .bi { color: #5b3fd1; background: #ece8ff; }
 .feature-soon { border-style: dashed; }
 .feature-note { grid-column: 1 / -1; margin: 0; font-size: 0.88rem; color: var(--aivin-ink-2); }
+/* A live AI feature: highlighted across the whole row */
+.feature-ai { grid-column: 1 / -1; border-color: #d9d2ff; background: linear-gradient(110deg, #f6f3ff, var(--aivin-surface) 70%); }
+.feature-ai > .bi { color: #fff; background: linear-gradient(140deg, #7b5cf0, #5b3fd1); }
+.new { display: inline-block; vertical-align: 0.1em; margin-left: 0.3rem; font-size: 0.66rem; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.12rem 0.45rem; border-radius: 99px; color: #fff; background: linear-gradient(120deg, #5b3fd1, var(--aivin-primary)); }
