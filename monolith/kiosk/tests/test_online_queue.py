@@ -10,6 +10,7 @@ from kiosk import queue
 from kiosk.models import BookingRequest, Patient, Service, StaffProfile, Visit
 
 from .test_queue import user_with_role
+from .kiosk_helpers import as_kiosk
 
 
 def ticket_data(**overrides):
@@ -28,6 +29,7 @@ class OnlineQueueTest(TestCase):
     def setUp(self):
         cache.clear()
         self.doctor = user_with_role("budi", "doctor", room="Room 1")
+        as_kiosk(self.client)
 
     def take(self, **overrides):
         return self.client.post(reverse("kiosk:book"), ticket_data(**overrides))

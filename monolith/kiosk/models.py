@@ -571,3 +571,26 @@ class DoctorTimeOff(models.Model):
     class Meta:
         ordering = ["date"]
         constraints = [models.UniqueConstraint(fields=["doctor", "date"], name="one_time_off_per_day")]
+
+
+# --- Registered kiosk screens ------------------------------------------------------------------
+
+
+class KioskDevice(models.Model):
+    """A browser set up as a check-in kiosk. Only these (and signed-in staff) may use the kiosk API.
+
+    The browser keeps a random key in a cookie; only its SHA-256 hash is stored.
+    """
+
+    name = models.CharField(max_length=60)
+    key_hash = models.CharField(max_length=64, unique=True, editable=False)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-is_active", "name"]
+
+    def __str__(self):
+        return self.name

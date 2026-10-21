@@ -21,6 +21,7 @@ from django.views import View
 from django_ratelimit.decorators import ratelimit
 
 from . import queue
+from .kiosk_auth import kiosk_only
 from .models import PATIENT_ID_ALPHABET, PATIENT_ID_LENGTH, Measurement, Patient, StaffProfile, Visit
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ def _visit_json(visit):
 
 
 @lookup_ratelimit
+@kiosk_only
 class PatientLookupView(View):
     """Confirm a returning patient's ID; only a masked name is revealed."""
 
@@ -68,6 +70,7 @@ class PatientLookupView(View):
         return JsonResponse({"patient_id": patient.patient_id, "masked_name": patient.masked_name})
 
 
+@kiosk_only
 class DoctorChoiceView(View):
     """Doctors the patient can choose at the kiosk, with how many are waiting for each."""
 
@@ -96,6 +99,7 @@ class DoctorChoiceView(View):
 
 
 @kiosk_post_ratelimit
+@kiosk_only
 class VisitStartView(View):
     """Start a visit: for a new patient (name) or a returning one (patient_id)."""
 
@@ -130,6 +134,7 @@ class VisitStartView(View):
 
 
 @lookup_ratelimit
+@kiosk_only
 class OnlineCheckInView(View):
     """Check in an online ticket at the kiosk: queue number + last 4 digits of the WhatsApp number."""
 
@@ -157,6 +162,7 @@ class OnlineCheckInView(View):
 
 
 @kiosk_post_ratelimit
+@kiosk_only
 class VisitFinishView(View):
     """Give the visit its queue number and the QR code for the ticket."""
 
@@ -199,6 +205,7 @@ def assign_queue_number(visit):
 
 
 @kiosk_post_ratelimit
+@kiosk_only
 class SimulatedMeasurementView(View):
     """Record a simulated measurement. Only available with DEBUG on.
 

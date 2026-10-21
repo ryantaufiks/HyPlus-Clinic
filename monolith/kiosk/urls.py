@@ -62,6 +62,8 @@ urlpatterns = [
     ),
     # Staff device management
     path("devices/", device_views.DevicesPageView.as_view(), name="devices"),
+    path("devices/kiosks/register/", device_views.KioskRegisterView.as_view(), name="kiosk-register"),
+    path("devices/kiosks/<int:pk>/revoke/", device_views.KioskRevokeView.as_view(), name="kiosk-revoke"),
     path("devices/status/", device_views.DeviceStatusView.as_view(), name="devices-status"),
     path("devices/commands/", device_views.DeviceCommandCreateView.as_view(), name="devices-command-create"),
     path(

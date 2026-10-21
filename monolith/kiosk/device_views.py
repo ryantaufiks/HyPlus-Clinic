@@ -13,12 +13,13 @@ import logging
 import re
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
@@ -27,7 +28,9 @@ from django.views.generic import TemplateView
 from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 
-from .models import DeviceReading, GatewayCommand, Measurement, Visit
+from . import kiosk_auth
+from .kiosk_auth import kiosk_only
+from .models import AuditEvent, DeviceReading, GatewayCommand, KioskDevice, Measurement, Visit
 from .roles import can
 
 logger = logging.getLogger(__name__)
@@ -182,6 +185,7 @@ kiosk_ratelimit = ratelimit(key="ip", rate="120/m", block=True)
 
 
 @method_decorator(kiosk_ratelimit, name="dispatch")
+@kiosk_only
 class DeviceWaitView(View):
     """The kiosk is on a measurement step: ask the gateway to poll that kind of device."""
 
@@ -199,6 +203,7 @@ class DeviceWaitView(View):
 
 
 @method_decorator(kiosk_ratelimit, name="dispatch")
+@kiosk_only
 class LatestDeviceReadingView(View):
     """The newest unclaimed reading of `kind` taken since `since` (ISO 8601).
 
@@ -265,6 +270,7 @@ def fresh_reading(kind, since):
 
 
 @method_decorator(kiosk_ratelimit, name="dispatch")
+@kiosk_only
 class ClaimDeviceReadingView(View):
     """Attach a reading to the visit being checked in. A reading can be claimed once."""
 
@@ -342,7 +348,31 @@ class DevicesPageView(StaffRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["supported_models"] = SUPPORTED_MODELS
+        context["kiosks"] = KioskDevice.objects.select_related("created_by")
+        context["this_kiosk"] = kiosk_auth.device_of(self.request)
         return context
+
+
+class KioskRegisterView(StaffRequiredMixin, View):
+    """Set up the browser that sends this request as a check-in kiosk."""
+
+    def post(self, request):
+        name = " ".join(request.POST.get("name", "").split())[:60] or "Kiosk"
+        response = redirect("kiosk:devices")
+        device = kiosk_auth.register(response, name, request.user)
+        AuditEvent.record(request.user, "kiosk.registered", kiosk=device.pk, name=device.name)
+        messages.success(request, f"This browser is now the kiosk \"{device.name}\". You can sign out: it keeps working as a kiosk.")
+        return response
+
+
+class KioskRevokeView(StaffRequiredMixin, View):
+    def post(self, request, pk):
+        device = get_object_or_404(KioskDevice, pk=pk)
+        device.is_active = False
+        device.save(update_fields=["is_active"])
+        AuditEvent.record(request.user, "kiosk.revoked", kiosk=device.pk, name=device.name)
+        messages.info(request, f"Kiosk \"{device.name}\" can no longer check patients in.")
+        return redirect("kiosk:devices")
 
 
 class DeviceStatusView(StaffJsonMixin, View):

@@ -9,6 +9,7 @@ from kiosk import queue
 from kiosk.models import Patient, StaffProfile, Visit
 
 from .test_queue import user_with_role
+from .kiosk_helpers import as_kiosk
 
 
 class DoctorChoiceTest(TestCase):
@@ -16,6 +17,7 @@ class DoctorChoiceTest(TestCase):
         cache.clear()
         self.budi = user_with_role("budi", "doctor", room="Room 1")
         self.sari = user_with_role("sari", "doctor", room="Room 2")
+        as_kiosk(self.client)
         self.today = timezone.localdate()
 
     def visit(self, number, doctor=None):

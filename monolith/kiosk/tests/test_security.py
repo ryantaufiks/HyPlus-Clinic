@@ -5,6 +5,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from kiosk.models import Patient, SiteConfiguration, Visit, get_openai_api_key
+from .kiosk_helpers import as_kiosk
 
 
 class StaffPagesRequireLoginTest(TestCase):
@@ -44,7 +45,7 @@ class StaffPagesRequireLoginTest(TestCase):
 
 class KioskApiCsrfTest(TestCase):
     def test_post_without_csrf_token_is_rejected(self):
-        client = Client(enforce_csrf_checks=True)
+        client = as_kiosk(Client(enforce_csrf_checks=True))
         response = client.post(
             reverse("kiosk:api-visit-start"),
             data=json.dumps({"name": "Test", "reason": "Cough"}),
@@ -53,7 +54,7 @@ class KioskApiCsrfTest(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_post_with_csrf_token_succeeds(self):
-        client = Client(enforce_csrf_checks=True)
+        client = as_kiosk(Client(enforce_csrf_checks=True))
         client.get(reverse("kiosk:home"))
         token = client.cookies["csrftoken"].value
         response = client.post(
@@ -66,6 +67,7 @@ class KioskApiCsrfTest(TestCase):
 
     @override_settings(DEBUG=True)
     def test_unknown_visit_returns_404(self):
+        as_kiosk(self.client)
         response = self.client.post(
             reverse("kiosk:api-simulated-measurement", args=["00000000-0000-4000-8000-000000000000"]),
             data=json.dumps({"weight_kg": 70}),

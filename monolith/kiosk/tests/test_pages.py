@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from kiosk.models import Measurement, Patient, Visit
 from kiosk.vitals import bp_category, heart_rate_status
+from .kiosk_helpers import as_kiosk
 
 
 class BpCategoryTest(TestCase):
@@ -84,6 +85,9 @@ class StaffPagesTest(TestCase):
 
 
 class KioskPageTest(TestCase):
+    def setUp(self):
+        as_kiosk(self.client)
+
     def test_kiosk_page_hides_simulation_in_production(self):
         page = self.client.get(reverse("kiosk:home")).content.decode()
         self.assertIn("const SIMULATION_ENABLED = false;", page)

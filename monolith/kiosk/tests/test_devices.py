@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from kiosk.roles import apply_role
 from kiosk.models import DeviceReading, GatewayCommand, Measurement, Patient, Visit
+from .kiosk_helpers import as_kiosk
 
 TOKEN = "test-gateway-token"
 
@@ -22,6 +23,7 @@ class GatewayApiTest(TestCase):
     def setUp(self):
         cache.clear()
         self.auth = {"HTTP_AUTHORIZATION": f"Bearer {TOKEN}"}
+        as_kiosk(self.client)
 
     def bp_payload(self, **overrides):
         payload = {
@@ -74,6 +76,7 @@ class KioskDeviceReadingTest(TestCase):
         self.patient = Patient.objects.create(name="Test Patient")
         self.visit = Visit.objects.create(patient=self.patient, reason="Headache")
         self.since = timezone.now() - dt.timedelta(seconds=5)
+        as_kiosk(self.client)
 
     def make_reading(self, measured_at=None, **fields):
         defaults = {"systolic_bp": 120, "diastolic_bp": 80, "heart_rate_bpm": 70}
@@ -164,6 +167,7 @@ class SimulatedMeasurementTest(TestCase):
     def setUp(self):
         self.patient = Patient.objects.create(name="Test Patient")
         self.visit = Visit.objects.create(patient=self.patient, reason="Fever")
+        as_kiosk(self.client)
 
     def post(self):
         return post_json(

@@ -5,6 +5,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from kiosk.models import Measurement, Patient, Visit
+from .kiosk_helpers import as_kiosk
 
 
 def post(client, url, data=None):
@@ -14,6 +15,7 @@ def post(client, url, data=None):
 class KioskApiTest(TestCase):
     def setUp(self):
         cache.clear()  # rate-limit counters
+        as_kiosk(self.client)
 
     def test_first_visit_creates_patient_and_visit(self):
         response = post(self.client, reverse("kiosk:api-visit-start"), {"name": "  Ryan   Taufik ", "reason": "Dizzy"})

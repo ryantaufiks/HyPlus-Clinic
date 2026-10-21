@@ -56,6 +56,38 @@
         </div>
     </section>
 
+    <section class="surface" id="kiosks">
+        <h2 class="section-title"><i class="bi bi-display"></i> Kiosk screens</h2>
+        <p class="text-muted small">Only these screens (and signed-in staff) can check patients in and read the devices. To add one, sign in on the kiosk's own browser, open this page and set it up; then sign out.</p>
+        {% if this_kiosk %}
+        <div class="alert alert-success d-flex gap-2 align-items-center"><i class="bi bi-check-circle-fill"></i><div>This browser is the kiosk <strong>{{ this_kiosk.name }}</strong>.</div></div>
+        {% else %}
+        <form method="post" action="{% url 'kiosk:kiosk-register' %}" class="d-flex flex-wrap gap-2 mb-3">
+            {% csrf_token %}
+            <input class="form-control" style="max-width: 280px" name="name" maxlength="60" placeholder="Name, e.g. Lobby kiosk" required aria-label="Kiosk name" />
+            <button class="btn btn-primary btn-icon"><i class="bi bi-display"></i> Set up this browser as a kiosk</button>
+        </form>
+        {% endif %}
+        {% if kiosks %}
+        <div class="table-responsive">
+            <table class="table table-aivin table-sm mb-0">
+                <thead><tr><th>Name</th><th>Status</th><th>Last used</th><th>Set up</th><th></th></tr></thead>
+                <tbody>
+                    {% for k in kiosks %}
+                    <tr>
+                        <td class="fw-semibold">{{ k.name }}{% if this_kiosk and k.pk == this_kiosk.pk %} <span class="text-muted fw-normal">(this browser)</span>{% endif %}</td>
+                        <td>{% if k.is_active %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Active</span>{% else %}<span class="status status-neutral"><i class="bi bi-x-circle"></i>Revoked</span>{% endif %}</td>
+                        <td class="text-muted">{{ k.last_seen_at|date:"j M Y, H:i"|default:"Never" }}</td>
+                        <td class="text-muted">{{ k.created_at|date:"j M Y" }}{% if k.created_by %} · {{ k.created_by.get_full_name|default:k.created_by.get_username }}{% endif %}</td>
+                        <td class="text-end">{% if k.is_active %}<form method="post" action="{% url 'kiosk:kiosk-revoke' k.pk %}" class="m-0">{% csrf_token %}<button class="btn btn-sm btn-light text-danger">Revoke</button></form>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </section>
+
     <section class="surface">
         <h2 class="section-title"><i class="bi bi-clock-history"></i> Recent activity</h2>
         <div class="table-responsive">

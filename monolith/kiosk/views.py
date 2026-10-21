@@ -13,6 +13,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView, TemplateView
 
 from .device_views import gateway_devices, gateway_online
+from .kiosk_auth import kiosk_allowed
 from .models import Measurement, Patient, PatientSubmission, Visit
 from .roles import StaffAreaMixin
 from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
@@ -31,6 +32,11 @@ class HomeView(TemplateView):
     """Main kiosk interface"""
 
     template_name = "kiosk/home.html"
+
+    def get_template_names(self):
+        if not kiosk_allowed(self.request):
+            return ["kiosk/kiosk_not_set_up.html"]
+        return [self.template_name]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
