@@ -7,7 +7,7 @@ Before a patient sees the doctor, a nurse usually measures their vital signs, wr
 ## Features
 
 - Voice-guided patient intake (Web Speech API)
-- Omron Bluetooth scale and blood-pressure monitor integration (Web Bluetooth)
+- OMRON HEM-6232T blood-pressure monitor and HN-300T2 scale, read automatically by a BLE gateway on the server
 - Queue tickets with QR codes; doctors scan the QR to open the patient's results
 - Staff dashboard, patient records and measurement history (login required)
 - Admin-managed system settings, with the OpenAI API key stored encrypted
@@ -19,6 +19,7 @@ Before a patient sees the doctor, a nurse usually measures their vital signs, wr
 | App | Django 5.2 served by Gunicorn, static files by WhiteNoise |
 | Database | PostgreSQL 16 |
 | Runtime | Docker Compose (`aivin` project), app port bound to `127.0.0.1` only |
+| Devices | BLE gateway on the server's Bluetooth adapter (BlueZ) |
 | Public access | Cloudflare Tunnel (`cloudflared`) terminates HTTPS |
 | Android | Capacitor wrapper that loads the hosted app |
 
@@ -46,6 +47,22 @@ make createsuperuser   # first administrator account (interactive)
 Then, in the Cloudflare Zero Trust dashboard, add a public hostname to the tunnel (for example `aivin.sc2platform.biz.id`) pointing to `http://localhost:8010`. The hostname must be listed in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in `.env`. Run `make restart` after editing `.env`.
 
 Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{"status": "ok"}`.
+
+## Medical devices (OMRON)
+
+Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. They are read by the BLE gateway (`monolith/gateway`) on the server's own Bluetooth adapter, so **the devices must be within Bluetooth range of the server** (same room, roughly 5–10 m). Tablets and phones only need a browser.
+
+The protocol implementation is vendored from [eigger/hass-omron](https://github.com/eigger/hass-omron) (MIT). Its HN-300T2 support is marked beta upstream.
+
+One-time pairing per device, from `monolith/`:
+
+1. Remove the device from the OMRON connect app / phone Bluetooth settings first. A monitor talks to one host at a time.
+2. Hold the device's Bluetooth button until `-P-` blinks, then run `make devices-scan` to find its address.
+3. While `-P-` is still blinking, run `make devices-pair ADDRESS=<address> MODEL=HEM-6232T` (or `MODEL=HN-300T2`). The device shows `OK` when it worked.
+
+During a check-in, the kiosk's weight and blood-pressure steps wait for the device and show the result automatically. Readings are only accepted if the device timestamp is after the step started; the gateway keeps the device clocks in sync. Check the gateway with `make gateway-logs`.
+
+Simulated measurements (random values) are only available with `DEBUG=true`, and are stored with source "simulated".
 
 ## Secrets and configuration
 
