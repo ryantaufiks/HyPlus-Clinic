@@ -1,0 +1,179 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Queue - AIVIN</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/aivin.css' %}" />
+    <style>
+        /* Sized for a 1080p TV seen from across the waiting room. */
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body { display: block; background: var(--aivin-bg); overflow: hidden; cursor: none; }
+        .tv { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; gap: 2vh; padding: 2.5vh 3vw; }
+        .tv-head { display: flex; justify-content: space-between; align-items: center; }
+        .tv-head .brand-mark { width: 5vh; height: 5vh; font-size: 3vh; border-radius: 1.2vh; }
+        .tv-head .brand-name { font-size: 3.6vh; }
+        .tv-head .brand-tag { font-size: 1.8vh; }
+        .tv-clock { font-size: 5vh; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--aivin-ink); text-align: right; line-height: 1; }
+        .tv-date { font-size: 2vh; color: var(--aivin-muted); text-align: right; }
+        .tv-main { display: grid; grid-template-columns: 1.35fr 1fr; gap: 2.5vh; min-height: 0; }
+        .panel { background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 2.4vh; box-shadow: var(--aivin-shadow); padding: 3vh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+        .panel h2 { font-size: 2.6vh; text-transform: uppercase; letter-spacing: 0.08em; color: var(--aivin-muted); margin: 0 0 2vh; font-weight: 700; }
+        .calling { justify-content: center; align-items: center; text-align: center; background: var(--aivin-primary); border-color: var(--aivin-primary); color: #fff; }
+        .calling h2 { color: rgba(255,255,255,0.8); }
+        .calling .number { font-size: 22vh; font-weight: 850; line-height: 1; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+        .calling .room { font-size: 6vh; font-weight: 700; margin-top: 1vh; }
+        .calling .doctor { font-size: 3vh; opacity: 0.85; }
+        .calling .idle { font-size: 4vh; opacity: 0.85; }
+        .calling.flash { animation: flash 1s ease-in-out 3; }
+        @keyframes flash { 50% { background: var(--aivin-primary-strong); transform: scale(1.01); } }
+        .rows { display: flex; flex-direction: column; gap: 1.4vh; }
+        .row-item { display: flex; justify-content: space-between; align-items: center; padding: 1.4vh 2vh; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); }
+        .row-item .num { font-size: 5vh; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--aivin-ink); }
+        .row-item .where { font-size: 3vh; font-weight: 650; color: var(--aivin-ink-2); text-align: right; }
+        .row-item .where small { display: block; font-size: 2vh; color: var(--aivin-muted); font-weight: 500; }
+        .row-item.called { background: var(--aivin-warning-soft); border-color: var(--aivin-warning); }
+        .tag { font-size: 1.8vh; font-weight: 700; border-radius: 99px; padding: 0.4vh 1.2vh; margin-left: 1vh; vertical-align: middle; }
+        .tag.called { background: var(--aivin-warning); color: #3d2a00; }
+        .tag.progress { background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
+        .waiting { background: var(--aivin-surface); }
+        .chips { display: flex; flex-wrap: wrap; gap: 1.4vh; }
+        .chip { font-size: 4.2vh; font-weight: 750; font-variant-numeric: tabular-nums; padding: 0.8vh 2.4vh; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); }
+        .muted-line { font-size: 2.6vh; color: var(--aivin-muted); }
+        .tv-foot { display: grid; grid-template-columns: auto 1fr; gap: 2vh; align-items: center; }
+        .tv-foot .label { font-size: 2.6vh; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--aivin-muted); }
+        #start { position: fixed; inset: 0; background: rgba(15, 29, 43, 0.75); display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; }
+        #start div { background: var(--aivin-surface); border-radius: 2vh; padding: 4vh 5vw; text-align: center; font-size: 3vh; }
+        #start .bi { font-size: 7vh; color: var(--aivin-primary); display: block; margin-bottom: 1vh; }
+        .offline { position: fixed; left: 50%; bottom: 2vh; transform: translateX(-50%); background: var(--aivin-critical); color: #fff; font-size: 2.2vh; padding: 1vh 2vw; border-radius: 99px; display: none; }
+    </style>
+</head>
+<body>
+<div class="tv">
+    <header class="tv-head">
+        <span class="brand">
+            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
+            <span><span class="brand-name">AIVIN</span><span class="brand-tag">Please wait for your number</span></span>
+        </span>
+        <div><div class="tv-clock" id="clock">--:--</div><div class="tv-date" id="date"></div></div>
+    </header>
+
+    <main class="tv-main">
+        <section class="panel calling" id="calling" aria-live="assertive">
+            <h2>Now calling</h2>
+            <div id="calling-body"><div class="idle">Waiting for the next call…</div></div>
+        </section>
+        <section class="panel">
+            <h2>In the consulting rooms</h2>
+            <div class="rows" id="rooms"></div>
+        </section>
+    </main>
+
+    <footer class="tv-foot">
+        <div class="label"><i class="bi bi-hourglass-split"></i> Waiting</div>
+        <div class="chips" id="waiting"></div>
+    </footer>
+</div>
+<div id="start" role="button" tabindex="0"><div><i class="bi bi-volume-up"></i>Tap to start the display<br /><small class="text-muted">This enables the call chime</small></div></div>
+<div class="offline" id="offline">Connection lost — retrying…</div>
+
+<script>
+const TZ = "{{ app_time_zone|escapejs }}";
+const DATA_URL = "{% url 'kiosk:display-data' %}";
+const announced = new Set();
+let firstLoad = true;
+let audio = null;
+
+function esc(v) { const d = document.createElement("div"); d.textContent = v == null ? "" : String(v); return d.innerHTML; }
+
+function tick() {
+    const now = new Date();
+    document.getElementById("clock").textContent = now.toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+    document.getElementById("date").textContent = now.toLocaleDateString("en-GB", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+}
+
+function chime() {
+    if (!audio) return;
+    const t = audio.currentTime;
+    [[880, 0], [660, 0.35]].forEach(([freq, at]) => {
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t + at);
+        gain.gain.exponentialRampToValueAtTime(0.4, t + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.6);
+        osc.connect(gain).connect(audio.destination);
+        osc.start(t + at);
+        osc.stop(t + at + 0.65);
+    });
+}
+
+// A new call (or recall): "ting tong" and a flash of the Now calling panel.
+function announce(call) {
+    chime();
+    const panel = document.getElementById("calling");
+    panel.classList.remove("flash");
+    void panel.offsetWidth;
+    panel.classList.add("flash");
+}
+
+function render(data) {
+    const latest = data.called[0];
+    document.getElementById("calling-body").innerHTML = latest
+        ? `<div class="number">${esc(latest.queue_number)}</div><div class="room"><i class="bi bi-arrow-right-circle"></i> ${esc(latest.room)}</div>${latest.doctor ? `<div class="doctor">${esc(latest.doctor)}</div>` : ""}`
+        : `<div class="idle">Waiting for the next call…</div>`;
+
+    const rows = [
+        ...data.called.map((c) => ({ ...c, kind: "called" })),
+        ...data.in_progress.map((c) => ({ ...c, kind: "progress" })),
+    ];
+    document.getElementById("rooms").innerHTML = rows.length
+        ? rows.map((r) => `
+            <div class="row-item ${r.kind === "called" ? "called" : ""}">
+                <span class="num">${esc(r.queue_number)}<span class="tag ${r.kind}">${r.kind === "called" ? "Called" : "In progress"}</span></span>
+                <span class="where">${esc(r.room)}${r.doctor ? `<small>${esc(r.doctor)}</small>` : ""}</span>
+            </div>`).join("")
+        : `<div class="muted-line">No patients in the consulting rooms.</div>`;
+
+    document.getElementById("waiting").innerHTML = data.waiting.length
+        ? data.waiting.map((n) => `<span class="chip">${esc(n)}</span>`).join("")
+        : `<span class="muted-line">Nobody is waiting.</span>`;
+
+    // Announce calls (and recalls) that are new since the last poll; on the
+    // first load only remember them, so opening the TV does not replay old calls.
+    data.called.slice().reverse().forEach((call) => {
+        if (!announced.has(call.call_id)) {
+            announced.add(call.call_id);
+            if (!firstLoad) announce(call);
+        }
+    });
+    firstLoad = false;
+}
+
+async function poll() {
+    try {
+        const response = await fetch(DATA_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error(response.status);
+        render(await response.json());
+        document.getElementById("offline").style.display = "none";
+    } catch (e) {
+        document.getElementById("offline").style.display = "block";
+    }
+}
+
+document.getElementById("start").addEventListener("click", () => {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    document.getElementById("start").remove();
+    if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+});
+
+tick();
+setInterval(tick, 10000);
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>

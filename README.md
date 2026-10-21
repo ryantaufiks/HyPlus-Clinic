@@ -64,6 +64,14 @@ Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{
 - Prescriptions are checked by name against the patient's recorded drug allergies; cross-reactivity between drug classes is not detected.
 - Only the last 4 characters of an ID document are stored. Changes to registration and medical data are recorded in an audit log shown on each patient's page.
 
+## Queue, TV display and access control
+
+1. The kiosk prints (or shows) the ticket: queue number, Patient ID and QR code. Patients who scan it on their phone see their place in the queue, can save the QR code and complete their registration.
+2. The waiting-room TV opens `/display/` (no login; it shows queue numbers and rooms only). Tap once to enable the chime.
+3. A doctor presses **Call next** (or **Call** on a patient) under Consultations. The TV plays a chime and shows the number and the doctor's room. Each doctor's room is set under **Staff**.
+4. At the consulting-room door, staff scan the ticket under **Scan ticket** (access control). It turns green only for called patients, and the visit becomes **In progress** on the TV and on the doctor's screen.
+5. The doctor records the diagnosis and prescription and presses **Complete & call next**; the TV moves on to the next number. Critical blood pressure is called first.
+
 ## Medical devices (OMRON)
 
 Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. They are read by the BLE gateway (`monolith/gateway`) on the server's own Bluetooth adapter, so **the devices must be within Bluetooth range of the server** (same room, roughly 5–10 m). Tablets and phones only need a browser.

@@ -209,5 +209,5 @@ class DoctorTest(TestCase):
         Measurement.objects.create(patient=urgent.patient, visit=urgent, systolic_bp=190, diastolic_bp=125)
         Measurement.objects.create(patient=calm.patient, visit=calm, systolic_bp=115, diastolic_bp=75)
         self.client.force_login(make_user("dr", doctor=True))
-        rows = self.client.get(reverse("kiosk:doctor-queue")).context["rows"]
+        rows = self.client.get(reverse("kiosk:doctor-queue")).context["waiting"]
         self.assertEqual([r["visit"].queue_number for r in rows], ["A003", "A001", "A002"])

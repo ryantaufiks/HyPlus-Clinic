@@ -28,18 +28,53 @@
         <p class="text-muted mb-0">Please ask a nurse at the clinic to complete your registration. Your Patient ID is <strong>{{ visit.patient.patient_id }}</strong>.</p>
     </section>
     {% else %}
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Complete your registration</h1>
-            <p class="page-subtitle">Patient ID <strong>{{ visit.patient.patient_id }}</strong> · visit on {{ visit.created_at|date:"j M Y" }}</p>
+    <section class="surface text-center">
+        <div class="text-muted fw-semibold small text-uppercase">Your ticket · {{ visit.created_at|date:"j M Y" }}</div>
+        <div class="d-flex justify-content-center gap-4 my-2">
+            <div><div class="text-muted small">Queue number</div><div class="queue-display" style="font-size: 3.2rem">{{ visit.queue_number|default:"—" }}</div></div>
+            <div><div class="text-muted small">Patient ID</div><div class="queue-display" style="font-size: 3.2rem; color: var(--aivin-ink)">{{ visit.patient.patient_id }}</div></div>
         </div>
-    </div>
-    <div class="alert alert-info d-flex gap-2"><i class="bi bi-shield-lock"></i><div>Your answers go to the clinic staff, who check them before adding them to your record. For your privacy we only ask for the last 4 characters of your ID document.</div></div>
-    <form method="post" class="surface" novalidate>
-        {% csrf_token %}
-        {% include 'kiosk/_profile_fields.html' %}
-        <button class="btn btn-primary btn-lg w-100" type="submit">Send to the clinic</button>
-    </form>
+        <div id="live-status" class="status status-info fs-6 my-2" aria-live="polite">Checking your status…</div>
+        <div><img src="{% url 'kiosk:visit-qr' visit.token %}" alt="Ticket QR code" width="200" height="200" class="qr-box p-2 mt-2" /></div>
+        <p class="text-muted small mt-2 mb-2">Show this code at the consulting-room door when your number is called.</p>
+        <a class="btn btn-light btn-icon" href="{% url 'kiosk:visit-qr' visit.token %}?download=1"><i class="bi bi-download"></i> Save QR code</a>
+    </section>
+
+    <details class="surface" {% if not visit.patient.is_registered %}open{% endif %}>
+        <summary class="h5 mb-0" style="cursor: pointer">{% if visit.patient.is_registered %}Update your details{% else %}Complete your registration{% endif %}</summary>
+        <div class="alert alert-info d-flex gap-2 mt-3"><i class="bi bi-shield-lock"></i><div>Your answers go to the clinic staff, who check them before adding them to your record. For your privacy we only ask for the last 4 characters of your ID document.</div></div>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% include 'kiosk/_profile_fields.html' %}
+            <button class="btn btn-primary btn-lg w-100" type="submit">Send to the clinic</button>
+        </form>
+    </details>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if not submitted and not expired %}
+<script>
+(function () {
+    const el = document.getElementById("live-status");
+    async function refresh() {
+        try {
+            const r = await fetch("{% url 'kiosk:visit-status' visit.token %}", { cache: "no-store" });
+            const d = await r.json();
+            let text = d.status_label, cls = "status-neutral";
+            if (!d.today) { text = "This ticket was for an earlier day"; }
+            else if (d.status === "waiting") { text = d.ahead === 0 ? "You're next — please stay nearby" : `Waiting · ${d.ahead} patient${d.ahead === 1 ? "" : "s"} ahead of you`; cls = "status-info"; }
+            else if (d.status === "called") { text = `Please go to ${d.room} now`; cls = "status-warning"; }
+            else if (d.status === "in_consultation") { text = `In consultation · ${d.room}`; cls = "status-info"; }
+            else if (d.status === "completed") { text = "Your consultation is complete"; cls = "status-good"; }
+            el.className = `status ${cls} fs-6 my-2`;
+            el.textContent = text;
+        } catch (e) { /* keep the last status */ }
+    }
+    refresh();
+    setInterval(refresh, 10000);
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -96,15 +96,19 @@ class Patient(models.Model):
 class Visit(models.Model):
     """One check-in: reason for visit, vitals, queue ticket and the doctor's notes."""
 
+    # waiting -> called (doctor calls the number) -> in_consultation (patient
+    # scanned the ticket at the consulting-room door) -> completed.
     WAITING = "waiting"
+    CALLED = "called"
     IN_CONSULTATION = "in_consultation"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     STATUS_CHOICES = [
         (WAITING, "Waiting"),
-        (IN_CONSULTATION, "In consultation"),
+        (CALLED, "Called"),
+        (IN_CONSULTATION, "In progress"),
         (COMPLETED, "Completed"),
-        (CANCELLED, "Cancelled"),
+        (CANCELLED, "No-show"),
     ]
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="visits")
@@ -116,6 +120,12 @@ class Visit(models.Model):
     queue_number = models.CharField(max_length=10, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    room = models.CharField(max_length=40, blank=True)
+    called_at = models.DateTimeField(null=True, blank=True)
+    # Incremented on every call and recall, so the TV knows to announce again.
+    call_count = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     diagnosis = models.TextField(blank=True)
     diagnosis_code = models.CharField("ICD-10 code", max_length=10, blank=True)
@@ -140,7 +150,22 @@ class Visit(models.Model):
 
     @property
     def is_open(self):
-        return self.status in (self.WAITING, self.IN_CONSULTATION)
+        return self.status in (self.WAITING, self.CALLED, self.IN_CONSULTATION)
+
+
+class StaffProfile(models.Model):
+    """Per-staff settings; for doctors, the consulting room shown on the TV."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    room = models.CharField("Consulting room", max_length=40, blank=True, help_text="Shown on the waiting-room TV, e.g. Room 1")
+
+    def __str__(self):
+        return f"{self.user} ({self.room or 'no room'})"
+
+    @classmethod
+    def room_for(cls, user):
+        profile = cls.objects.filter(user=user).first()
+        return (profile.room if profile else "") or "Consulting room"
 
 
 class Measurement(models.Model):

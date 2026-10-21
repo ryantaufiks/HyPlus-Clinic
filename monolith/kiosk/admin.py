@@ -11,6 +11,7 @@ from .models import (
     PatientSubmission,
     PrescriptionItem,
     SiteConfiguration,
+    StaffProfile,
     Visit,
 )
 
@@ -42,6 +43,11 @@ class VisitAdmin(admin.ModelAdmin):
     readonly_fields = ["token", "created_at", "diagnosed_at"]
     autocomplete_fields = ["patient"]
     inlines = [PrescriptionInline]
+
+
+@admin.register(StaffProfile)
+class StaffProfileAdmin(admin.ModelAdmin):
+    list_display = ["user", "room"]
 
 
 @admin.register(PatientSubmission)

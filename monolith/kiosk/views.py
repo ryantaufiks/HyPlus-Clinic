@@ -15,7 +15,6 @@ from django.views.generic import DetailView, ListView, TemplateView
 
 from .device_views import gateway_devices, gateway_online
 from .models import Measurement, Patient, PatientSubmission, Visit
-from .roles import CapabilityRequiredMixin
 from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
 
 logger = logging.getLogger(__name__)
@@ -227,11 +226,3 @@ class DashboardDataView(LoginRequiredMixin, View):
                 "queue": queue,
             }
         )
-
-
-class QRScannerView(CapabilityRequiredMixin, TemplateView):
-    """Camera scanner to verify a patient's ticket at the consulting room."""
-
-    capability = "scan_tickets"
-
-    template_name = "kiosk/qr_scanner.html"

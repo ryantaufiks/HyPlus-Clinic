@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import accounts_views, clinical_views, device_views, kiosk_api, views
+from . import accounts_views, clinical_views, device_views, kiosk_api, queue_views, views
 
 app_name = "kiosk"
 
@@ -28,6 +28,11 @@ urlpatterns = [
     ),
     # Ticket QR code: the visit for staff, the registration form for the patient
     path("v/<uuid:token>/", clinical_views.VisitTokenView.as_view(), name="visit-token"),
+    path("v/<uuid:token>/status/", queue_views.VisitStatusView.as_view(), name="visit-status"),
+    path("v/<uuid:token>/qr.png", queue_views.ticket_qr_png, name="visit-qr"),
+    # Waiting-room TV (public: queue numbers and rooms only)
+    path("display/", queue_views.DisplayView.as_view(), name="display"),
+    path("display/data/", queue_views.DisplayDataView.as_view(), name="display-data"),
     path("ticket/<uuid:qr_code>/", clinical_views.legacy_ticket_redirect, name="ticket-detail"),
     # Internal API for the BLE gateway (bearer token)
     path(
@@ -72,6 +77,9 @@ urlpatterns = [
     path("staff/<int:pk>/", accounts_views.StaffEditView.as_view(), name="staff-edit"),
     # Doctor
     path("doctor/", clinical_views.DoctorQueueView.as_view(), name="doctor-queue"),
+    path("doctor/call-next/", queue_views.CallNextView.as_view(), name="call-next"),
+    path("visits/<int:pk>/call/", queue_views.CallView.as_view(), name="visit-call"),
+    path("visits/<int:pk>/no-show/", queue_views.NoShowView.as_view(), name="visit-no-show"),
     path("visits/<int:pk>/", clinical_views.VisitDetailView.as_view(), name="visit-detail"),
     path(
         "visits/<int:pk>/prescription/",
@@ -81,5 +89,7 @@ urlpatterns = [
     # Dashboard and QR scanner
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     path("dashboard/data/", views.DashboardDataView.as_view(), name="dashboard-data"),
-    path("scanner/", views.QRScannerView.as_view(), name="qr-scanner"),
+    # Access control at the consulting-room door
+    path("scanner/", queue_views.AccessControlView.as_view(), name="qr-scanner"),
+    path("api/access/admit/", queue_views.AdmitView.as_view(), name="api-access-admit"),
 ]

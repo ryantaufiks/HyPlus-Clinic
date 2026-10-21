@@ -18,7 +18,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from .forms import StaffAccountForm
-from .models import AuditEvent
+from .models import AuditEvent, StaffProfile
 from .roles import ROLE_LABELS, AdminRequiredMixin, apply_role, role_of
 
 User = get_user_model()
@@ -47,14 +47,29 @@ def _link_page(request, user, created):
     )
 
 
+def _initial(member):
+    profile = StaffProfile.objects.filter(user=member).first()
+    return {"role": role_of(member), "room": profile.room if profile else ""}
+
+
+def _save_room(user, room):
+    StaffProfile.objects.update_or_create(user=user, defaults={"room": room.strip()})
+
+
 class StaffListView(AdminRequiredMixin, TemplateView):
     template_name = "kiosk/staff_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        users = User.objects.prefetch_related("groups").order_by("-is_active", "first_name", "username")
+        users = User.objects.prefetch_related("groups").select_related("profile").order_by("-is_active", "first_name", "username")
         context["members"] = [
-            {"user": u, "role": ROLE_LABELS[role_of(u)], "activated": u.has_usable_password()} for u in users
+            {
+                "user": u,
+                "role": ROLE_LABELS[role_of(u)],
+                "room": getattr(getattr(u, "profile", None), "room", ""),
+                "activated": u.has_usable_password(),
+            }
+            for u in users
         ]
         return context
 
@@ -74,6 +89,7 @@ class StaffCreateView(AdminRequiredMixin, View):
             user.set_unusable_password()
             user.save()
             apply_role(user, form.cleaned_data["role"])
+            _save_room(user, form.cleaned_data["room"])
             AuditEvent.record(request.user, "staff.created", username=user.username, role=form.cleaned_data["role"])
         return _link_page(request, user, created=True)
 
@@ -86,7 +102,7 @@ class StaffEditView(AdminRequiredMixin, View):
 
     def get(self, request, pk):
         member = get_object_or_404(User, pk=pk)
-        form = StaffAccountForm(instance=member, initial={"role": role_of(member)}, editing_self=member == request.user)
+        form = StaffAccountForm(instance=member, initial=_initial(member), editing_self=member == request.user)
         return render(request, self.template_name, self._context(member, form))
 
     def post(self, request, pk):
@@ -108,13 +124,14 @@ class StaffEditView(AdminRequiredMixin, View):
             AuditEvent.record(request.user, "staff.setup_link", username=member.username)
             return _link_page(request, member, created=False)
 
-        form = StaffAccountForm(request.POST, instance=member, initial={"role": role_of(member)}, editing_self=is_self)
+        form = StaffAccountForm(request.POST, instance=member, initial=_initial(member), editing_self=is_self)
         if not form.is_valid():
             return render(request, self.template_name, self._context(member, form))
         with transaction.atomic():
             form.save()
             if not is_self:
                 apply_role(member, form.cleaned_data["role"])
+            _save_room(member, form.cleaned_data["room"])
             AuditEvent.record(request.user, "staff.updated", username=member.username, role=role_of(member))
         messages.success(request, "Account saved.")
         return redirect("kiosk:staff-list")

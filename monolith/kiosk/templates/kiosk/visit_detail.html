@@ -36,7 +36,10 @@
         </div>
         <div class="text-end">
             {% if visit.queue_number %}<div class="text-muted small fw-semibold">Queue</div><div class="ticket-number">{{ visit.queue_number }}</div>{% endif %}
-            <span class="status {% if visit.status == 'completed' %}status-good{% elif visit.status == 'in_consultation' %}status-warning{% else %}status-info{% endif %} mt-2">{{ visit.get_status_display }}</span>
+            <span class="status {% if visit.status == 'completed' %}status-good{% elif visit.status == 'in_consultation' %}status-info{% elif visit.status == 'called' %}status-warning{% else %}status-neutral{% endif %} mt-2">{{ visit.get_status_display }}{% if visit.room and visit.status != 'waiting' %} · {{ visit.room }}{% endif %}</span>
+            {% if can_edit and visit.status == 'waiting' or can_edit and visit.status == 'called' %}
+            <form method="post" action="{% url 'kiosk:visit-call' visit.pk %}" class="mt-2">{% csrf_token %}<button class="btn btn-sm btn-outline-primary btn-icon"><i class="bi bi-megaphone"></i> {% if visit.status == 'called' %}Call again{% else %}Call to my room{% endif %}</button></form>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -139,7 +142,10 @@
 
                 <div class="d-flex flex-wrap gap-2 justify-content-end">
                     <button class="btn btn-light btn-icon" type="submit" name="save"><i class="bi bi-save"></i> Save</button>
-                    <button class="btn btn-primary btn-icon" type="submit" name="complete"><i class="bi bi-check2-circle"></i> Save &amp; complete visit</button>
+                    {% if visit.status != "completed" %}
+                    <button class="btn btn-light btn-icon" type="submit" name="complete"><i class="bi bi-check2-circle"></i> Complete</button>
+                    <button class="btn btn-primary btn-icon" type="submit" name="complete_next"><i class="bi bi-megaphone"></i> Complete &amp; call next</button>
+                    {% endif %}
                 </div>
             </form>
             {% else %}

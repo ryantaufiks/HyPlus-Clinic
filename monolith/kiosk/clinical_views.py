@@ -23,7 +23,8 @@ from .forms import (
     PrescriptionFormSet,
     allergy_conflicts,
 )
-from .models import AuditEvent, Measurement, Patient, PatientSubmission, Visit
+from . import queue
+from .models import AuditEvent, Measurement, Patient, PatientSubmission, StaffProfile, Visit
 from .roles import CapabilityRequiredMixin, is_doctor
 from .views import latest_vitals
 
@@ -246,24 +247,25 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        today = timezone.localdate()
-        visits = (
-            Visit.objects.filter(queue_date=today)
-            .exclude(queue_number="")
-            .select_related("patient", "doctor")
-            .prefetch_related("measurements")
+        user = self.request.user
+        today = queue.todays_queue().select_related("patient", "doctor").prefetch_related("measurements")
+
+        def rows(visits):
+            return [{"visit": v, "vitals": latest_vitals(v.measurements.all())} for v in visits]
+
+        context["mine_in_progress"] = rows(today.filter(status=Visit.IN_CONSULTATION, doctor=user))
+        context["mine_called"] = rows(today.filter(status=Visit.CALLED, doctor=user))
+        waiting = queue.waiting_in_order()
+        context["waiting"] = rows(today.filter(pk__in=[v.pk for v in waiting]))
+        order = {v.pk: i for i, v in enumerate(waiting)}
+        context["waiting"].sort(key=lambda r: order[r["visit"].pk])
+        context["others"] = rows(
+            today.exclude(status=Visit.WAITING)
+            .exclude(status__in=[Visit.CALLED, Visit.IN_CONSULTATION], doctor=user)
+            .order_by("-called_at", "queue_number")
         )
-        rows = [{"visit": v, "vitals": latest_vitals(v.measurements.all())} for v in visits]
-
-        def order(row):
-            # Open visits first; among them, critical blood pressure first; then queue order.
-            category = row["vitals"]["bp_category"]
-            urgent = row["visit"].is_open and category is not None and category.status == "critical"
-            return (not row["visit"].is_open, not urgent, row["visit"].queue_number)
-
-        rows.sort(key=order)
-        context["rows"] = rows
-        context["is_doctor"] = is_doctor(self.request.user)
+        context["is_doctor"] = is_doctor(user)
+        context["room"] = StaffProfile.room_for(user)
         return context
 
 
@@ -315,12 +317,14 @@ class VisitDetailView(LoginRequiredMixin, View):
         if conflicts and not request.POST.get("confirm_allergy"):
             return render(request, self.template_name, self._context(request, visit, form, formset, conflicts))
 
+        completing = "complete" in request.POST or "complete_next" in request.POST
         with transaction.atomic():
             visit = form.save(commit=False)
             visit.doctor = request.user
             visit.diagnosed_at = timezone.now()
-            visit.status = Visit.COMPLETED if "complete" in request.POST else Visit.IN_CONSULTATION
             visit.save()
+            if completing:
+                queue.complete(visit, request.user)
             items = formset.save(commit=False)
             for obj in formset.deleted_objects:
                 obj.delete()
@@ -338,10 +342,18 @@ class VisitDetailView(LoginRequiredMixin, View):
                 drugs=[p.drug for p in visit.prescriptions.all()],
                 allergy_overrides=conflicts,
             )
-        messages.success(request, "Consultation completed." if visit.status == Visit.COMPLETED else "Diagnosis and prescription saved.")
-        if visit.status == Visit.COMPLETED:
-            return redirect("kiosk:doctor-queue")
-        return redirect("kiosk:visit-detail", visit.pk)
+        if not completing:
+            messages.success(request, "Diagnosis and prescription saved.")
+            return redirect("kiosk:visit-detail", visit.pk)
+        if "complete_next" in request.POST:
+            nxt = queue.call_next(request.user)
+            messages.success(
+                request,
+                f"Consultation completed. Called {nxt.queue_number} to {nxt.room}." if nxt else "Consultation completed. Nobody else is waiting.",
+            )
+        else:
+            messages.success(request, "Consultation completed.")
+        return redirect("kiosk:doctor-queue")
 
 
 class PrescriptionPrintView(LoginRequiredMixin, TemplateView):

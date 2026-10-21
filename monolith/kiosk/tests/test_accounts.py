@@ -17,7 +17,7 @@ class StaffAccountsTest(TestCase):
         self.client.force_login(self.admin)
 
     def create(self, **data):
-        payload = {"first_name": "Rina", "last_name": "Wulan", "username": "Rina.W", "email": "", "role": "nurse"}
+        payload = {"first_name": "Rina", "last_name": "Wulan", "username": "Rina.W", "email": "", "role": "nurse", "room": "Room 1"}
         payload.update(data)
         return self.client.post(reverse("kiosk:staff-create"), payload)
 
@@ -74,7 +74,7 @@ class StaffAccountsTest(TestCase):
     def test_change_role(self):
         self.create(username="dr.budi", role="doctor")
         user = User.objects.get(username="dr.budi")
-        self.client.post(reverse("kiosk:staff-edit", args=[user.pk]), {"first_name": "Budi", "last_name": "", "username": "dr.budi", "email": "", "role": "frontdesk"})
+        self.client.post(reverse("kiosk:staff-edit", args=[user.pk]), {"first_name": "Budi", "last_name": "", "username": "dr.budi", "email": "", "role": "frontdesk", "room": ""})
         user.refresh_from_db()
         self.assertEqual(role_of(user), "frontdesk")
         self.assertFalse(user.groups.exists())
@@ -87,7 +87,7 @@ class StaffAccountsTest(TestCase):
         self.assertFalse(rina.is_active)
 
         self.client.post(reverse("kiosk:staff-edit", args=[self.admin.pk]), {"action": "deactivate"})
-        self.client.post(reverse("kiosk:staff-edit", args=[self.admin.pk]), {"first_name": "Admin", "last_name": "", "username": "admin", "email": "", "role": "frontdesk"})
+        self.client.post(reverse("kiosk:staff-edit", args=[self.admin.pk]), {"first_name": "Admin", "last_name": "", "username": "admin", "email": "", "role": "frontdesk", "room": ""})
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_active)
         self.assertTrue(self.admin.is_superuser)

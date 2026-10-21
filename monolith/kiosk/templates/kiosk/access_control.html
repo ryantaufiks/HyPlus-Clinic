@@ -1,0 +1,115 @@
+{% extends 'kiosk/base.html' %}
+{% load static %}
+
+{% block title %}Access control - AIVIN{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ac-wrap { max-width: 620px; margin: 0 auto; }
+    #qr-reader { border-radius: var(--aivin-radius); overflow: hidden; background: #0f1d2b; aspect-ratio: 1 / 1; }
+    #qr-reader video { object-fit: cover; }
+    .ac-result {
+        position: fixed; inset: 0; z-index: 1090; display: none; flex-direction: column; align-items: center; justify-content: center;
+        text-align: center; color: #fff; padding: 2rem;
+    }
+    .ac-result.show { display: flex; }
+    .ac-result.ok { background: var(--aivin-good-ink); }
+    .ac-result.no { background: var(--aivin-critical-ink); }
+    .ac-result .bi { font-size: 6rem; line-height: 1; }
+    .ac-result .num { font-size: 5rem; font-weight: 800; line-height: 1.1; }
+    .ac-result .msg { font-size: 1.8rem; font-weight: 650; max-width: 720px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ac-wrap">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Access control</h1>
+            <p class="page-subtitle">Patients scan their ticket here before entering the consulting room.</p>
+        </div>
+        <a class="btn btn-light btn-icon" href="{% url 'kiosk:display' %}" target="_blank"><i class="bi bi-tv"></i> TV display</a>
+    </div>
+
+    <section class="surface">
+        <div id="qr-reader"></div>
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <button id="start-btn" class="btn btn-primary btn-lg btn-icon"><i class="bi bi-camera"></i> Start scanner</button>
+        </div>
+        <p class="text-muted small text-center mt-2 mb-0" id="scan-hint">Hold the ticket or phone screen up to the camera.</p>
+    </section>
+
+    <section class="surface">
+        <h2 class="section-title"><i class="bi bi-keyboard"></i> Enter the ticket code</h2>
+        <form id="manual-form" class="d-flex gap-2">
+            <input class="form-control" id="manual-code" placeholder="Paste the ticket link or code" autocomplete="off" required aria-label="Ticket code" />
+            <button class="btn btn-primary" type="submit">Check</button>
+        </form>
+    </section>
+</div>
+
+<div class="ac-result" id="result" role="alert"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
+<script>
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const resultEl = document.getElementById("result");
+let busy = false;
+let scanner = null;
+
+function show(ok, html, ms) {
+    resultEl.className = `ac-result show ${ok ? "ok" : "no"}`;
+    resultEl.innerHTML = html;
+    setTimeout(() => {
+        resultEl.className = "ac-result";
+        busy = false;
+    }, ms);
+}
+
+async function check(text) {
+    if (busy) return;
+    busy = true;
+    const match = String(text).match(UUID_RE);
+    if (!match) {
+        show(false, `<i class="bi bi-x-octagon"></i><div class="msg mt-3">This is not an AIVIN ticket.</div>`, 3000);
+        return;
+    }
+    try {
+        const response = await fetch("{% url 'kiosk:api-access-admit' %}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
+            body: JSON.stringify({ token: match[0] }),
+        });
+        const data = await response.json();
+        if (data.ok) {
+            show(true, `<i class="bi bi-door-open"></i><div class="num mt-2">${esc(data.queue_number)}</div><div class="msg">Please go in to ${esc(data.room)}${data.doctor ? `<br /><span style="font-weight:500">${esc(data.doctor)}</span>` : ""}</div>`, 5000);
+        } else {
+            show(false, `<i class="bi bi-hourglass-split"></i><div class="msg mt-3">${esc(data.message)}</div>`, 4500);
+        }
+    } catch (error) {
+        show(false, `<i class="bi bi-wifi-off"></i><div class="msg mt-3">Connection problem. Please try again.</div>`, 3000);
+    }
+}
+
+document.getElementById("start-btn").addEventListener("click", async () => {
+    const button = document.getElementById("start-btn");
+    button.disabled = true;
+    scanner = new Html5Qrcode("qr-reader");
+    try {
+        await scanner.start({ facingMode: "user" }, { fps: 10, qrbox: { width: 260, height: 260 } }, (text) => check(text), () => {});
+        button.classList.add("d-none");
+    } catch (error) {
+        button.disabled = false;
+        document.getElementById("scan-hint").textContent = `Camera unavailable: ${error.message || error}. Use the code field below.`;
+    }
+});
+
+document.getElementById("manual-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    check(document.getElementById("manual-code").value.trim());
+    document.getElementById("manual-code").value = "";
+});
+</script>
+{% endblock %}

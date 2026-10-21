@@ -1,62 +1,133 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Doctor - AIVIN{% endblock %}
+{% block title %}Consultations - AIVIN{% endblock %}
+
+{% block extra_css %}
+<style>
+    .now-card { border-left: 6px solid var(--aivin-warning); }
+    .now-card.in-progress { border-left-color: var(--aivin-primary); }
+    .now-number { font-size: 2.6rem; font-weight: 800; line-height: 1; color: var(--aivin-primary-strong); }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Consultations</h1>
-        <p class="page-subtitle">Today's patients. Critical blood pressure is listed first.</p>
+        <p class="page-subtitle">{% if is_doctor %}Your room: <strong>{{ room }}</strong> · {% endif %}{{ waiting|length }} waiting · updates automatically</p>
     </div>
-    {% if not is_doctor %}<span class="status status-neutral"><i class="bi bi-eye"></i>View only: diagnoses are recorded by doctors</span>{% endif %}
+    <div class="d-flex gap-2">
+        <a class="btn btn-light btn-icon" href="{% url 'kiosk:display' %}" target="_blank"><i class="bi bi-tv"></i> TV display</a>
+        {% if is_doctor %}
+        <form method="post" action="{% url 'kiosk:call-next' %}">{% csrf_token %}
+            <button class="btn btn-primary btn-icon" {% if not waiting %}disabled{% endif %}><i class="bi bi-megaphone"></i> Call next</button>
+        </form>
+        {% endif %}
+    </div>
 </div>
 
-<section class="surface surface-flush">
-    {% if rows %}
+{% if not is_doctor %}<p><span class="status status-neutral"><i class="bi bi-eye"></i>View only: patients are called and diagnosed by doctors</span></p>{% endif %}
+
+{% for row in mine_in_progress %}{% with v=row.visit vit=row.vitals %}
+<section class="surface now-card in-progress">
+    <div class="d-flex flex-wrap justify-content-between gap-3 align-items-center">
+        <div class="d-flex gap-3 align-items-center">
+            <div class="now-number">{{ v.queue_number }}</div>
+            <div>
+                <span class="status status-info"><i class="bi bi-person-check-fill"></i>With you now</span>
+                <div class="fs-5 fw-semibold mt-1">{{ v.patient.name }} <span class="text-muted fs-6">· {{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}</span></div>
+                <div class="text-muted">{{ v.reason|truncatechars:120 }}</div>
+                {% if v.patient.has_drug_allergy %}<div class="text-danger fw-semibold small"><i class="bi bi-exclamation-triangle-fill"></i> Allergy: {{ v.patient.drug_allergies }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="text-end">
+            {% if vit.bp %}<div><strong>{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}</strong> mmHg <span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% endif %}
+            <a class="btn btn-primary btn-icon mt-2" href="{% url 'kiosk:visit-detail' v.pk %}"><i class="bi bi-clipboard2-pulse"></i> Open consultation</a>
+        </div>
+    </div>
+</section>
+{% endwith %}{% endfor %}
+
+{% for row in mine_called %}{% with v=row.visit %}
+<section class="surface now-card">
+    <div class="d-flex flex-wrap justify-content-between gap-3 align-items-center">
+        <div class="d-flex gap-3 align-items-center">
+            <div class="now-number">{{ v.queue_number }}</div>
+            <div>
+                <span class="status status-warning"><i class="bi bi-megaphone-fill"></i>Called {{ v.called_at|time:"H:i" }}{% if v.call_count > 1 %} · {{ v.call_count }}×{% endif %}</span>
+                <div class="fs-5 fw-semibold mt-1">{{ v.patient.name }}</div>
+                <div class="text-muted small">Waiting for the patient to scan their ticket at the door.</div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <form method="post" action="{% url 'kiosk:visit-call' v.pk %}">{% csrf_token %}<input type="hidden" name="next" value="queue" /><button class="btn btn-light btn-icon"><i class="bi bi-arrow-repeat"></i> Call again</button></form>
+            <form method="post" action="{% url 'kiosk:visit-no-show' v.pk %}" onsubmit="return confirm('Mark {{ v.queue_number }} as no-show?')">{% csrf_token %}<button class="btn btn-light btn-icon text-danger"><i class="bi bi-person-x"></i> No-show</button></form>
+            <a class="btn btn-light btn-icon" href="{% url 'kiosk:visit-detail' v.pk %}"><i class="bi bi-folder2-open"></i> Record</a>
+        </div>
+    </div>
+</section>
+{% endwith %}{% endfor %}
+
+<section class="surface surface-flush mt-4">
+    <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-hourglass-split"></i> Waiting <span class="text-muted fw-normal small">· called in this order (critical blood pressure first)</span></h2></div>
+    {% if waiting %}
     <div class="table-responsive">
         <table class="table table-aivin">
-            <thead>
-                <tr><th>Queue</th><th>Patient</th><th>Reason</th><th class="num">BP</th><th class="num">Pulse</th><th class="num">Weight</th><th>Status</th></tr>
-            </thead>
+            <thead><tr><th>Queue</th><th>Patient</th><th>Reason</th><th class="num">BP</th><th class="num">Weight</th><th></th></tr></thead>
             <tbody>
-                {% for row in rows %}
-                {% with v=row.visit vit=row.vitals %}
-                <tr class="row-link {% if not v.is_open %}text-muted{% endif %}" data-href="{% url 'kiosk:visit-detail' v.pk %}">
+                {% for row in waiting %}{% with v=row.visit vit=row.vitals %}
+                <tr>
                     <td><strong class="fs-5">{{ v.queue_number }}</strong></td>
                     <td>
                         <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:visit-detail' v.pk %}">{{ v.patient.name }}</a>
                         <div class="small text-muted">{{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}{% if v.patient.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
                     </td>
-                    <td class="text-truncate" style="max-width: 260px">{{ v.reason }}</td>
-                    <td class="num">
-                        {% if vit.bp %}{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}
-                        <div><span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% else %}–{% endif %}
-                    </td>
-                    <td class="num">{% if vit.bp.heart_rate_bpm %}{{ vit.bp.heart_rate_bpm }} bpm{% else %}–{% endif %}</td>
+                    <td class="text-truncate" style="max-width: 240px">{{ v.reason }}</td>
+                    <td class="num">{% if vit.bp %}{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}<div><span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% else %}–{% endif %}</td>
                     <td class="num">{% if vit.weight %}{{ vit.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
-                    <td>
-                        <span class="status {% if v.status == 'waiting' %}status-info{% elif v.status == 'in_consultation' %}status-warning{% elif v.status == 'completed' %}status-good{% else %}status-neutral{% endif %}">{{ v.get_status_display }}</span>
-                        {% if v.doctor %}<div class="small text-muted mt-1">{{ v.doctor.get_full_name|default:v.doctor.get_username }}</div>{% endif %}
+                    <td class="text-end text-nowrap">
+                        {% if is_doctor %}<form method="post" action="{% url 'kiosk:visit-call' v.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="queue" /><button class="btn btn-sm btn-outline-primary">Call</button></form>{% endif %}
+                        <form method="post" action="{% url 'kiosk:visit-no-show' v.pk %}" class="d-inline" onsubmit="return confirm('Mark {{ v.queue_number }} as no-show?')">{% csrf_token %}<button class="btn btn-sm btn-light" title="No-show"><i class="bi bi-person-x"></i></button></form>
                     </td>
                 </tr>
-                {% endwith %}
-                {% endfor %}
+                {% endwith %}{% endfor %}
             </tbody>
         </table>
     </div>
     {% else %}
-    <div class="empty-state"><i class="bi bi-cup-hot"></i>No patients checked in today.</div>
+    <div class="empty-state"><i class="bi bi-cup-hot"></i>Nobody is waiting.</div>
     {% endif %}
 </section>
+
+{% if others %}
+<section class="surface surface-flush mt-4">
+    <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-list-check"></i> Today</h2></div>
+    <div class="table-responsive">
+        <table class="table table-aivin">
+            <thead><tr><th>Queue</th><th>Patient</th><th>Doctor</th><th>Status</th><th>Diagnosis</th></tr></thead>
+            <tbody>
+                {% for row in others %}{% with v=row.visit %}
+                <tr class="row-link" data-href="{% url 'kiosk:visit-detail' v.pk %}">
+                    <td><strong>{{ v.queue_number }}</strong></td>
+                    <td>{{ v.patient.name }}</td>
+                    <td>{% if v.doctor %}{{ v.doctor.get_full_name|default:v.doctor.get_username }}{% if v.room %} · {{ v.room }}{% endif %}{% else %}—{% endif %}</td>
+                    <td><span class="status {% if v.status == 'completed' %}status-good{% elif v.status == 'in_consultation' %}status-info{% elif v.status == 'called' %}status-warning{% else %}status-neutral{% endif %}">{{ v.get_status_display }}</span></td>
+                    <td class="text-truncate" style="max-width: 260px">{{ v.diagnosis|default:"—" }}</td>
+                </tr>
+                {% endwith %}{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.querySelectorAll("tr[data-href]").forEach((row) =>
-    row.addEventListener("click", (event) => {
-        if (!event.target.closest("a")) location.href = row.dataset.href;
-    }),
-);
-setTimeout(() => location.reload(), 30000); // keep the queue current
+document.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
+// Keep the queue current, but never while the doctor is typing or a dialog is open.
+setInterval(() => {
+    if (!document.hidden && !document.activeElement.matches("input, textarea, select")) location.reload();
+}, 15000);
 </script>
 {% endblock %}

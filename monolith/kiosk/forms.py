@@ -197,6 +197,10 @@ class StaffAccountForm(BootstrapMixin, forms.ModelForm):
     """Create or edit a staff account. Passwords are set by the staff member via a setup link."""
 
     role = forms.ChoiceField(choices=ROLE_CHOICES)
+    room = forms.CharField(
+        label="Consulting room", max_length=40, required=False,
+        help_text="For doctors: shown on the waiting-room TV, e.g. Room 1.",
+    )
 
     class Meta:
         model = get_user_model()
@@ -210,6 +214,12 @@ class StaffAccountForm(BootstrapMixin, forms.ModelForm):
         if editing_self:
             # An administrator cannot remove their own administrator role.
             self.fields["role"].disabled = True
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("role") == "doctor" and not cleaned.get("room", "").strip():
+            self.add_error("room", "Enter the doctor's consulting room.")
+        return cleaned
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip().lower()

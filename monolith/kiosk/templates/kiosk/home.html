@@ -5,6 +5,19 @@
 {% block extra_css %}
 <style>
     body { touch-action: manipulation; }
+    .print-only { display: none; }
+    /* Printed ticket: 80 mm receipt printer. */
+    @media print {
+        @page { size: 80mm auto; margin: 4mm; }
+        .stepper, .kiosk-actions, .kiosk-icon, .kiosk-lead, #toast, .no-print-ticket { display: none !important; }
+        .kiosk-shell { max-width: none; }
+        .kiosk-card { min-height: 0; padding: 0; border: 0; gap: 2mm; }
+        .result-grid { gap: 2mm; }
+        .result-tile { min-width: 0; padding: 2mm 3mm; }
+        .result-value { font-size: 20pt; }
+        .qr-box img { width: 42mm; height: 42mm; }
+        .print-only { display: block; font-size: 9pt; text-align: center; }
+    }
 </style>
 {% endblock %}
 
@@ -504,8 +517,12 @@ const views = {
             <div class="result-tile"><div class="result-label">Your Patient ID</div><div class="result-value" style="letter-spacing: 0.08em">${esc(state.ticket.patient_id)}</div><div class="result-time">Keep it for your next visit</div></div>
         </div>
         ${state.ticket.qr_code_image ? `<div class="qr-box"><img src="${esc(state.ticket.qr_code_image)}" alt="Ticket QR code" /></div>` : ""}
-        <p class="kiosk-lead"><strong>Take a photo of this screen.</strong> Show the code to the doctor when you are called.${state.ticket.returning ? "" : " Scan it with your phone to complete your registration, or ask a nurse to help."}</p>
-        <div class="kiosk-actions"><button class="btn btn-primary btn-xl" onclick="reset()">Done</button></div>`
+        <p class="kiosk-lead"><strong>Print or take a photo of this ticket.</strong> Scan the code at the consulting-room door when your number is called.${state.ticket.returning ? "" : " Scan it with your phone to see your place in the queue and complete your registration."}</p>
+        <div class="print-only">${esc(formatDateTime(new Date()))}<br />Scan at the consulting-room door when your number is called.<br />Scan with your phone to follow the queue.</div>
+        <div class="kiosk-actions">
+            <button class="btn btn-light btn-xl btn-icon" onclick="window.print()"><i class="bi bi-printer"></i> Print ticket</button>
+            <button class="btn btn-primary btn-xl" onclick="reset()">Done</button>
+        </div>`
         : `<div class="spinner-border text-primary" role="status"></div><p class="kiosk-lead">Preparing your ticket…</p>`,
 };
 
