@@ -171,6 +171,11 @@ class CallNextView(DoctorActionMixin, View):
 class CallView(DoctorActionMixin, View):
     def post(self, request, pk):
         visit = get_object_or_404(Visit, pk=pk)
+        # Only patients in this doctor's line, or already called by them.
+        mine = visit.doctor_id == request.user.pk if visit.status == Visit.CALLED else queue.chosen_doctor(visit) in (None, request.user)
+        if not mine:
+            messages.error(request, f"{visit.queue_number} is waiting for another doctor.")
+            return redirect("kiosk:doctor-queue")
         try:
             visit = queue.call(visit, request.user)
             messages.success(request, f"Called {visit.queue_number} to {visit.room}.")

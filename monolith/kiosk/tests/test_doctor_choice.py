@@ -79,10 +79,23 @@ class DoctorChoiceTest(TestCase):
         rooms = {r["room"]: (r["waiting"], r["next"]) for r in data["rooms"]}
         self.assertEqual(rooms, {"Room 1": (0, []), "Room 2": (1, ["A001"])})
 
-    def test_consultations_split_my_line_from_other_doctors(self):
-        self.visit("A001", self.sari)
+    def test_doctors_see_and_call_only_their_own_line(self):
+        sari_patient = self.visit("A001", self.sari)
         self.visit("A002")
+        done = self.visit("A003", self.sari)
+        queue.call(done, self.sari)
         self.client.force_login(self.budi)
-        context = self.client.get(reverse("kiosk:doctor-queue")).context
-        self.assertEqual([r["visit"].queue_number for r in context["my_line"]], ["A002"])
-        self.assertEqual([r["visit"].queue_number for r in context["other_lines"]], ["A001"])
+        response = self.client.get(reverse("kiosk:doctor-queue"))
+        self.assertEqual([r["visit"].queue_number for r in response.context["my_line"]], ["A002"])
+        self.assertEqual(response.context["others"], [])  # Sari's called patient is not shown
+        self.assertNotContains(response, "Patient A001")
+        self.assertNotContains(response, "Patient A003")
+
+        self.client.post(reverse("kiosk:visit-call", args=[sari_patient.pk]), {"next": "queue"})
+        self.assertEqual(Visit.objects.get(pk=sari_patient.pk).status, Visit.WAITING)
+        self.client.post(reverse("kiosk:visit-call", args=[done.pk]), {"next": "queue"})  # no recall of Sari's call
+        self.assertEqual(Visit.objects.get(pk=done.pk).doctor, self.sari)
+
+        nurse = user_with_role("nurse", "nurse")
+        self.client.force_login(nurse)  # nurses still see the whole queue
+        self.assertEqual(len(self.client.get(reverse("kiosk:doctor-queue")).context["waiting"]), 2)

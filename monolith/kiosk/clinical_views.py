@@ -5,6 +5,7 @@ import logging
 
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -267,16 +268,13 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
         for row in waiting_rows:
             row["line"] = queue.chosen_doctor(row["visit"], on_duty)  # None: first available doctor
         context["waiting"] = waiting_rows
+        others = today.exclude(status=Visit.WAITING).exclude(status__in=[Visit.CALLED, Visit.IN_CONSULTATION], doctor=user)
         if is_doctor(user):
-            # A doctor's line: patients who chose them or any doctor. They can
-            # still call someone else's patient by hand, e.g. to help out.
+            # Doctors see only their own line (patients who chose them or any
+            # doctor) and their own patients, never other doctors' patients.
             context["my_line"] = [r for r in waiting_rows if r["line"] is None or r["line"].pk == user.pk]
-            context["other_lines"] = [r for r in waiting_rows if r["line"] is not None and r["line"].pk != user.pk]
-        context["others"] = rows(
-            today.exclude(status=Visit.WAITING)
-            .exclude(status__in=[Visit.CALLED, Visit.IN_CONSULTATION], doctor=user)
-            .order_by("-called_at", "queue_number")
-        )
+            others = others.filter(Q(doctor=user) | Q(doctor__isnull=True, requested_doctor=user))
+        context["others"] = rows(others.order_by("-called_at", "queue_number"))
         context["is_doctor"] = is_doctor(user)
         context["room"] = StaffProfile.room_for(user)
         profile = StaffProfile.objects.filter(user=user).first()
