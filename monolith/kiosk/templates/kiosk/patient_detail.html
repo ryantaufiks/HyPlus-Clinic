@@ -9,24 +9,72 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">{{ patient.name }}</h1>
-        <p class="page-subtitle">First check-in {{ patient.created_at|date:"j M Y, H:i" }} · {{ measurements|length }} measurement{{ measurements|length|pluralize }}</p>
+        <p class="page-subtitle">
+            <span class="status status-info">{{ patient.patient_id }}</span>
+            {% if pending_submission %}<a class="status status-warning text-decoration-none" href="{% url 'kiosk:submissions' %}"><i class="bi bi-inbox"></i>Details pending review</a>
+            {% elif patient.is_registered %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Registered</span>
+            {% else %}<span class="status status-neutral">Registration incomplete</span>{% endif %}
+            · first seen {{ patient.created_at|date:"j M Y" }}
+        </p>
     </div>
-    {% with ticket=queue_tickets|first %}{% if ticket %}
-    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:ticket-detail' ticket.qr_code_data %}"><i class="bi bi-file-medical"></i> Doctor's summary ({{ ticket.queue_number }})</a>
-    {% endif %}{% endwith %}
+    <div class="d-flex gap-2">
+        {% if user.is_staff %}<a class="btn btn-light btn-icon" href="{% url 'kiosk:patient-merge' patient.pk %}"><i class="bi bi-intersect"></i> Merge</a>{% endif %}
+        <a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-edit' patient.pk %}"><i class="bi bi-pencil"></i> Edit details</a>
+    </div>
 </div>
+
+{% if patient.has_drug_allergy %}
+<div class="alert alert-danger d-flex gap-2 align-items-start" role="alert"><i class="bi bi-exclamation-triangle-fill fs-5"></i><div><strong>Drug allergy:</strong> {{ patient.drug_allergies }}</div></div>
+{% endif %}
 
 <div class="row g-4">
     <div class="col-lg-4">
         <section class="surface h-100">
-            <h2 class="section-title"><i class="bi bi-chat-left-text"></i> Reason for visit</h2>
-            <p class="symptoms mb-0">{{ patient.symptoms }}</p>
+            <h2 class="section-title"><i class="bi bi-person-vcard"></i> Details</h2>
+            <dl class="row mb-0 small">
+                <dt class="col-5 text-muted fw-semibold">Date of birth</dt><dd class="col-7">{{ patient.date_of_birth|date:"j M Y"|default:"—" }}{% if patient.age is not None %} ({{ patient.age }} y){% endif %}</dd>
+                <dt class="col-5 text-muted fw-semibold">ID document</dt><dd class="col-7">{% if patient.id_type %}{{ patient.get_id_type_display }} ···{{ patient.id_last4 }}{% else %}—{% endif %}</dd>
+                <dt class="col-5 text-muted fw-semibold">Phone</dt><dd class="col-7">{{ patient.phone|default:"—" }}</dd>
+                <dt class="col-5 text-muted fw-semibold">Address</dt><dd class="col-7">{{ patient.address|default:"—"|linebreaksbr }}</dd>
+                <dt class="col-5 text-muted fw-semibold">Height</dt><dd class="col-7">{% if patient.height_cm %}{{ patient.height_cm|floatformat:0 }} cm{% else %}—{% endif %}</dd>
+                <dt class="col-5 text-muted fw-semibold">BMI</dt><dd class="col-7">{{ bmi|default:"—" }}</dd>
+                <dt class="col-5 text-muted fw-semibold">Drug allergy</dt><dd class="col-7">{% if patient.has_drug_allergy %}<span class="text-danger fw-semibold">{{ patient.drug_allergies }}</span>{% elif patient.has_drug_allergy is False %}None known{% else %}Unknown{% endif %}</dd>
+            </dl>
         </section>
     </div>
     <div class="col-lg-8">
-        <section class="surface h-100">
+        <section class="surface">
             <h2 class="section-title"><i class="bi bi-activity"></i> Latest vitals</h2>
             {% include 'kiosk/_vitals.html' %}
+        </section>
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-journal-medical"></i> Medical history</h2>
+            <p class="mb-0">{{ patient.medical_history|default:"Not recorded."|linebreaksbr }}</p>
+        </section>
+    </div>
+
+    <div class="col-12">
+        <section class="surface surface-flush">
+            <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-calendar2-check"></i> Visits</h2></div>
+            <div class="table-responsive">
+                <table class="table table-aivin">
+                    <thead><tr><th>Date</th><th>Queue</th><th>Reason</th><th>Diagnosis</th><th>Prescription</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for v in visits %}
+                        <tr class="row-link" data-href="{% url 'kiosk:visit-detail' v.pk %}">
+                            <td class="text-nowrap">{{ v.created_at|date:"j M Y, H:i" }}</td>
+                            <td>{{ v.queue_number|default:"—" }}</td>
+                            <td>{{ v.reason|truncatechars:70 }}</td>
+                            <td>{{ v.diagnosis|default:"—"|truncatechars:70 }}{% if v.diagnosis_code %} <span class="status status-neutral">{{ v.diagnosis_code }}</span>{% endif %}</td>
+                            <td class="small">{% for p in v.prescriptions.all %}{{ p.drug }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+                            <td><span class="status {% if v.status == 'completed' %}status-good{% elif v.status == 'in_consultation' %}status-warning{% elif v.status == 'waiting' %}status-info{% else %}status-neutral{% endif %}">{{ v.get_status_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6"><div class="empty-state"><i class="bi bi-calendar"></i>No visits yet.</div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
     </div>
 
@@ -75,6 +123,8 @@
                             <td class="num">{% if m.heart_rate_bpm is not None %}{{ m.heart_rate_bpm }} bpm{% else %}–{% endif %}</td>
                             <td>
                                 {% if m.source == "device" %}<span class="status status-info"><i class="bi bi-bluetooth"></i>Device</span>
+                                {% elif m.source == "manual" %}<span class="status status-neutral"><i class="bi bi-pencil"></i>Staff</span>
+                                {% elif m.source == "patient" %}<span class="status status-neutral"><i class="bi bi-person"></i>Patient</span>
                                 {% else %}<span class="status status-warning"><i class="bi bi-cpu"></i>Simulated</span>{% endif %}
                             </td>
                         </tr>
@@ -88,6 +138,21 @@
         </section>
     </div>
 </div>
+{% if audit_events %}
+<section class="surface surface-flush mt-4">
+    <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-shield-check"></i> Activity</h2></div>
+    <div class="table-responsive">
+        <table class="table table-aivin table-sm">
+            <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+            <tbody>
+                {% for e in audit_events %}
+                <tr><td class="text-nowrap text-muted">{{ e.created_at|date:"j M Y, H:i" }}</td><td>{{ e.actor.get_username|default:"Patient (phone)" }}</td><td>{{ e.action }}{% if e.detail.fields %} <span class="text-muted">({{ e.detail.fields|join:", " }})</span>{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
 {{ chart_data|json_script:"chart-data" }}
 {% endblock %}
 
@@ -95,9 +160,11 @@
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
 <script>
+document.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
+
 const data = JSON.parse(document.getElementById("chart-data").textContent);
 const { COLORS, renderTable, timeLine } = AivinCharts;
-const label = (p) => formatDate(p.t);
+const label = (p) => formatAxis(p.t);
 
 if (data.bp.length) {
     const chart = timeLine(document.getElementById("chart-bp"), data.bp, [

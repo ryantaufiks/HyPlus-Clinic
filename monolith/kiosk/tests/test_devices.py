@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from kiosk.models import DeviceReading, GatewayCommand, Measurement, Patient
+from kiosk.models import DeviceReading, GatewayCommand, Measurement, Patient, Visit
 
 TOKEN = "test-gateway-token"
 
@@ -70,7 +70,8 @@ class GatewayApiTest(TestCase):
 class KioskDeviceReadingTest(TestCase):
     def setUp(self):
         cache.clear()
-        self.patient = Patient.objects.create(name="Test Patient", symptoms="Headache")
+        self.patient = Patient.objects.create(name="Test Patient")
+        self.visit = Visit.objects.create(patient=self.patient, reason="Headache")
         self.since = timezone.now() - dt.timedelta(seconds=5)
 
     def make_reading(self, measured_at=None, **fields):
@@ -134,22 +135,23 @@ class KioskDeviceReadingTest(TestCase):
     def test_claim_creates_device_measurement_once(self):
         reading = self.make_reading()
         url = reverse("kiosk:api-device-reading-claim", args=[reading.id])
-        response = post_json(self.client, url, {"patient_id": self.patient.id})
+        response = post_json(self.client, url, {"visit": str(self.visit.token)})
         self.assertEqual(response.status_code, 201)
         measurement = Measurement.objects.get()
-        self.assertEqual(measurement.patient, self.patient)
+        self.assertEqual((measurement.patient, measurement.visit), (self.patient, self.visit))
         self.assertEqual(measurement.source, Measurement.SOURCE_DEVICE)
         self.assertEqual((measurement.systolic_bp, measurement.diastolic_bp), (120, 80))
 
-        other = Patient.objects.create(name="Next Patient", symptoms="Cough")
-        self.assertEqual(post_json(self.client, url, {"patient_id": other.id}).status_code, 409)
+        other = Visit.objects.create(patient=Patient.objects.create(name="Next Patient"), reason="Cough")
+        self.assertEqual(post_json(self.client, url, {"visit": str(other.token)}).status_code, 409)
         self.assertIsNone(self.latest())
 
-    def test_claim_requires_patient(self):
+    def test_claim_requires_visit(self):
         reading = self.make_reading()
         url = reverse("kiosk:api-device-reading-claim", args=[reading.id])
         self.assertEqual(post_json(self.client, url, {}).status_code, 400)
-        self.assertEqual(post_json(self.client, url, {"patient_id": 999999}).status_code, 404)
+        self.assertEqual(post_json(self.client, url, {"visit": "not-a-uuid"}).status_code, 400)
+        self.assertEqual(post_json(self.client, url, {"visit": "00000000-0000-4000-8000-000000000000"}).status_code, 400)
 
     def test_gateway_offline_without_heartbeat(self):
         params = {"kind": "bp", "since": self.since.isoformat()}
@@ -159,13 +161,14 @@ class KioskDeviceReadingTest(TestCase):
 
 class SimulatedMeasurementTest(TestCase):
     def setUp(self):
-        self.patient = Patient.objects.create(name="Test Patient", symptoms="Fever")
+        self.patient = Patient.objects.create(name="Test Patient")
+        self.visit = Visit.objects.create(patient=self.patient, reason="Fever")
 
     def post(self):
         return post_json(
             self.client,
-            reverse("kiosk:api-measurement-create"),
-            {"patient_id": self.patient.id, "systolic_bp": 120, "diastolic_bp": 80},
+            reverse("kiosk:api-simulated-measurement", args=[self.visit.token]),
+            {"systolic_bp": 120, "diastolic_bp": 80},
         )
 
     def test_disabled_in_production(self):

@@ -1,0 +1,249 @@
+{% extends 'kiosk/base.html' %}
+{% load static %}
+
+{% block title %}{{ visit.queue_number|default:"Visit" }} · {{ patient.name }} - AIVIN{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rx-table td { padding: 0.4rem 0.35rem; }
+    .rx-table .form-control { padding: 0.45rem 0.6rem; }
+    .rx-row.deleted { display: none; }
+    .profile-list { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
+    .profile-list dt { color: var(--aivin-muted); font-weight: 550; }
+    .profile-list dd { margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <a href="{% url 'kiosk:doctor-queue' %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> Consultations</a>
+    <div class="d-flex gap-2">
+        <a class="btn btn-light btn-icon btn-sm" href="{% url 'kiosk:patient-detail' patient.pk %}"><i class="bi bi-person"></i> Patient record</a>
+        {% if visit.prescriptions.exists %}<a class="btn btn-light btn-icon btn-sm" href="{% url 'kiosk:prescription-print' visit.pk %}" target="_blank"><i class="bi bi-printer"></i> Print prescription</a>{% endif %}
+    </div>
+</div>
+
+<section class="surface">
+    <div class="ticket-head">
+        <div>
+            <div class="text-muted fw-semibold small text-uppercase">Consultation</div>
+            <h1 class="page-title mt-1">{{ patient.name }}</h1>
+            <p class="page-subtitle">
+                <span class="status status-info">{{ patient.patient_id }}</span>
+                {% if patient.age is not None %} · {{ patient.age }} years{% endif %}
+                · checked in {{ visit.created_at|date:"j M Y, H:i" }}
+            </p>
+        </div>
+        <div class="text-end">
+            {% if visit.queue_number %}<div class="text-muted small fw-semibold">Queue</div><div class="ticket-number">{{ visit.queue_number }}</div>{% endif %}
+            <span class="status {% if visit.status == 'completed' %}status-good{% elif visit.status == 'in_consultation' %}status-warning{% else %}status-info{% endif %} mt-2">{{ visit.get_status_display }}</span>
+        </div>
+    </div>
+</section>
+
+{% if patient.has_drug_allergy %}
+<div class="alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <div><strong>Drug allergy:</strong> {{ patient.drug_allergies }}</div>
+</div>
+{% elif patient.has_drug_allergy is None %}
+<div class="alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0" role="alert">
+    <i class="bi bi-question-circle-fill fs-5"></i>
+    <div><strong>Allergy status unknown.</strong> Ask the patient before prescribing.</div>
+</div>
+{% endif %}
+{% if pending_submission %}
+<div class="alert alert-info d-flex gap-2 mt-3 mb-0"><i class="bi bi-inbox"></i><div>The patient sent registration details that are waiting for <a href="{% url 'kiosk:submissions' %}">review</a>.</div></div>
+{% endif %}
+
+<div class="row g-4 mt-0">
+    <div class="col-lg-5">
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-chat-left-text"></i> Reason for visit</h2>
+            <p class="symptoms mb-0">{{ visit.reason }}</p>
+        </section>
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-activity"></i> Vitals at this visit</h2>
+            {% include 'kiosk/_vitals.html' %}
+        </section>
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-journal-medical"></i> Medical record</h2>
+            <dl class="profile-list mb-3">
+                <dt>Date of birth</dt><dd>{{ patient.date_of_birth|date:"j M Y"|default:"—" }}</dd>
+                <dt>Height</dt><dd>{% if patient.height_cm %}{{ patient.height_cm|floatformat:0 }} cm{% else %}—{% endif %}</dd>
+                <dt>Phone</dt><dd>{{ patient.phone|default:"—" }}</dd>
+            </dl>
+            <div class="fw-semibold small text-muted mb-1">Medical history</div>
+            <p class="mb-0">{{ patient.medical_history|default:"Not recorded."|linebreaksbr }}</p>
+        </section>
+    </div>
+
+    <div class="col-lg-7">
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-clipboard2-pulse"></i> Diagnosis &amp; prescription</h2>
+            {% if can_edit %}
+            <form method="post" novalidate id="consult-form">
+                {% csrf_token %}
+                {% if conflicts %}
+                <div class="alert alert-danger" role="alert">
+                    <strong><i class="bi bi-exclamation-octagon-fill"></i> Allergy warning.</strong>
+                    {{ conflicts|join:", " }} matches the patient's recorded allergy ({{ patient.drug_allergies }}).
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="confirm_allergy" id="confirm_allergy" value="1" />
+                        <label class="form-check-label" for="confirm_allergy">I have reviewed the allergy and want to prescribe it anyway.</label>
+                    </div>
+                </div>
+                {% endif %}
+                {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+                <div class="row g-3 mb-3">
+                    <div class="col-md-9">{% include 'kiosk/_field.html' with field=form.diagnosis %}</div>
+                    <div class="col-md-3">{% include 'kiosk/_field.html' with field=form.diagnosis_code %}</div>
+                </div>
+
+                <div class="fw-semibold mb-2">Prescription</div>
+                {{ formset.management_form }}
+                {% for error in formset.non_form_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+                <div class="table-responsive">
+                    <table class="table table-aivin rx-table mb-2">
+                        <thead><tr><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Instructions</th><th></th></tr></thead>
+                        <tbody id="rx-rows">
+                            {% for f in formset.forms %}
+                            <tr class="rx-row">
+                                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                                <td>{{ f.drug }}{% for e in f.drug.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+                                <td>{{ f.dose }}{% for e in f.dose.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+                                <td>{{ f.frequency }}{% for e in f.frequency.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+                                <td>{{ f.duration }}</td>
+                                <td>{{ f.instructions }}</td>
+                                <td><span class="d-none">{{ f.DELETE }}</span><button type="button" class="btn btn-light btn-sm" data-remove title="Remove"><i class="bi bi-trash"></i></button></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <template id="rx-template">
+                    <tr class="rx-row">
+                        {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <td>{{ formset.empty_form.drug }}</td>
+                        <td>{{ formset.empty_form.dose }}</td>
+                        <td>{{ formset.empty_form.frequency }}</td>
+                        <td>{{ formset.empty_form.duration }}</td>
+                        <td>{{ formset.empty_form.instructions }}</td>
+                        <td><span class="d-none">{{ formset.empty_form.DELETE }}</span><button type="button" class="btn btn-light btn-sm" data-remove title="Remove"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                </template>
+                <button type="button" class="btn btn-light btn-sm btn-icon mb-1" id="rx-add"><i class="bi bi-plus-lg"></i> Add drug</button>
+                <p class="text-muted small mb-3"><i class="bi bi-info-circle"></i> Drugs are checked against the recorded allergies by name. Cross-reactivity between drug classes (e.g. penicillins) is not detected.</p>
+
+                <div class="mb-3">{% include 'kiosk/_field.html' with field=form.doctor_notes %}</div>
+
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                    <button class="btn btn-light btn-icon" type="submit" name="save"><i class="bi bi-save"></i> Save</button>
+                    <button class="btn btn-primary btn-icon" type="submit" name="complete"><i class="bi bi-check2-circle"></i> Save &amp; complete visit</button>
+                </div>
+            </form>
+            {% else %}
+                {% if visit.diagnosis %}
+                <p class="mb-1"><strong>{{ visit.diagnosis }}</strong>{% if visit.diagnosis_code %} <span class="status status-neutral">{{ visit.diagnosis_code }}</span>{% endif %}</p>
+                <p class="text-muted small">{% if visit.doctor %}By {{ visit.doctor.get_full_name|default:visit.doctor.get_username }} · {% endif %}{{ visit.diagnosed_at|date:"j M Y, H:i" }}</p>
+                {% include 'kiosk/_prescription_list.html' with items=visit.prescriptions.all %}
+                {% else %}
+                <div class="empty-state"><i class="bi bi-hourglass"></i>Not seen by a doctor yet.</div>
+                {% endif %}
+                <p class="text-muted small mb-0"><i class="bi bi-lock"></i> Only members of the Doctor group can record diagnoses and prescriptions.</p>
+            {% endif %}
+        </section>
+
+        <section class="surface">
+            <div class="chart-head">
+                <h2 class="chart-title">Blood pressure history</h2>
+                <ul class="chart-legend">
+                    <li><span class="swatch" style="background: var(--chart-series-1)"></span>Systolic</li>
+                    <li><span class="swatch" style="background: var(--chart-series-2)"></span>Diastolic</li>
+                </ul>
+            </div>
+            {% if chart_data.bp %}
+            <div class="chart-box chart-box-sm"><canvas id="chart-bp" role="img" aria-label="Blood pressure history"></canvas></div>
+            <details class="chart-table" id="table-bp"></details>
+            {% else %}<div class="empty-state"><i class="bi bi-heart-pulse"></i>No readings yet.</div>{% endif %}
+        </section>
+    </div>
+
+    <div class="col-12">
+        <section class="surface surface-flush">
+            <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-clock-history"></i> Previous visits</h2></div>
+            {% if previous_visits %}
+            <div class="table-responsive">
+                <table class="table table-aivin">
+                    <thead><tr><th>Date</th><th>Reason</th><th>Diagnosis</th><th>Prescription</th><th></th></tr></thead>
+                    <tbody>
+                        {% for v in previous_visits %}
+                        <tr>
+                            <td class="text-nowrap">{{ v.created_at|date:"j M Y" }}</td>
+                            <td>{{ v.reason|truncatechars:80 }}</td>
+                            <td>{{ v.diagnosis|default:"—"|truncatechars:80 }}{% if v.diagnosis_code %} <span class="status status-neutral">{{ v.diagnosis_code }}</span>{% endif %}</td>
+                            <td class="small">{% for p in v.prescriptions.all %}{{ p.drug }} {{ p.dose }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+                            <td><a href="{% url 'kiosk:visit-detail' v.pk %}">Open</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="bi bi-1-circle"></i>First visit.</div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{{ chart_data|json_script:"chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/aivin-charts.js' %}"></script>
+<script>
+(function () {
+    const rows = document.getElementById("rx-rows");
+    if (!rows) return;
+    const total = document.getElementById("id_prescriptions-TOTAL_FORMS");
+    const template = document.getElementById("rx-template");
+
+    function wire(row) {
+        row.querySelector("[data-remove]").addEventListener("click", () => {
+            const del = row.querySelector('input[name$="-DELETE"]');
+            if (del) del.checked = true;
+            row.classList.add("deleted");
+        });
+    }
+    rows.querySelectorAll(".rx-row").forEach(wire);
+    document.getElementById("rx-add").addEventListener("click", () => {
+        const index = Number(total.value);
+        const html = template.innerHTML.replaceAll("__prefix__", index);
+        rows.insertAdjacentHTML("beforeend", html);
+        total.value = index + 1;
+        const row = rows.lastElementChild;
+        wire(row);
+        row.querySelector("input").focus();
+    });
+})();
+
+const data = JSON.parse(document.getElementById("chart-data").textContent);
+if (data.bp.length) {
+    const { COLORS, renderTable, timeLine } = AivinCharts;
+    const chart = timeLine(document.getElementById("chart-bp"), data.bp, [
+        { label: "Systolic", key: "systolic", color: COLORS.series1 },
+        { label: "Diastolic", key: "diastolic", color: COLORS.series2 },
+    ], { yTitle: "mmHg", labelFor: (p) => formatAxis(p.t), suggestedMin: 60, suggestedMax: 160 });
+    chart.options.plugins.tooltip.callbacks = {
+        title: (items) => formatDateTime(data.bp[items[0].dataIndex].t),
+        label: (ctx) => ` ${ctx.dataset.label}: ${ctx.formattedValue} mmHg`,
+    };
+    renderTable(document.getElementById("table-bp"), [
+        { label: "Measured", value: (p) => formatDateTime(p.t) },
+        { label: "Systolic", value: (p) => p.systolic, num: true },
+        { label: "Diastolic", value: (p) => p.diastolic, num: true },
+        { label: "Pulse", value: (p) => p.pulse ?? "–", num: true },
+    ], data.bp);
+}
+</script>
+{% endblock %}

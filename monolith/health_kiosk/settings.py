@@ -50,6 +50,10 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 # SECRET_KEY does not make stored secrets unreadable.
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY")
 
+# Public address of the app (e.g. https://aivin.example.com), used in the ticket
+# QR code so patients' phones can open it. Falls back to the request's host.
+PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", "").rstrip("/")
+
 # Shared secret the BLE gateway uses for the internal device API.
 GATEWAY_TOKEN = env("GATEWAY_TOKEN", "")
 

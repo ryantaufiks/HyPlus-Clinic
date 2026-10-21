@@ -1,0 +1,73 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Registrations - AIVIN{% endblock %}
+
+{% block extra_css %}
+<style>
+    .diff td.changed { background: var(--aivin-warning-soft); }
+    .diff td.new.changed { font-weight: 650; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Registrations</h1>
+        <p class="page-subtitle">Details patients sent from their phone. Check them, then approve to update the record.</p>
+    </div>
+    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-register' %}"><i class="bi bi-person-plus"></i> Register patient</a>
+</div>
+
+{% for row in rows %}
+{% with sub=row.submission %}
+<section class="surface">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div>
+            <h2 class="h5 mb-1"><a href="{% url 'kiosk:patient-detail' sub.patient.pk %}" class="text-decoration-none">{{ sub.patient.name }}</a> <span class="status status-info">{{ sub.patient.patient_id }}</span></h2>
+            <div class="text-muted small">Sent {{ sub.submitted_at|date:"j M Y, H:i" }}{% if sub.visit %} · from visit {{ sub.visit.queue_number }} on {{ sub.visit.created_at|date:"j M" }}{% endif %}</div>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-aivin diff">
+            <thead><tr><th>Field</th><th>Current record</th><th>Sent by patient</th></tr></thead>
+            <tbody>
+                {% for f in row.fields %}
+                <tr><th scope="row" class="text-nowrap">{{ f.label }}</th><td class="{% if f.changed %}changed{% endif %}">{{ f.old|linebreaksbr }}</td><td class="new {% if f.changed %}changed{% endif %}">{{ f.new|linebreaksbr }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <form method="post" action="{% url 'kiosk:submission-review' sub.pk %}" class="d-flex flex-wrap gap-2 justify-content-end align-items-center mt-3">
+        {% csrf_token %}
+        <input class="form-control" name="note" placeholder="Reason (if rejecting)" maxlength="200" style="max-width: 320px" />
+        <button class="btn btn-light btn-icon" name="decision" value="reject"><i class="bi bi-x-lg"></i> Reject</button>
+        <button class="btn btn-primary btn-icon" name="decision" value="approve"><i class="bi bi-check-lg"></i> Approve</button>
+    </form>
+</section>
+{% endwith %}
+{% empty %}
+<section class="surface"><div class="empty-state"><i class="bi bi-inbox"></i>No registrations waiting for review.</div></section>
+{% endfor %}
+
+{% if recent %}
+<section class="surface surface-flush mt-4">
+    <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-clock-history"></i> Recently reviewed</h2></div>
+    <div class="table-responsive">
+        <table class="table table-aivin">
+            <thead><tr><th>Patient</th><th>Sent</th><th>Result</th><th>By</th><th>Note</th></tr></thead>
+            <tbody>
+                {% for sub in recent %}
+                <tr>
+                    <td><a href="{% url 'kiosk:patient-detail' sub.patient.pk %}">{{ sub.patient.name }}</a></td>
+                    <td class="text-muted">{{ sub.submitted_at|date:"j M, H:i" }}</td>
+                    <td><span class="status {% if sub.status == 'approved' %}status-good{% else %}status-neutral{% endif %}">{{ sub.get_status_display }}</span></td>
+                    <td>{{ sub.reviewed_by.get_username|default:"—" }}</td>
+                    <td class="text-muted">{{ sub.review_note|default:"" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

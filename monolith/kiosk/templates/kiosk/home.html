@@ -29,14 +29,18 @@ const IDLE_RESET_MS = 90000; // back to Welcome after the ticket is shown
 
 const state = {
     step: 0,
-    patientId: null,
+    mode: "new",            // "new" | "returning"
+    patientId: "",          // returning: entered ID; after start: the visit's patient ID
+    maskedName: "",         // returning: name shown for confirmation
+    confirmed: false,       // returning: the patient confirmed the masked name
     name: "",
-    symptoms: "",
+    reason: "",
+    visitToken: null,
     weight: null,           // { kg, at }
     bp: null,               // { systolic, diastolic, pulse, at }
-    ticket: null,           // { queue_number, qr_code_image }
+    ticket: null,           // { queue_number, patient_id, qr_code_image }
     busy: false,
-    listeningFor: null,     // "name" | "symptoms"
+    listeningFor: null,     // "name" | "reason"
 };
 const stage = document.getElementById("stage");
 let resetTimer = null;
@@ -129,7 +133,7 @@ function onSpeech(text) {
     updateContinue();
     if (field === "name") {
         Voice.say(`Thank you, ${text}. What brings you in today?`);
-        setTimeout(() => Voice.listen("symptoms"), 2500);
+        setTimeout(() => Voice.listen("reason"), 2500);
     }
 }
 
@@ -203,7 +207,7 @@ const DeviceReader = {
         }
         let claimed;
         try {
-            claimed = await postJson(`/api/devices/readings/${data.reading.id}/claim/`, { patient_id: state.patientId });
+            claimed = await postJson(`/api/devices/readings/${data.reading.id}/claim/`, { visit: state.visitToken });
         } catch (error) {
             return; // taken or expired: keep waiting
         }
@@ -240,7 +244,7 @@ async function simulate(kind) {
         ? { weight_kg: Math.round((50 + Math.random() * 40) * 10) / 10 }
         : { systolic_bp: 105 + Math.floor(Math.random() * 40), diastolic_bp: 65 + Math.floor(Math.random() * 25), heart_rate_bpm: 58 + Math.floor(Math.random() * 35) };
     try {
-        await postJson("/api/measurements/", { patient_id: state.patientId, ...values });
+        await postJson(`/api/kiosk/visits/${state.visitToken}/simulated-measurement/`, values);
         const now = new Date().toISOString();
         if (kind === "weight") onWeight({ weight_kg: values.weight_kg, measured_at: now });
         else onBloodPressure({ systolic_bp: values.systolic_bp, diastolic_bp: values.diastolic_bp, heart_rate_bpm: values.heart_rate_bpm, measured_at: now });
@@ -251,14 +255,21 @@ async function simulate(kind) {
 
 /* ---------- flow ---------- */
 
+function begin(mode) {
+    state.mode = mode;
+    go(1);
+}
+
 function go(step) {
     state.step = step;
     Voice.stop();
     DeviceReader.stop();
     render();
-    if (step === 1) {
+    if (step === 1 && state.mode === "new") {
         Voice.say("Please tell me your full name.");
         setTimeout(() => Voice.listen("name"), 1800);
+    } else if (step === 1) {
+        Voice.say("Please type your Patient ID.");
     } else if (step === 2) {
         Voice.say("Please step onto the scale and stand still.");
         if (!state.weight) DeviceReader.start("weight", onWeight);
@@ -270,20 +281,59 @@ function go(step) {
     }
 }
 
-async function submitPatient(event) {
+async function lookupPatient(event) {
+    event.preventDefault();
+    const id = document.getElementById("input-patient-id").value.replace(/\s+/g, "").toUpperCase();
+    if (id.length !== 5) {
+        toast("A Patient ID has 5 letters and digits.", "warning");
+        return;
+    }
+    state.busy = true;
+    try {
+        const found = await postJson("/api/kiosk/lookup/", { patient_id: id });
+        state.patientId = found.patient_id;
+        state.maskedName = found.masked_name;
+        render();
+        Voice.say("Is this you?");
+    } catch (error) {
+        toast(error.message, "warning");
+    } finally {
+        state.busy = false;
+    }
+}
+
+function confirmPatient(yes) {
+    if (!yes) {
+        Object.assign(state, { patientId: "", maskedName: "", confirmed: false });
+        render();
+        return;
+    }
+    state.confirmed = true;
+    render();
+    Voice.say("Welcome back. What brings you in today?");
+    setTimeout(() => Voice.listen("reason"), 2200);
+}
+
+async function startVisit(event) {
     event.preventDefault();
     if (state.busy) return;
-    state.name = document.getElementById("input-name").value.trim();
-    state.symptoms = document.getElementById("input-symptoms").value.trim();
-    if (state.name.length < 2 || state.symptoms.length < 3) {
-        toast("Please enter your name and the reason for your visit.", "warning");
+    const nameInput = document.getElementById("input-name");
+    if (nameInput) state.name = nameInput.value.trim();
+    state.reason = document.getElementById("input-reason").value.trim();
+    if ((state.mode === "new" && state.name.length < 2) || state.reason.length < 3) {
+        toast("Please fill in both fields.", "warning");
         return;
     }
     state.busy = true;
     updateContinue();
     try {
-        const patient = await postJson("/api/patients/", { name: state.name, symptoms: state.symptoms });
-        state.patientId = patient.id;
+        const body = state.mode === "new"
+            ? { name: state.name, reason: state.reason }
+            : { patient_id: state.patientId, reason: state.reason };
+        const visit = await postJson("/api/kiosk/visits/", body);
+        state.visitToken = visit.token;
+        state.patientId = visit.patient_id;
+        if (!state.name) state.name = visit.first_name;
         go(2);
     } catch (error) {
         toast(`Could not save your details: ${error.message}`);
@@ -295,8 +345,8 @@ async function submitPatient(event) {
 
 async function finish() {
     try {
-        state.ticket = await postJson("/api/queue/generate/", { patient_id: state.patientId });
-        Voice.say(`All done. Your queue number is ${state.ticket.queue_number}. Please have a seat; the doctor will call you.`);
+        state.ticket = await postJson(`/api/kiosk/visits/${state.visitToken}/finish/`, {});
+        Voice.say(`All done. Your queue number is ${state.ticket.queue_number}. Please take a photo of this screen, then have a seat.`);
     } catch (error) {
         toast(`Could not create your ticket: ${error.message}. Please ask a nurse.`);
     }
@@ -307,16 +357,19 @@ async function finish() {
 
 function reset() {
     clearTimeout(resetTimer);
-    Object.assign(state, { patientId: null, name: "", symptoms: "", weight: null, bp: null, ticket: null, busy: false, listeningFor: null });
+    Object.assign(state, {
+        mode: "new", patientId: "", maskedName: "", confirmed: false, name: "", reason: "",
+        visitToken: null, weight: null, bp: null, ticket: null, busy: false, listeningFor: null,
+    });
     go(0);
 }
 
 function updateContinue() {
     const btn = document.getElementById("continue-btn");
     if (!btn) return;
-    const name = document.getElementById("input-name").value.trim();
-    const symptoms = document.getElementById("input-symptoms").value.trim();
-    btn.disabled = state.busy || name.length < 2 || symptoms.length < 3;
+    const name = document.getElementById("input-name");
+    const reason = document.getElementById("input-reason").value.trim();
+    btn.disabled = state.busy || (name && name.value.trim().length < 2) || reason.length < 3;
 }
 
 /* ---------- views ---------- */
@@ -337,39 +390,86 @@ const simulateButton = (kind) => SIMULATION_ENABLED
     ? `<button class="btn btn-light" onclick="simulate('${kind}')"><i class="bi bi-cpu"></i> Simulate (testing)</button>`
     : "";
 
+const mic = (field, label) => Voice.available
+    ? `<button type="button" class="btn btn-light btn-mic" data-mic="${field}" onclick="Voice.listen('${field}')" aria-label="${label}"><i class="bi bi-mic-fill"></i></button>`
+    : "";
+
+const reasonField = () => `
+    <div>
+        <label for="input-reason">What brings you in today?</label>
+        <div class="kiosk-input-row">
+            <textarea class="form-control form-control-xl" id="input-reason" rows="2" oninput="updateContinue()" required>${esc(state.reason)}</textarea>
+            ${mic("reason", "Speak your reason for visiting")}
+        </div>
+    </div>`;
+
+const formActions = () => `
+    <div class="kiosk-actions justify-content-between">
+        <button type="button" class="btn btn-light btn-xl" onclick="reset()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-xl btn-icon" id="continue-btn" disabled>Continue <i class="bi bi-arrow-right"></i></button>
+    </div>`;
+
+function returningView() {
+    if (!state.maskedName) {
+        return `
+        <span class="kiosk-icon"><i class="bi bi-person-badge"></i></span>
+        <h2 class="kiosk-title">Welcome back</h2>
+        <p class="kiosk-lead">Enter the 5-character Patient ID from your last visit.</p>
+        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="lookupPatient(event)" novalidate>
+            <input class="form-control form-control-xl text-center fw-bold" id="input-patient-id" aria-label="Patient ID" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" style="letter-spacing: 0.4em; font-size: 2rem; text-transform: uppercase" required />
+            <div class="kiosk-actions justify-content-between">
+                <button type="button" class="btn btn-light btn-xl" onclick="reset()">Back</button>
+                <button type="submit" class="btn btn-primary btn-xl btn-icon">Find <i class="bi bi-search"></i></button>
+            </div>
+        </form>
+        <p class="kiosk-hint mb-0">Don't have it? Go back and choose <strong>First visit</strong>; a nurse can link your records.</p>`;
+    }
+    if (!state.confirmed) {
+        return `
+        <span class="kiosk-icon"><i class="bi bi-person-check"></i></span>
+        <h2 class="kiosk-title">Is this you?</h2>
+        <div class="queue-display" style="font-size: 2.2rem; letter-spacing: 0.06em">${esc(state.maskedName)}</div>
+        <p class="kiosk-lead">Patient ID ${esc(state.patientId)}</p>
+        <div class="kiosk-actions">
+            <button class="btn btn-light btn-xl" onclick="confirmPatient(false)">No</button>
+            <button class="btn btn-primary btn-xl btn-icon" onclick="confirmPatient(true)">Yes, that's me <i class="bi bi-arrow-right"></i></button>
+        </div>`;
+    }
+    return `
+        <span class="kiosk-icon"><i class="bi bi-chat-left-text"></i></span>
+        <h2 class="kiosk-title">Welcome back</h2>
+        <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answer."}</p>
+        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="startVisit(event)" novalidate>
+            ${reasonField()}
+            ${formActions()}
+        </form>`;
+}
+
 const views = {
     0: () => `
         <span class="kiosk-icon"><i class="bi bi-heart-pulse-fill"></i></span>
         <h1 class="kiosk-title">Welcome</h1>
         <p class="kiosk-lead">Let's check your weight and blood pressure before you see the doctor. It takes about 3 minutes.</p>
         <div class="kiosk-actions">
-            <button class="btn btn-primary btn-xl btn-icon" onclick="go(1)"><i class="bi bi-play-fill"></i> Start check-in</button>
+            <button class="btn btn-primary btn-xl btn-icon" onclick="begin('new')"><i class="bi bi-person-plus"></i> First visit</button>
+            <button class="btn btn-outline-primary btn-xl btn-icon" onclick="begin('returning')"><i class="bi bi-person-badge"></i> I have a Patient ID</button>
         </div>
         <p class="kiosk-hint mb-0"><i class="bi bi-shield-lock"></i> Your results are only shared with the clinic's nurses and doctors.</p>`,
 
-    1: () => `
+    1: () => state.mode === "returning" ? returningView() : `
         <span class="kiosk-icon"><i class="bi bi-person"></i></span>
         <h2 class="kiosk-title">About you</h2>
         <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answers."}</p>
-        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="submitPatient(event)" novalidate>
+        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="startVisit(event)" novalidate>
             <div>
                 <label for="input-name">Full name</label>
                 <div class="kiosk-input-row">
                     <input class="form-control form-control-xl" id="input-name" autocomplete="off" value="${esc(state.name)}" oninput="updateContinue()" required />
-                    ${Voice.available ? `<button type="button" class="btn btn-light btn-mic" data-mic="name" onclick="Voice.listen('name')" aria-label="Speak your name"><i class="bi bi-mic-fill"></i></button>` : ""}
+                    ${mic("name", "Speak your name")}
                 </div>
             </div>
-            <div>
-                <label for="input-symptoms">What brings you in today?</label>
-                <div class="kiosk-input-row">
-                    <textarea class="form-control form-control-xl" id="input-symptoms" rows="2" oninput="updateContinue()" required>${esc(state.symptoms)}</textarea>
-                    ${Voice.available ? `<button type="button" class="btn btn-light btn-mic" data-mic="symptoms" onclick="Voice.listen('symptoms')" aria-label="Speak your reason for visiting"><i class="bi bi-mic-fill"></i></button>` : ""}
-                </div>
-            </div>
-            <div class="kiosk-actions justify-content-between">
-                <button type="button" class="btn btn-light btn-xl" onclick="reset()">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-xl btn-icon" id="continue-btn" disabled>Continue <i class="bi bi-arrow-right"></i></button>
-            </div>
+            ${reasonField()}
+            ${formActions()}
         </form>`,
 
     2: () => `
@@ -398,11 +498,13 @@ const views = {
     4: () => state.ticket
         ? `
         <span class="kiosk-icon done"><i class="bi bi-check-lg"></i></span>
-        <h2 class="kiosk-title">You're all set, ${esc(state.name.split(" ")[0])}</h2>
-        <div class="text-muted fw-semibold">Your queue number</div>
-        <div class="queue-display">${esc(state.ticket.queue_number)}</div>
+        <h2 class="kiosk-title">You're all set${state.name ? `, ${esc(state.name.split(" ")[0])}` : ""}</h2>
+        <div class="result-grid">
+            <div class="result-tile"><div class="result-label">Queue number</div><div class="result-value text-primary">${esc(state.ticket.queue_number)}</div></div>
+            <div class="result-tile"><div class="result-label">Your Patient ID</div><div class="result-value" style="letter-spacing: 0.08em">${esc(state.ticket.patient_id)}</div><div class="result-time">Keep it for your next visit</div></div>
+        </div>
         ${state.ticket.qr_code_image ? `<div class="qr-box"><img src="${esc(state.ticket.qr_code_image)}" alt="Ticket QR code" /></div>` : ""}
-        <p class="kiosk-lead">Please have a seat. Show this code to the doctor when you are called.</p>
+        <p class="kiosk-lead"><strong>Take a photo of this screen.</strong> Show the code to the doctor when you are called.${state.ticket.returning ? "" : " Scan it with your phone to complete your registration, or ask a nurse to help."}</p>
         <div class="kiosk-actions"><button class="btn btn-primary btn-xl" onclick="reset()">Done</button></div>`
         : `<div class="spinner-border text-primary" role="status"></div><p class="kiosk-lead">Preparing your ticket…</p>`,
 };
@@ -417,6 +519,8 @@ function render() {
     if (state.step === 1) {
         updateContinue();
         updateMicButtons();
+        const first = stage.querySelector("input, textarea");
+        if (first && !Voice.available) first.focus();
     }
 }
 

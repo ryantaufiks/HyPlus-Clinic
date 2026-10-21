@@ -72,7 +72,7 @@ async function openTicket(text) {
         message("That is not an AIVIN ticket code.", "warning");
         return;
     }
-    const url = `/ticket/${match[0].toLowerCase()}/`;
+    const url = `/v/${match[0].toLowerCase()}/`;
     message("Opening ticket…", "info");
     const response = await fetch(url, { method: "HEAD" });
     if (response.ok) {

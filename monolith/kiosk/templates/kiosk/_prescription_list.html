@@ -1,0 +1,18 @@
+{# Read-only prescription table. Expects `items`. #}
+{% if items %}
+<div class="table-responsive">
+    <table class="table table-aivin">
+        <thead><tr><th>Drug</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+        <tbody>
+            {% for p in items %}
+            <tr>
+                <td class="fw-semibold">{{ p.drug }}{% if p.allergy_override %} <span class="status status-critical" title="Prescribed despite an allergy warning"><i class="bi bi-exclamation-octagon-fill"></i>Allergy override</span>{% endif %}</td>
+                <td>{{ p.dose }}</td><td>{{ p.frequency }}</td><td>{{ p.duration|default:"—" }}</td><td>{{ p.instructions|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No drugs prescribed.</p>
+{% endif %}

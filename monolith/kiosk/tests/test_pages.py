@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from kiosk.models import Measurement, Patient, QueueTicket
+from kiosk.models import Measurement, Patient, Visit
 from kiosk.vitals import bp_category, heart_rate_status
 
 
@@ -34,28 +35,38 @@ class StaffPagesTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user("doctor", password="a-long-password-123")
         self.client.force_login(self.user)
-        self.patient = Patient.objects.create(name="Siti Aminah", symptoms="Dizzy since this morning")
-        Measurement.objects.create(patient=self.patient, weight_kg=70.7)
-        Measurement.objects.create(patient=self.patient, systolic_bp=165, diastolic_bp=95, heart_rate_bpm=88)
-        self.ticket = QueueTicket.objects.create(patient=self.patient, queue_number="A001")
+        self.patient = Patient.objects.create(name="Siti Aminah", has_drug_allergy=True, drug_allergies="penicillin")
+        self.visit = Visit.objects.create(
+            patient=self.patient, reason="Dizzy since this morning", queue_date=timezone.localdate(), queue_number="A001"
+        )
+        Measurement.objects.create(patient=self.patient, visit=self.visit, weight_kg=70.7)
+        Measurement.objects.create(patient=self.patient, visit=self.visit, systolic_bp=165, diastolic_bp=95, heart_rate_bpm=88)
 
-    def test_ticket_is_doctor_summary(self):
-        page = self.client.get(reverse("kiosk:ticket-detail", args=[self.ticket.qr_code_data])).content.decode()
-        for text in ["Siti Aminah", "A001", "Dizzy since this morning", "165/95", "70.7", "88", "Hypertension stage 2", "Consider seeing this patient first"]:
+    def test_visit_page_is_doctor_summary(self):
+        page = self.client.get(reverse("kiosk:visit-detail", args=[self.visit.pk])).content.decode()
+        for text in ["Siti Aminah", self.patient.patient_id, "A001", "Dizzy since this morning", "165/95", "70.7", "88", "Hypertension stage 2", "Drug allergy:", "penicillin"]:
             self.assertIn(text, page)
 
-    def test_patient_detail_has_chart_data(self):
+    def test_qr_link_opens_visit_for_staff(self):
+        response = self.client.get(reverse("kiosk:visit-token", args=[self.visit.token]))
+        self.assertRedirects(response, reverse("kiosk:visit-detail", args=[self.visit.pk]))
+        legacy = self.client.get(f"/ticket/{self.visit.token}/")
+        self.assertRedirects(legacy, reverse("kiosk:visit-token", args=[self.visit.token]), target_status_code=302)
+
+    def test_patient_detail_has_chart_data_and_visits(self):
         response = self.client.get(reverse("kiosk:patient-detail", args=[self.patient.pk]))
         self.assertEqual(response.status_code, 200)
         data = response.context["chart_data"]
         self.assertEqual([p["systolic"] for p in data["bp"]], [165])
         self.assertEqual([p["weight"] for p in data["weight"]], [70.7])
-        self.assertContains(response, 'id="chart-data"')
+        self.assertContains(response, "Dizzy since this morning")
 
-    def test_patient_list_shows_latest_vitals(self):
+    def test_patient_list_search(self):
         response = self.client.get(reverse("kiosk:patient-list"), {"search": "siti"})
         self.assertContains(response, "165/95")
         self.assertContains(response, "Hypertension stage 2")
+        by_id = self.client.get(reverse("kiosk:patient-list"), {"search": self.patient.patient_id.lower()})
+        self.assertContains(by_id, "Siti Aminah")
         self.assertNotContains(self.client.get(reverse("kiosk:patient-list"), {"search": "nobody"}), "165/95")
 
     def test_dashboard_data(self):
@@ -63,10 +74,8 @@ class StaffPagesTest(TestCase):
         data = self.client.get(reverse("kiosk:dashboard-data")).json()
         self.assertEqual(data["kpis"], {"checkins_today": 1, "measurements_today": 2, "waiting": 1, "needs_attention": 1})
         self.assertEqual(sum(r["count"] for r in data["checkins_by_hour"]), 1)
-        self.assertEqual({c["key"]: c["count"] for c in data["bp_categories"]}["stage2"], 1)
-        self.assertEqual(data["recent_bp"][0]["systolic"], 165)
         row = data["queue"][0]
-        self.assertEqual((row["queue_number"], row["bp"], row["weight_kg"]), ("A001", "165/95", 70.7))
+        self.assertEqual((row["queue_number"], row["bp"], row["weight_kg"], row["patient_id"]), ("A001", "165/95", 70.7, self.patient.patient_id))
         self.assertEqual(row["category"]["status"], "critical")
 
     def test_dashboard_data_requires_login(self):

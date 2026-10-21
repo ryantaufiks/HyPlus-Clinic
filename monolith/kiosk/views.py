@@ -1,40 +1,23 @@
-import base64
-import io
-import json
 import logging
 
-import qrcode
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import connection
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db.models.functions import ExtractHour
-from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView, TemplateView
-from django_ratelimit.decorators import ratelimit
 
 from .device_views import gateway_devices, gateway_online
-from .models import Measurement, Patient, QueueTicket
+from .models import Measurement, Patient, PatientSubmission, Visit
 from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
 
 logger = logging.getLogger(__name__)
-
-kiosk_api_ratelimit = method_decorator(
-    ratelimit(key="ip", rate=settings.KIOSK_API_RATE, method="POST", block=True),
-    name="post",
-)
-
-
-def server_error(message):
-    logger.exception(message)
-    return JsonResponse({"error": "Internal server error"}, status=500)
-
 
 def healthz(request):
     """Liveness/readiness probe used by Docker."""
@@ -54,156 +37,6 @@ class HomeView(TemplateView):
         context["title"] = "AIVIN"
         context["simulation_enabled"] = settings.DEBUG
         return context
-
-
-@kiosk_api_ratelimit
-class PatientCreateAPIView(View):
-    """API endpoint to create a new patient"""
-
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            name = data.get("name")
-            symptoms = data.get("symptoms")
-
-            if not name or not symptoms:
-                return JsonResponse(
-                    {"error": "Name and symptoms are required"}, status=400
-                )
-
-            patient = Patient.objects.create(name=name, symptoms=symptoms)
-
-            return JsonResponse(
-                {
-                    "id": patient.id,
-                    "name": patient.name,
-                    "symptoms": patient.symptoms,
-                    "created_at": patient.created_at.isoformat(),
-                },
-                status=201,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Http404:
-            raise
-        except Exception:
-            return server_error("Failed to create patient")
-
-
-@kiosk_api_ratelimit
-class MeasurementCreateAPIView(View):
-    """Record a simulated measurement. Only available with DEBUG on.
-
-    Real measurements come from medical devices through the BLE gateway and
-    are claimed via the device-reading API, never typed in by the kiosk.
-    """
-
-    def post(self, request):
-        if not settings.DEBUG:
-            return JsonResponse({"error": "Simulated measurements are disabled"}, status=403)
-        try:
-            data = json.loads(request.body)
-            patient_id = data.get("patient_id") or data.get("patient")
-
-            if not patient_id:
-                return JsonResponse({"error": "Patient ID is required"}, status=400)
-
-            patient = get_object_or_404(Patient, id=patient_id)
-
-            measurement = Measurement.objects.create(
-                patient=patient,
-                source=Measurement.SOURCE_SIMULATED,
-                weight_kg=data.get("weight_kg"),
-                systolic_bp=data.get("systolic_bp"),
-                diastolic_bp=data.get("diastolic_bp"),
-                heart_rate_bpm=data.get("heart_rate_bpm"),
-            )
-
-            return JsonResponse(
-                {
-                    "id": measurement.id,
-                    "patient_id": patient.id,
-                    "weight_kg": measurement.weight_kg,
-                    "systolic_bp": measurement.systolic_bp,
-                    "diastolic_bp": measurement.diastolic_bp,
-                    "heart_rate_bpm": measurement.heart_rate_bpm,
-                    "measured_at": measurement.measured_at.isoformat(),
-                },
-                status=201,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Http404:
-            raise
-        except Exception:
-            return server_error("Failed to create measurement")
-
-
-@kiosk_api_ratelimit
-class QueueGenerateAPIView(View):
-    """API endpoint to generate a queue ticket"""
-
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            patient_id = data.get("patient_id")
-
-            if not patient_id:
-                return JsonResponse({"error": "Patient ID is required"}, status=400)
-
-            patient = get_object_or_404(Patient, id=patient_id)
-
-            # Generate a unique queue number
-            last_ticket = QueueTicket.objects.order_by("-id").first()
-            if last_ticket and last_ticket.queue_number:
-                # Extract the number part and increment
-                last_num = int(last_ticket.queue_number[1:])
-                new_num = last_num + 1
-                new_queue_number = f"A{new_num:03d}"
-            else:
-                new_queue_number = "A001"
-
-            # Create the queue ticket
-            ticket = QueueTicket.objects.create(
-                patient=patient, queue_number=new_queue_number
-            )
-
-            # Generate QR code as base64 image
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(str(ticket.qr_code_data))
-            qr.make(fit=True)
-
-            img = qr.make_image(fill_color="black", back_color="white")
-
-            # Convert to base64
-            buffer = io.BytesIO()
-            img.save(buffer, format="PNG")
-            img_str = base64.b64encode(buffer.getvalue()).decode()
-            qr_code_base64 = f"data:image/png;base64,{img_str}"
-
-            return JsonResponse(
-                {
-                    "id": ticket.id,
-                    "patient_id": patient.id,
-                    "queue_number": ticket.queue_number,
-                    "qr_code_data": str(ticket.qr_code_data),
-                    "qr_code_image": qr_code_base64,
-                    "is_active": ticket.is_active,
-                    "created_at": ticket.created_at.isoformat(),
-                },
-                status=201,
-            )
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Http404:
-            raise
-        except Exception:
-            return server_error("Failed to generate queue ticket")
 
 
 def latest_vitals(measurements):
@@ -229,6 +62,13 @@ def latest_vitals(measurements):
     }
 
 
+def patient_search_q(query):
+    query = query.strip()
+    if not query:
+        return Q()
+    return Q(name__icontains=query) | Q(patient_id__iexact=query) | Q(phone__icontains=query)
+
+
 class PatientListView(LoginRequiredMixin, ListView):
     model = Patient
     template_name = "kiosk/patient_list.html"
@@ -236,17 +76,26 @@ class PatientListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset().prefetch_related("queue_tickets", "measurements")
-        search = self.request.GET.get("search", "").strip()
-        if search:
-            queryset = queryset.filter(name__icontains=search)
-        return queryset
+        search = self.request.GET.get("search", "")
+        return (
+            Patient.objects.filter(is_active=True)
+            .filter(patient_search_q(search))
+            .prefetch_related("measurements", "visits")
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["search"] = self.request.GET.get("search", "").strip()
+        pending = set(
+            PatientSubmission.objects.filter(status=PatientSubmission.PENDING).values_list("patient_id", flat=True)
+        )
         context["rows"] = [
-            {"patient": p, "vitals": latest_vitals(p.measurements.all()), "ticket": next(iter(p.queue_tickets.all()), None)}
+            {
+                "patient": p,
+                "vitals": latest_vitals(p.measurements.all()),
+                "last_visit": next(iter(p.visits.all()), None),
+                "pending": p.pk in pending,
+            }
             for p in context["patients"]
         ]
         return context
@@ -259,10 +108,16 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        measurements = list(self.object.measurements.order_by("-measured_at"))
+        patient = self.object
+        measurements = list(patient.measurements.order_by("-measured_at"))
         context["measurements"] = measurements
-        context["queue_tickets"] = self.object.queue_tickets.order_by("-created_at")
+        context["visits"] = patient.visits.select_related("doctor").prefetch_related("prescriptions")
         context["vitals"] = latest_vitals(measurements)
+        context["pending_submission"] = patient.submissions.filter(status=PatientSubmission.PENDING).first()
+        context["audit_events"] = patient.audit_events.select_related("actor")[:15]
+        weight = context["vitals"]["weight"]
+        if weight and patient.height_cm:
+            context["bmi"] = round(weight.weight_kg / (patient.height_cm / 100) ** 2, 1)
         oldest_first = list(reversed(measurements))
         context["chart_data"] = {
             "bp": [
@@ -277,25 +132,6 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class QueueTicketDetailView(LoginRequiredMixin, DetailView):
-    """The doctor's summary for a queue ticket, opened by scanning its QR code."""
-
-    model = QueueTicket
-    template_name = "kiosk/queue_ticket.html"
-    context_object_name = "ticket"
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(QueueTicket.objects.select_related("patient"), qr_code_data=self.kwargs["qr_code"])
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        patient = self.object.patient
-        visit = patient.measurements.filter(measured_at__lte=self.object.created_at).order_by("-measured_at")
-        context["vitals"] = latest_vitals(visit)
-        context["previous_tickets"] = patient.queue_tickets.exclude(pk=self.object.pk).order_by("-created_at")[:5]
-        return context
-
-
 class DashboardView(LoginRequiredMixin, TemplateView):
     """Live overview for nurses and doctors; data comes from DashboardDataView."""
 
@@ -307,11 +143,11 @@ class DashboardDataView(LoginRequiredMixin, View):
 
     def get(self, request):
         today = timezone.localdate()
-        patients_today = Patient.objects.filter(created_at__date=today)
+        visits_today = Visit.objects.filter(created_at__date=today)
         measurements_today = Measurement.objects.filter(measured_at__date=today)
 
         by_hour = dict(
-            patients_today.annotate(hour=ExtractHour("created_at"))
+            visits_today.annotate(hour=ExtractHour("created_at"))
             .values("hour")
             .annotate(n=Count("id"))
             .values_list("hour", "n")
@@ -341,21 +177,24 @@ class DashboardDataView(LoginRequiredMixin, View):
         recent_bp.reverse()
 
         queue = []
-        tickets = (
-            QueueTicket.objects.filter(is_active=True, created_at__date=today)
+        visits = (
+            Visit.objects.filter(queue_date=today, status__in=[Visit.WAITING, Visit.IN_CONSULTATION])
+            .exclude(queue_number="")
             .select_related("patient")
-            .prefetch_related("patient__measurements")
-            .order_by("created_at")[:25]
+            .prefetch_related("measurements")
+            .order_by("queue_number")[:25]
         )
-        for ticket in tickets:
-            vitals = latest_vitals(ticket.patient.measurements.all())
+        for visit in visits:
+            vitals = latest_vitals(visit.measurements.all())
             bp, category = vitals["bp"], vitals["bp_category"]
             queue.append(
                 {
-                    "queue_number": ticket.queue_number,
-                    "patient": ticket.patient.name,
-                    "created_at": ticket.created_at.isoformat(),
-                    "url": reverse("kiosk:ticket-detail", args=[ticket.qr_code_data]),
+                    "queue_number": visit.queue_number,
+                    "patient": visit.patient.name,
+                    "patient_id": visit.patient.patient_id,
+                    "status": visit.get_status_display(),
+                    "created_at": visit.created_at.isoformat(),
+                    "url": reverse("kiosk:visit-detail", args=[visit.pk]),
                     "weight_kg": vitals["weight"].weight_kg if vitals["weight"] else None,
                     "bp": f"{bp.systolic_bp}/{bp.diastolic_bp}" if bp else None,
                     "pulse": bp.heart_rate_bpm if bp else None,
@@ -367,7 +206,7 @@ class DashboardDataView(LoginRequiredMixin, View):
             {
                 "generated_at": timezone.now().isoformat(),
                 "kpis": {
-                    "checkins_today": patients_today.count(),
+                    "checkins_today": visits_today.count(),
                     "measurements_today": measurements_today.count(),
                     "waiting": len(queue),
                     "needs_attention": counts["stage2"] + counts["crisis"],

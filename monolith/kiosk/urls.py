@@ -1,25 +1,19 @@
 from django.urls import path
 
-from . import device_views, views
+from . import clinical_views, device_views, kiosk_api, views
 
 app_name = "kiosk"
 
 urlpatterns = [
-    # Main kiosk interface
+    # Kiosk
     path("", views.HomeView.as_view(), name="home"),
-    # API endpoints
+    path("api/kiosk/lookup/", kiosk_api.PatientLookupView.as_view(), name="api-patient-lookup"),
+    path("api/kiosk/visits/", kiosk_api.VisitStartView.as_view(), name="api-visit-start"),
+    path("api/kiosk/visits/<uuid:token>/finish/", kiosk_api.VisitFinishView.as_view(), name="api-visit-finish"),
     path(
-        "api/patients/", views.PatientCreateAPIView.as_view(), name="api-patient-create"
-    ),
-    path(
-        "api/measurements/",
-        views.MeasurementCreateAPIView.as_view(),
-        name="api-measurement-create",
-    ),
-    path(
-        "api/queue/generate/",
-        views.QueueGenerateAPIView.as_view(),
-        name="api-queue-generate",
+        "api/kiosk/visits/<uuid:token>/simulated-measurement/",
+        kiosk_api.SimulatedMeasurementView.as_view(),
+        name="api-simulated-measurement",
     ),
     path("api/devices/wait/", device_views.DeviceWaitView.as_view(), name="api-device-wait"),
     path(
@@ -32,6 +26,9 @@ urlpatterns = [
         device_views.ClaimDeviceReadingView.as_view(),
         name="api-device-reading-claim",
     ),
+    # Ticket QR code: the visit for staff, the registration form for the patient
+    path("v/<uuid:token>/", clinical_views.VisitTokenView.as_view(), name="visit-token"),
+    path("ticket/<uuid:qr_code>/", clinical_views.legacy_ticket_redirect, name="ticket-detail"),
     # Internal API for the BLE gateway (bearer token)
     path(
         "internal/gateway/heartbeat/",
@@ -57,16 +54,25 @@ urlpatterns = [
         device_views.DeviceCommandDetailView.as_view(),
         name="devices-command-detail",
     ),
-    # Patient management
+    # Patients and registration
     path("patients/", views.PatientListView.as_view(), name="patient-list"),
+    path("patients/new/", clinical_views.PatientRegisterView.as_view(), name="patient-register"),
+    path("patients/<int:pk>/", views.PatientDetailView.as_view(), name="patient-detail"),
+    path("patients/<int:pk>/edit/", clinical_views.PatientEditView.as_view(), name="patient-edit"),
+    path("patients/<int:pk>/merge/", clinical_views.PatientMergeView.as_view(), name="patient-merge"),
+    path("registrations/", clinical_views.SubmissionListView.as_view(), name="submissions"),
     path(
-        "patients/<int:pk>/", views.PatientDetailView.as_view(), name="patient-detail"
+        "registrations/<int:pk>/review/",
+        clinical_views.SubmissionReviewView.as_view(),
+        name="submission-review",
     ),
-    # Queue tickets
+    # Doctor
+    path("doctor/", clinical_views.DoctorQueueView.as_view(), name="doctor-queue"),
+    path("visits/<int:pk>/", clinical_views.VisitDetailView.as_view(), name="visit-detail"),
     path(
-        "ticket/<uuid:qr_code>/",
-        views.QueueTicketDetailView.as_view(),
-        name="ticket-detail",
+        "visits/<int:pk>/prescription/",
+        clinical_views.PrescriptionPrintView.as_view(),
+        name="prescription-print",
     ),
     # Dashboard and QR scanner
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),

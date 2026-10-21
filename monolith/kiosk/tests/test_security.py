@@ -4,19 +4,24 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from kiosk.models import Patient, QueueTicket, SiteConfiguration, get_openai_api_key
+from kiosk.models import Patient, SiteConfiguration, Visit, get_openai_api_key
 
 
 class StaffPagesRequireLoginTest(TestCase):
     def setUp(self):
-        patient = Patient.objects.create(name="Test Patient", symptoms="Fever")
-        self.ticket = QueueTicket.objects.create(patient=patient, queue_number="A001")
+        patient = Patient.objects.create(name="Test Patient")
+        visit = Visit.objects.create(patient=patient, reason="Fever", queue_number="A001")
         self.urls = [
             reverse("kiosk:dashboard"),
             reverse("kiosk:patient-list"),
             reverse("kiosk:patient-detail", args=[patient.pk]),
+            reverse("kiosk:patient-register"),
+            reverse("kiosk:patient-edit", args=[patient.pk]),
+            reverse("kiosk:submissions"),
+            reverse("kiosk:doctor-queue"),
+            reverse("kiosk:visit-detail", args=[visit.pk]),
+            reverse("kiosk:prescription-print", args=[visit.pk]),
             reverse("kiosk:qr-scanner"),
-            reverse("kiosk:ticket-detail", args=[self.ticket.qr_code_data]),
         ]
 
     def test_anonymous_is_redirected_to_login(self):
@@ -41,8 +46,8 @@ class KioskApiCsrfTest(TestCase):
     def test_post_without_csrf_token_is_rejected(self):
         client = Client(enforce_csrf_checks=True)
         response = client.post(
-            reverse("kiosk:api-patient-create"),
-            data=json.dumps({"name": "Test", "symptoms": "Cough"}),
+            reverse("kiosk:api-visit-start"),
+            data=json.dumps({"name": "Test", "reason": "Cough"}),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)
@@ -52,18 +57,18 @@ class KioskApiCsrfTest(TestCase):
         client.get(reverse("kiosk:home"))
         token = client.cookies["csrftoken"].value
         response = client.post(
-            reverse("kiosk:api-patient-create"),
-            data=json.dumps({"name": "Test", "symptoms": "Cough"}),
+            reverse("kiosk:api-visit-start"),
+            data=json.dumps({"name": "Test", "reason": "Cough"}),
             content_type="application/json",
             HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(response.status_code, 201)
 
     @override_settings(DEBUG=True)
-    def test_unknown_patient_returns_404(self):
+    def test_unknown_visit_returns_404(self):
         response = self.client.post(
-            reverse("kiosk:api-measurement-create"),
-            data=json.dumps({"patient_id": 999999}),
+            reverse("kiosk:api-simulated-measurement", args=["00000000-0000-4000-8000-000000000000"]),
+            data=json.dumps({"weight_kg": 70}),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 404)

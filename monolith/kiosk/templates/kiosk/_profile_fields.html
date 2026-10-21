@@ -1,0 +1,43 @@
+{# Registration fields shared by the staff form and the patient's phone form. Expects `form`. #}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+{% with f=form %}
+<fieldset class="mb-4">
+    <legend class="section-title"><i class="bi bi-person-vcard"></i> Identity</legend>
+    <div class="row g-3">
+        <div class="col-md-6">{% include 'kiosk/_field.html' with field=f.name %}</div>
+        <div class="col-md-6">{% include 'kiosk/_field.html' with field=f.date_of_birth %}</div>
+        <div class="col-md-6">{% include 'kiosk/_field.html' with field=f.id_type %}</div>
+        <div class="col-md-6">{% include 'kiosk/_field.html' with field=f.id_last4 %}</div>
+        <div class="col-md-6">{% include 'kiosk/_field.html' with field=f.phone %}</div>
+        <div class="col-12">{% include 'kiosk/_field.html' with field=f.address %}</div>
+    </div>
+</fieldset>
+
+<fieldset class="mb-4">
+    <legend class="section-title"><i class="bi bi-rulers"></i> Body</legend>
+    <div class="row g-3">
+        <div class="col-6 col-md-3">{% include 'kiosk/_field.html' with field=f.height_cm %}</div>
+        <div class="col-6 col-md-3">{% include 'kiosk/_field.html' with field=f.weight_kg %}</div>
+    </div>
+</fieldset>
+
+<fieldset class="mb-2">
+    <legend class="section-title"><i class="bi bi-capsule"></i> Medical</legend>
+    <div class="row g-3">
+        <div class="col-md-6">{% include 'kiosk/_field.html' with field=f.has_drug_allergy %}</div>
+        <div class="col-md-6" id="allergy-drugs">{% include 'kiosk/_field.html' with field=f.drug_allergies %}</div>
+        <div class="col-12">{% include 'kiosk/_field.html' with field=f.medical_history %}</div>
+    </div>
+</fieldset>
+{% endwith %}
+
+<script>
+(function () {
+    const select = document.getElementById("{{ form.has_drug_allergy.id_for_label }}");
+    const drugs = document.getElementById("allergy-drugs");
+    const sync = () => drugs.classList.toggle("d-none", select.value !== "yes");
+    select.addEventListener("change", sync);
+    sync();
+})();
+</script>

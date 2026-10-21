@@ -32,7 +32,7 @@ shell:
 	$(COMPOSE) exec web python manage.py shell
 
 test:
-	$(COMPOSE) run --rm -e DEBUG=true web python manage.py test
+	$(COMPOSE) run --rm -e DEBUG=true --entrypoint python web manage.py test
 	$(COMPOSE) run --rm --no-deps --entrypoint python gateway -m unittest discover -s tests -t .
 
 backup:          ## Dump the database to backups/aivin-YYYYmmdd-HHMMSS.sql.gz

@@ -1,0 +1,26 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}{% if creating %}Register patient{% else %}Edit {{ patient.name }}{% endif %} - AIVIN{% endblock %}
+
+{% block content %}
+<nav class="mb-2">
+    {% if creating %}<a href="{% url 'kiosk:patient-list' %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> Patients</a>
+    {% else %}<a href="{% url 'kiosk:patient-detail' patient.pk %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> {{ patient.name }}</a>{% endif %}
+</nav>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{% if creating %}Register patient{% else %}Edit patient details{% endif %}</h1>
+        <p class="page-subtitle">{% if creating %}A Patient ID is created automatically.{% else %}Patient ID <strong>{{ patient.patient_id }}</strong>{% endif %}</p>
+    </div>
+</div>
+
+<form method="post" class="surface" novalidate>
+    {% csrf_token %}
+    {% include 'kiosk/_profile_fields.html' %}
+    {% if not creating %}<p class="text-muted small">Entering a weight adds a new measurement; leave it empty to keep the history as it is.</p>{% endif %}
+    <div class="d-flex gap-2 justify-content-end">
+        <a class="btn btn-light" href="{% if creating %}{% url 'kiosk:patient-list' %}{% else %}{% url 'kiosk:patient-detail' patient.pk %}{% endif %}">Cancel</a>
+        <button class="btn btn-primary btn-icon" type="submit"><i class="bi bi-check-lg"></i> {% if creating %}Register{% else %}Save{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

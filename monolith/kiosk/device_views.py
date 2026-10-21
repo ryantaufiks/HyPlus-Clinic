@@ -15,6 +15,7 @@ import re
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -26,7 +27,7 @@ from django.views.generic import TemplateView
 from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 
-from .models import DeviceReading, GatewayCommand, Measurement, Patient
+from .models import DeviceReading, GatewayCommand, Measurement, Visit
 
 logger = logging.getLogger(__name__)
 
@@ -264,15 +265,14 @@ def fresh_reading(kind, since):
 
 @method_decorator(kiosk_ratelimit, name="dispatch")
 class ClaimDeviceReadingView(View):
-    """Attach a reading to the patient being checked in. A reading can be claimed once."""
+    """Attach a reading to the visit being checked in. A reading can be claimed once."""
 
     def post(self, request, pk):
         data = _json_body(request) or {}
         try:
-            patient_id = int(data.get("patient_id"))
-        except (TypeError, ValueError):
-            return JsonResponse({"error": "patient_id is required"}, status=400)
-        patient = get_object_or_404(Patient, pk=patient_id)
+            visit = Visit.objects.select_related("patient").get(token=data.get("visit"))
+        except (Visit.DoesNotExist, ValueError, TypeError, ValidationError):
+            return JsonResponse({"error": "A valid visit is required"}, status=400)
         with transaction.atomic():
             reading = get_object_or_404(DeviceReading.objects.select_for_update(), pk=pk)
             if reading.measurement_id is not None:
@@ -280,7 +280,8 @@ class ClaimDeviceReadingView(View):
             if reading.received_at < timezone.now() - MAX_LOOKBACK:
                 return JsonResponse({"error": "Reading expired"}, status=410)
             measurement = Measurement.objects.create(
-                patient=patient,
+                patient=visit.patient,
+                visit=visit,
                 source=Measurement.SOURCE_DEVICE,
                 systolic_bp=reading.systolic_bp,
                 diastolic_bp=reading.diastolic_bp,

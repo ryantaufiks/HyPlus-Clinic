@@ -60,6 +60,7 @@
         {% block extra_css %}{% endblock %}
     </head>
     <body class="{% block body_class %}{% endblock %}">
+        {% block header %}
         {% with current=request.resolver_match.url_name %}
         <header class="app-header no-print">
             <nav class="navbar navbar-expand-lg">
@@ -84,19 +85,25 @@
                                 <a class="nav-link {% if current == 'dashboard' %}active{% endif %}" href="{% url 'kiosk:dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {% if current == 'patient-list' or current == 'patient-detail' %}active{% endif %}" href="{% url 'kiosk:patient-list' %}"><i class="bi bi-people"></i> Patients</a>
+                                <a class="nav-link {% if current == 'patient-list' or current == 'patient-detail' or current == 'patient-register' or current == 'patient-edit' or current == 'patient-merge' %}active{% endif %}" href="{% url 'kiosk:patient-list' %}"><i class="bi bi-people"></i> Patients</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {% if current == 'qr-scanner' or current == 'ticket-detail' %}active{% endif %}" href="{% url 'kiosk:qr-scanner' %}"><i class="bi bi-qr-code-scan"></i> Scan ticket</a>
+                                <a class="nav-link {% if current == 'doctor-queue' or current == 'visit-detail' %}active{% endif %}" href="{% url 'kiosk:doctor-queue' %}"><i class="bi bi-clipboard2-pulse"></i> Doctor</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'submissions' %}active{% endif %}" href="{% url 'kiosk:submissions' %}"><i class="bi bi-inbox"></i> Registrations{% if pending_submissions %} <span class="badge rounded-pill text-bg-danger">{{ pending_submissions }}</span>{% endif %}</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'qr-scanner' %}active{% endif %}" href="{% url 'kiosk:qr-scanner' %}" title="Scan ticket"><i class="bi bi-qr-code-scan"></i> <span class="d-lg-none">Scan ticket</span></a>
                             </li>
                             {% if user.is_staff %}
                             <li class="nav-item">
-                                <a class="nav-link {% if current == 'devices' %}active{% endif %}" href="{% url 'kiosk:devices' %}"><i class="bi bi-bluetooth"></i> Devices</a>
+                                <a class="nav-link {% if current == 'devices' %}active{% endif %}" href="{% url 'kiosk:devices' %}" title="Devices"><i class="bi bi-bluetooth"></i> <span class="d-lg-none">Devices</span></a>
                             </li>
                             {% endif %}
                             {% if user.is_superuser %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-gear"></i> Admin</a>
+                                <a class="nav-link" href="{% url 'admin:index' %}" title="Admin"><i class="bi bi-gear"></i> <span class="d-lg-none">Admin</span></a>
                             </li>
                             {% endif %}
                             <li class="nav-item">
@@ -118,6 +125,7 @@
             </nav>
         </header>
         {% endwith %}
+        {% endblock %}
 
         <main class="app-main">
             <div class="container">

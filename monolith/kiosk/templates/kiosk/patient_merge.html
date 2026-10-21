@@ -1,0 +1,23 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Merge {{ patient.name }} - AIVIN{% endblock %}
+
+{% block content %}
+<nav class="mb-2"><a href="{% url 'kiosk:patient-detail' patient.pk %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> {{ patient.name }}</a></nav>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Merge duplicate record</h1>
+        <p class="page-subtitle">Use this when a returning patient checked in as new and got a second Patient ID.</p>
+    </div>
+</div>
+<form method="post" class="surface" style="max-width: 640px">
+    {% csrf_token %}
+    <p>All visits, measurements and submissions of <strong>{{ patient.name }} ({{ patient.patient_id }})</strong> move to the patient below. Empty details of that patient are filled from this record. This record is then deleted; <strong>this cannot be undone</strong>.</p>
+    <label class="form-label fw-semibold" for="target">Patient ID to keep</label>
+    <input class="form-control mb-3" id="target" name="target" maxlength="5" placeholder="e.g. K7M2Q" required autocomplete="off" style="max-width: 12rem; text-transform: uppercase" />
+    <div class="d-flex gap-2 justify-content-end">
+        <a class="btn btn-light" href="{% url 'kiosk:patient-detail' patient.pk %}">Cancel</a>
+        <button class="btn btn-primary" type="submit" onclick="return confirm('Merge {{ patient.patient_id }} into the patient you entered? This cannot be undone.')">Merge</button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Doctor - AIVIN{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Consultations</h1>
+        <p class="page-subtitle">Today's patients. Critical blood pressure is listed first.</p>
+    </div>
+    {% if not is_doctor %}<span class="status status-neutral"><i class="bi bi-eye"></i>View only: diagnoses are recorded by doctors</span>{% endif %}
+</div>
+
+<section class="surface surface-flush">
+    {% if rows %}
+    <div class="table-responsive">
+        <table class="table table-aivin">
+            <thead>
+                <tr><th>Queue</th><th>Patient</th><th>Reason</th><th class="num">BP</th><th class="num">Pulse</th><th class="num">Weight</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                {% with v=row.visit vit=row.vitals %}
+                <tr class="row-link {% if not v.is_open %}text-muted{% endif %}" data-href="{% url 'kiosk:visit-detail' v.pk %}">
+                    <td><strong class="fs-5">{{ v.queue_number }}</strong></td>
+                    <td>
+                        <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:visit-detail' v.pk %}">{{ v.patient.name }}</a>
+                        <div class="small text-muted">{{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}{% if v.patient.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
+                    </td>
+                    <td class="text-truncate" style="max-width: 260px">{{ v.reason }}</td>
+                    <td class="num">
+                        {% if vit.bp %}{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}
+                        <div><span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% else %}–{% endif %}
+                    </td>
+                    <td class="num">{% if vit.bp.heart_rate_bpm %}{{ vit.bp.heart_rate_bpm }} bpm{% else %}–{% endif %}</td>
+                    <td class="num">{% if vit.weight %}{{ vit.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
+                    <td>
+                        <span class="status {% if v.status == 'waiting' %}status-info{% elif v.status == 'in_consultation' %}status-warning{% elif v.status == 'completed' %}status-good{% else %}status-neutral{% endif %}">{{ v.get_status_display }}</span>
+                        {% if v.doctor %}<div class="small text-muted mt-1">{{ v.doctor.get_full_name|default:v.doctor.get_username }}</div>{% endif %}
+                    </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-cup-hot"></i>No patients checked in today.</div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll("tr[data-href]").forEach((row) =>
+    row.addEventListener("click", (event) => {
+        if (!event.target.closest("a")) location.href = row.dataset.href;
+    }),
+);
+setTimeout(() => location.reload(), 30000); // keep the queue current
+</script>
+{% endblock %}

@@ -8,10 +8,13 @@
         <h1 class="page-title">Patients</h1>
         <p class="page-subtitle">{{ paginator.count }} patient{{ paginator.count|pluralize }}{% if search %} matching “{{ search }}”{% endif %}</p>
     </div>
-    <form method="get" class="d-flex gap-2" role="search">
-        <input class="form-control" type="search" name="search" value="{{ search }}" placeholder="Search by name" aria-label="Search by name" style="min-width: 240px" />
-        <button class="btn btn-primary btn-icon" type="submit"><i class="bi bi-search"></i><span class="d-none d-sm-inline">Search</span></button>
-    </form>
+    <div class="d-flex flex-wrap gap-2">
+        <form method="get" class="d-flex gap-2" role="search">
+            <input class="form-control" type="search" name="search" value="{{ search }}" placeholder="Name, Patient ID or phone" aria-label="Search patients" style="min-width: 240px" />
+            <button class="btn btn-light btn-icon" type="submit"><i class="bi bi-search"></i><span class="d-none d-sm-inline">Search</span></button>
+        </form>
+        <a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-register' %}"><i class="bi bi-person-plus"></i> Register</a>
+    </div>
 </div>
 
 <section class="surface surface-flush">
@@ -21,11 +24,11 @@
             <thead>
                 <tr>
                     <th>Patient</th>
-                    <th>Checked in</th>
+                    <th>Registration</th>
+                    <th>Last visit</th>
                     <th class="num">Weight</th>
                     <th class="num">Blood pressure</th>
-                    <th>Status</th>
-                    <th>Ticket</th>
+                    <th>BP status</th>
                 </tr>
             </thead>
             <tbody>
@@ -34,20 +37,20 @@
                 <tr class="row-link" data-href="{% url 'kiosk:patient-detail' p.pk %}">
                     <td>
                         <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:patient-detail' p.pk %}">{{ p.name }}</a>
-                        <div class="text-muted small text-truncate" style="max-width: 320px">{{ p.symptoms }}</div>
+                        <div class="text-muted small">{{ p.patient_id }}{% if p.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
                     </td>
-                    <td class="text-muted text-nowrap">{{ p.created_at|date:"j M Y, H:i" }}</td>
+                    <td>
+                        {% if row.pending %}<span class="status status-warning"><i class="bi bi-inbox"></i>Pending review</span>
+                        {% elif p.is_registered %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Complete</span>
+                        {% else %}<span class="status status-neutral">Incomplete</span>{% endif %}
+                    </td>
+                    <td class="text-muted text-nowrap">{% if row.last_visit %}{{ row.last_visit.created_at|date:"j M Y, H:i" }}{% else %}—{% endif %}</td>
                     <td class="num">{% if v.weight %}{{ v.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
                     <td class="num">{% if v.bp %}{{ v.bp.systolic_bp }}/{{ v.bp.diastolic_bp }} <span class="text-muted">mmHg</span>{% else %}–{% endif %}</td>
                     <td>
                         {% if v.bp_category %}
                         <span class="status status-{{ v.bp_category.status }}"><i class="bi {{ v.bp_category.icon }}"></i>{{ v.bp_category.label }}</span>
                         {% else %}<span class="status status-neutral">No BP</span>{% endif %}
-                    </td>
-                    <td>
-                        {% if row.ticket %}
-                        <a class="status status-info text-decoration-none" href="{% url 'kiosk:ticket-detail' row.ticket.qr_code_data %}"><i class="bi bi-ticket-perforated"></i>{{ row.ticket.queue_number }}</a>
-                        {% else %}<span class="text-muted">–</span>{% endif %}
                     </td>
                 </tr>
                 {% endwith %}
@@ -56,7 +59,7 @@
         </table>
     </div>
     {% else %}
-    <div class="empty-state"><i class="bi bi-people"></i>{% if search %}No patients match “{{ search }}”.{% else %}No patients yet. They appear here after a kiosk check-in.{% endif %}</div>
+    <div class="empty-state"><i class="bi bi-people"></i>{% if search %}No patients match “{{ search }}”.{% else %}No patients yet. They appear here after a kiosk check-in or registration.{% endif %}</div>
     {% endif %}
 </section>
 

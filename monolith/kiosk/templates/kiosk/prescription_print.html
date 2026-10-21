@@ -1,0 +1,49 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Prescription · {{ patient.name }} - AIVIN{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rx-sheet { max-width: 800px; margin: 0 auto; }
+    .rx-head { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 2px solid var(--aivin-ink); padding-bottom: 1rem; margin-bottom: 1.25rem; }
+    .rx-sign { margin-top: 3.5rem; text-align: right; }
+    .rx-sign .line { display: inline-block; border-top: 1px solid var(--aivin-ink); min-width: 240px; padding-top: 0.35rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rx-sheet">
+    <div class="d-flex justify-content-end gap-2 mb-3 no-print">
+        <a class="btn btn-light" href="{% url 'kiosk:visit-detail' visit.pk %}">Back</a>
+        <button class="btn btn-primary btn-icon" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    </div>
+    <section class="surface">
+        <div class="rx-head">
+            <div class="brand">
+                <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
+                <span><span class="brand-name">AIVIN</span><span class="brand-tag">Prescription</span></span>
+            </div>
+            <div class="text-end small">
+                <div><strong>Date:</strong> {{ visit.diagnosed_at|default:visit.created_at|date:"j M Y" }}</div>
+                {% if visit.queue_number %}<div><strong>Visit:</strong> {{ visit.queue_number }}</div>{% endif %}
+            </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-sm-7"><div class="text-muted small">Patient</div><div class="fw-semibold fs-5">{{ patient.name }}</div></div>
+            <div class="col-sm-5"><div class="text-muted small">Patient ID</div><div class="fw-semibold">{{ patient.patient_id }}</div></div>
+            <div class="col-sm-7"><div class="text-muted small">Date of birth</div><div>{{ patient.date_of_birth|date:"j M Y"|default:"—" }}{% if patient.age is not None %} ({{ patient.age }} y){% endif %}</div></div>
+            <div class="col-sm-5"><div class="text-muted small">Drug allergy</div><div class="{% if patient.has_drug_allergy %}text-danger fw-semibold{% endif %}">{% if patient.has_drug_allergy %}{{ patient.drug_allergies }}{% elif patient.has_drug_allergy is False %}None known{% else %}Unknown{% endif %}</div></div>
+        </div>
+
+        <div class="mb-3">
+            <div class="text-muted small">Diagnosis</div>
+            <div class="fw-semibold">{{ visit.diagnosis|default:"—" }}{% if visit.diagnosis_code %} ({{ visit.diagnosis_code }}){% endif %}</div>
+        </div>
+
+        {% include 'kiosk/_prescription_list.html' %}
+
+        <div class="rx-sign"><span class="line">{% if visit.doctor %}{{ visit.doctor.get_full_name|default:visit.doctor.get_username }}{% else %}Doctor{% endif %}</span></div>
+    </section>
+</div>
+{% endblock %}

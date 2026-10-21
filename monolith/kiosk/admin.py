@@ -3,7 +3,16 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import reverse
 
-from .models import DeviceReading, Measurement, Patient, QueueTicket, SiteConfiguration
+from .models import (
+    AuditEvent,
+    DeviceReading,
+    Measurement,
+    Patient,
+    PatientSubmission,
+    PrescriptionItem,
+    SiteConfiguration,
+    Visit,
+)
 
 admin.site.site_header = "AIVIN administration"
 admin.site.site_title = "AIVIN admin"
@@ -12,11 +21,50 @@ admin.site.index_title = "AIVIN — AI-Vital Intake"
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ["name", "symptoms", "created_at"]
-    search_fields = ["name", "symptoms"]
-    list_filter = ["created_at"]
-    readonly_fields = ["created_at"]
+    list_display = ["patient_id", "name", "date_of_birth", "phone", "has_drug_allergy", "created_at"]
+    search_fields = ["patient_id", "name", "phone"]
+    list_filter = ["has_drug_allergy", "created_at"]
+    readonly_fields = ["patient_id", "created_at", "updated_at"]
     date_hierarchy = "created_at"
+
+
+class PrescriptionInline(admin.TabularInline):
+    model = PrescriptionItem
+    extra = 0
+    readonly_fields = ["created_by", "created_at"]
+
+
+@admin.register(Visit)
+class VisitAdmin(admin.ModelAdmin):
+    list_display = ["queue_number", "queue_date", "patient", "status", "doctor", "created_at"]
+    list_filter = ["status", "queue_date"]
+    search_fields = ["queue_number", "patient__name", "patient__patient_id"]
+    readonly_fields = ["token", "created_at", "diagnosed_at"]
+    autocomplete_fields = ["patient"]
+    inlines = [PrescriptionInline]
+
+
+@admin.register(PatientSubmission)
+class PatientSubmissionAdmin(admin.ModelAdmin):
+    list_display = ["patient", "status", "submitted_at", "reviewed_by"]
+    list_filter = ["status"]
+    readonly_fields = ["patient", "visit", "data", "submitted_at", "reviewed_by", "reviewed_at"]
+
+
+@admin.register(AuditEvent)
+class AuditEventAdmin(admin.ModelAdmin):
+    list_display = ["created_at", "actor", "action", "patient", "visit"]
+    list_filter = ["action"]
+    readonly_fields = [f.name for f in AuditEvent._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Measurement)
@@ -31,21 +79,10 @@ class MeasurementAdmin(admin.ModelAdmin):
         "measured_at",
     ]
     list_filter = ["source", "measured_at"]
-    search_fields = ["patient__name"]
+    search_fields = ["patient__name", "patient__patient_id"]
     readonly_fields = ["measured_at"]
     date_hierarchy = "measured_at"
-    autocomplete_fields = ["patient"]
-
-
-@admin.register(QueueTicket)
-class QueueTicketAdmin(admin.ModelAdmin):
-    list_display = ["queue_number", "patient", "is_active", "created_at"]
-    list_filter = ["is_active", "created_at"]
-    search_fields = ["queue_number", "patient__name", "qr_code_data"]
-    readonly_fields = ["qr_code_data", "created_at"]
-    date_hierarchy = "created_at"
-    autocomplete_fields = ["patient"]
-    list_editable = ["is_active"]
+    autocomplete_fields = ["patient", "visit"]
 
 
 @admin.register(DeviceReading)
