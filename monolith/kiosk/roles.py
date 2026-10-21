@@ -26,6 +26,7 @@ CAPABILITIES = {
     "scan_tickets": {"nurse", "frontdesk", "admin"},
     "consultations": {"doctor", "nurse", "admin"},
     "merge_patients": {"nurse", "admin"},
+    "cancel_visits": {"doctor", "nurse", "admin"},
     "manage_devices": {"nurse", "admin"},
     "manage_staff": {"admin"},
 }

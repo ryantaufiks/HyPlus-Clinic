@@ -97,16 +97,20 @@ class CallView(DoctorActionMixin, View):
         return self.back(request, visit)
 
 
-class NoShowView(CapabilityRequiredMixin, View):
-    capability = "consultations"
+class CancelVisitView(CapabilityRequiredMixin, View):
+    """Cancel a queued visit with a reason (doctors, nurses, administrators)."""
+
+    capability = "cancel_visits"
 
     def post(self, request, pk):
         visit = get_object_or_404(Visit, pk=pk)
         try:
-            queue.no_show(visit, request.user)
-            messages.info(request, f"{visit.queue_number} marked as no-show.")
+            visit = queue.cancel(visit, request.user, request.POST.get("reason"))
+            messages.info(request, f"{visit.queue_number or 'Visit'} cancelled: {visit.cancel_reason}")
         except queue.QueueError as exc:
             messages.error(request, str(exc))
+        if request.POST.get("next") == "visit":
+            return redirect("kiosk:visit-detail", visit.pk)
         return redirect("kiosk:doctor-queue")
 
 

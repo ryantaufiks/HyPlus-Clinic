@@ -108,7 +108,7 @@ class Visit(models.Model):
         (CALLED, "Called"),
         (IN_CONSULTATION, "In progress"),
         (COMPLETED, "Completed"),
-        (CANCELLED, "No-show"),
+        (CANCELLED, "Cancelled"),
     ]
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="visits")
@@ -126,6 +126,12 @@ class Visit(models.Model):
     call_count = models.PositiveIntegerField(default=0)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    # Visits are cancelled, never deleted: the record and its vitals stay.
+    cancel_reason = models.CharField(max_length=200, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
 
     diagnosis = models.TextField(blank=True)
     diagnosis_code = models.CharField("ICD-10 code", max_length=10, blank=True)

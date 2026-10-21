@@ -67,7 +67,7 @@
                             <td>{{ v.reason|truncatechars:70 }}</td>
                             <td>{{ v.diagnosis|default:"—"|truncatechars:70 }}{% if v.diagnosis_code %} <span class="status status-neutral">{{ v.diagnosis_code }}</span>{% endif %}</td>
                             <td class="small">{% for p in v.prescriptions.all %}{{ p.drug }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-                            <td><span class="status {% if v.status == 'completed' %}status-good{% elif v.status == 'in_consultation' %}status-warning{% elif v.status == 'waiting' %}status-info{% else %}status-neutral{% endif %}">{{ v.get_status_display }}</span></td>
+                            <td><span class="status {% if v.status == 'completed' %}status-good{% elif v.status == 'in_consultation' %}status-warning{% elif v.status == 'waiting' %}status-info{% else %}status-neutral{% endif %}" {% if v.cancel_reason %}title="{{ v.cancel_reason }}"{% endif %}>{{ v.get_status_display }}</span>{% if v.status == 'cancelled' %}<div class="small text-muted">{{ v.cancel_reason|truncatechars:40 }}</div>{% endif %}</td>
                         </tr>
                         {% empty %}
                         <tr><td colspan="6"><div class="empty-state"><i class="bi bi-calendar"></i>No visits yet.</div></td></tr>

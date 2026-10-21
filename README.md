@@ -71,6 +71,7 @@ Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{
 3. A doctor presses **Call next** (or **Call** on a patient) under Consultations. The TV plays a chime and shows the number and the doctor's room. Each doctor's room is set under **Staff**.
 4. At the consulting-room door, staff scan the ticket under **Scan ticket** (access control). It turns green only for called patients, and the visit becomes **In progress** on the TV and on the doctor's screen.
 5. The doctor records the diagnosis and prescription and presses **Complete & call next**; the TV moves on to the next number. Critical blood pressure is called first.
+6. Doctors, nurses and administrators can **cancel** a queued visit (no-show, patient left, duplicate…). A reason is required. The visit leaves the queue and the TV but is never deleted: its record, vitals, the reason and who cancelled it are kept.
 
 ## Medical devices (OMRON)
 

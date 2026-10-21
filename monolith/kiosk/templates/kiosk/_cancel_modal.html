@@ -1,0 +1,45 @@
+{# Cancel-visit dialog. Buttons with data-cancel-url / data-cancel-label open it. Expects `cancel_reasons`; `next` optional. #}
+<div class="modal fade" id="cancel-modal" tabindex="-1" aria-labelledby="cancel-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" class="modal-content" id="cancel-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next|default:'queue' }}" />
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="cancel-title">Cancel <span id="cancel-label"></span></h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">The visit leaves the queue and the TV. Its record and vitals are kept, together with your reason.</p>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% for r in cancel_reasons %}<button type="button" class="btn btn-sm btn-light" data-reason="{{ r }}">{{ r }}</button>{% endfor %}
+                </div>
+                <label class="form-label fw-semibold" for="cancel-reason">Reason <span class="text-danger">*</span></label>
+                <input class="form-control" id="cancel-reason" name="reason" maxlength="200" minlength="3" required autocomplete="off" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Keep in queue</button>
+                <button type="submit" class="btn btn-danger btn-icon"><i class="bi bi-x-circle"></i> Cancel visit</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+(function () {
+    const modalEl = document.getElementById("cancel-modal");
+    const modal = new bootstrap.Modal(modalEl);
+    const form = document.getElementById("cancel-form");
+    const reason = document.getElementById("cancel-reason");
+    document.querySelectorAll("[data-cancel-url]").forEach((btn) =>
+        btn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            form.action = btn.dataset.cancelUrl;
+            document.getElementById("cancel-label").textContent = btn.dataset.cancelLabel || "visit";
+            reason.value = "";
+            modal.show();
+        }),
+    );
+    modalEl.querySelectorAll("[data-reason]").forEach((b) => b.addEventListener("click", () => { reason.value = b.dataset.reason; reason.focus(); }));
+    modalEl.addEventListener("shown.bs.modal", () => reason.focus());
+})();
+</script>

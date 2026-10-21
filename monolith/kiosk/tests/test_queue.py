@@ -88,7 +88,7 @@ class QueueFlowTest(TestCase):
         self.client.force_login(self.doctor)
         self.client.post(reverse("kiosk:call-next"))
         self.assertEqual(Visit.objects.get(queue_number="A003").status, Visit.CALLED)
-        self.client.post(reverse("kiosk:visit-no-show", args=[self.visits[2].pk]))
+        self.client.post(reverse("kiosk:visit-cancel", args=[self.visits[2].pk]), {"reason": "No-show"})
         self.assertEqual(Visit.objects.get(queue_number="A003").status, Visit.CANCELLED)
         page = self.client.get(reverse("kiosk:doctor-queue"))
         self.assertEqual(page.context["room"], "Room 1")
@@ -121,6 +121,57 @@ class QueueFlowTest(TestCase):
         page = self.client.get(reverse("kiosk:visit-token", args=[visit.token])).content.decode()
         self.assertIn("A002", page)
         self.assertIn("Save QR code", page)
+
+
+class CancelVisitTest(TestCase):
+    def setUp(self):
+        today = timezone.localdate()
+        self.patient = Patient.objects.create(name="Ryan")
+        self.visit = Visit.objects.create(patient=self.patient, reason="Dizzy", queue_date=today, queue_number="A001")
+        Measurement.objects.create(patient=self.patient, visit=self.visit, systolic_bp=120, diastolic_bp=80)
+        self.url = reverse("kiosk:visit-cancel", args=[self.visit.pk])
+
+    def test_reason_is_required(self):
+        self.client.force_login(user_with_role("rina", "nurse"))
+        self.client.post(self.url, {"reason": "  "})
+        self.visit.refresh_from_db()
+        self.assertEqual(self.visit.status, Visit.WAITING)
+
+    def test_cancel_keeps_record_and_leaves_the_queue(self):
+        nurse = user_with_role("rina", "nurse")
+        self.client.force_login(nurse)
+        response = self.client.post(self.url, {"reason": "Patient left before being called", "next": "visit"})
+        self.assertRedirects(response, reverse("kiosk:visit-detail", args=[self.visit.pk]))
+        self.visit.refresh_from_db()
+        self.assertEqual((self.visit.status, self.visit.cancel_reason, self.visit.cancelled_by), (Visit.CANCELLED, "Patient left before being called", nurse))
+        self.assertEqual(self.visit.measurements.count(), 1)  # vitals kept
+        self.assertEqual(self.client.get(reverse("kiosk:display-data")).json()["waiting"], [])
+        page = self.client.get(reverse("kiosk:visit-detail", args=[self.visit.pk])).content.decode()
+        self.assertIn("Patient left before being called", page)
+        self.assertEqual(self.patient.audit_events.get(action="queue.cancelled").detail["reason"], "Patient left before being called")
+
+    def test_who_can_cancel(self):
+        for role, allowed in (("frontdesk", False), ("doctor", True), ("admin", True)):
+            visit = Visit.objects.create(patient=self.patient, reason="r", queue_date=timezone.localdate(), queue_number=f"B-{role}"[:10])
+            self.client.force_login(user_with_role(f"u{role}", role))
+            response = self.client.post(reverse("kiosk:visit-cancel", args=[visit.pk]), {"reason": "Duplicate ticket"})
+            visit.refresh_from_db()
+            self.assertEqual(visit.status == Visit.CANCELLED, allowed, role)
+            if not allowed:
+                self.assertEqual(response.status_code, 403)
+
+    def test_completed_visit_cannot_be_cancelled(self):
+        Visit.objects.filter(pk=self.visit.pk).update(status=Visit.COMPLETED)
+        self.client.force_login(user_with_role("rina", "nurse"))
+        self.client.post(self.url, {"reason": "Mistake"})
+        self.visit.refresh_from_db()
+        self.assertEqual(self.visit.status, Visit.COMPLETED)
+
+    def test_cancel_button_shown_by_role(self):
+        self.client.force_login(user_with_role("dr", "doctor", room="Room 1"))
+        self.assertContains(self.client.get(reverse("kiosk:doctor-queue")), "Cancel visit")
+        self.client.force_login(user_with_role("desk", "frontdesk"))
+        self.assertNotContains(self.client.get(reverse("kiosk:visit-detail", args=[self.visit.pk])), "Cancel visit")
 
 
 class StaffRoomTest(TestCase):

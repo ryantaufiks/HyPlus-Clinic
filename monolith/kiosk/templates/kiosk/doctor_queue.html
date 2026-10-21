@@ -42,7 +42,10 @@
         </div>
         <div class="text-end">
             {% if vit.bp %}<div><strong>{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}</strong> mmHg <span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% endif %}
-            <a class="btn btn-primary btn-icon mt-2" href="{% url 'kiosk:visit-detail' v.pk %}"><i class="bi bi-clipboard2-pulse"></i> Open consultation</a>
+            <div class="d-flex gap-2 justify-content-end mt-2">
+                {% if user_can.cancel_visits %}<button class="btn btn-light btn-icon text-danger" data-cancel-url="{% url 'kiosk:visit-cancel' v.pk %}" data-cancel-label="{{ v.queue_number }}"><i class="bi bi-x-circle"></i> Cancel</button>{% endif %}
+                <a class="btn btn-primary btn-icon" href="{% url 'kiosk:visit-detail' v.pk %}"><i class="bi bi-clipboard2-pulse"></i> Open consultation</a>
+            </div>
         </div>
     </div>
 </section>
@@ -61,7 +64,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <form method="post" action="{% url 'kiosk:visit-call' v.pk %}">{% csrf_token %}<input type="hidden" name="next" value="queue" /><button class="btn btn-light btn-icon"><i class="bi bi-arrow-repeat"></i> Call again</button></form>
-            <form method="post" action="{% url 'kiosk:visit-no-show' v.pk %}" onsubmit="return confirm('Mark {{ v.queue_number }} as no-show?')">{% csrf_token %}<button class="btn btn-light btn-icon text-danger"><i class="bi bi-person-x"></i> No-show</button></form>
+            {% if user_can.cancel_visits %}<button class="btn btn-light btn-icon text-danger" data-cancel-url="{% url 'kiosk:visit-cancel' v.pk %}" data-cancel-label="{{ v.queue_number }}"><i class="bi bi-x-circle"></i> Cancel</button>{% endif %}
             <a class="btn btn-light btn-icon" href="{% url 'kiosk:visit-detail' v.pk %}"><i class="bi bi-folder2-open"></i> Record</a>
         </div>
     </div>
@@ -87,7 +90,7 @@
                     <td class="num">{% if vit.weight %}{{ vit.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
                     <td class="text-end text-nowrap">
                         {% if is_doctor %}<form method="post" action="{% url 'kiosk:visit-call' v.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="queue" /><button class="btn btn-sm btn-outline-primary">Call</button></form>{% endif %}
-                        <form method="post" action="{% url 'kiosk:visit-no-show' v.pk %}" class="d-inline" onsubmit="return confirm('Mark {{ v.queue_number }} as no-show?')">{% csrf_token %}<button class="btn btn-sm btn-light" title="No-show"><i class="bi bi-person-x"></i></button></form>
+                        {% if user_can.cancel_visits %}<button class="btn btn-sm btn-light text-danger" title="Cancel" data-cancel-url="{% url 'kiosk:visit-cancel' v.pk %}" data-cancel-label="{{ v.queue_number }}"><i class="bi bi-x-circle"></i></button>{% endif %}
                     </td>
                 </tr>
                 {% endwith %}{% endfor %}
@@ -104,7 +107,7 @@
     <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-list-check"></i> Today</h2></div>
     <div class="table-responsive">
         <table class="table table-aivin">
-            <thead><tr><th>Queue</th><th>Patient</th><th>Doctor</th><th>Status</th><th>Diagnosis</th></tr></thead>
+            <thead><tr><th>Queue</th><th>Patient</th><th>Doctor</th><th>Status</th><th>Diagnosis / note</th></tr></thead>
             <tbody>
                 {% for row in others %}{% with v=row.visit %}
                 <tr class="row-link" data-href="{% url 'kiosk:visit-detail' v.pk %}">
@@ -112,7 +115,7 @@
                     <td>{{ v.patient.name }}</td>
                     <td>{% if v.doctor %}{{ v.doctor.get_full_name|default:v.doctor.get_username }}{% if v.room %} · {{ v.room }}{% endif %}{% else %}—{% endif %}</td>
                     <td><span class="status {% if v.status == 'completed' %}status-good{% elif v.status == 'in_consultation' %}status-info{% elif v.status == 'called' %}status-warning{% else %}status-neutral{% endif %}">{{ v.get_status_display }}</span></td>
-                    <td class="text-truncate" style="max-width: 260px">{{ v.diagnosis|default:"—" }}</td>
+                    <td class="text-truncate" style="max-width: 260px">{% if v.status == 'cancelled' %}<span class="text-muted">{{ v.cancel_reason }}{% if v.cancelled_by %} · {{ v.cancelled_by.get_full_name|default:v.cancelled_by.get_username }}{% endif %}</span>{% else %}{{ v.diagnosis|default:"—" }}{% endif %}</td>
                 </tr>
                 {% endwith %}{% endfor %}
             </tbody>
@@ -123,11 +126,12 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if user_can.cancel_visits %}{% include 'kiosk/_cancel_modal.html' %}{% endif %}
 <script>
 document.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
 // Keep the queue current, but never while the doctor is typing or a dialog is open.
 setInterval(() => {
-    if (!document.hidden && !document.activeElement.matches("input, textarea, select")) location.reload();
+    if (!document.hidden && !document.activeElement.matches("input, textarea, select") && !document.querySelector(".modal.show")) location.reload();
 }, 15000);
 </script>
 {% endblock %}

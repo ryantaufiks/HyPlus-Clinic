@@ -85,14 +85,24 @@ def complete(visit, doctor):
     visit.save(update_fields=["status", "completed_at"])
 
 
-def no_show(visit, actor):
+CANCEL_REASONS = ["No-show", "Patient left", "Duplicate ticket", "Registered by mistake"]
+
+
+def cancel(visit, actor, reason):
+    """Take a visit out of the queue. The visit and its vitals are kept."""
+    reason = " ".join(str(reason or "").split())
+    if len(reason) < 3:
+        raise QueueError("Enter the reason for cancelling.")
     with transaction.atomic():
         visit = Visit.objects.select_for_update().get(pk=visit.pk)
-        if visit.status not in (Visit.WAITING, Visit.CALLED):
-            raise QueueError(f"{visit.queue_number} is already {visit.get_status_display().lower()}.")
+        if visit.status not in (Visit.WAITING, Visit.CALLED, Visit.IN_CONSULTATION):
+            raise QueueError(f"{visit.queue_number or 'This visit'} is already {visit.get_status_display().lower()}.")
         visit.status = Visit.CANCELLED
-        visit.save(update_fields=["status"])
-        AuditEvent.record(actor, "queue.no_show", visit=visit)
+        visit.cancel_reason = reason[:200]
+        visit.cancelled_by = actor
+        visit.cancelled_at = timezone.now()
+        visit.save(update_fields=["status", "cancel_reason", "cancelled_by", "cancelled_at"])
+        AuditEvent.record(actor, "queue.cancelled", visit=visit, reason=visit.cancel_reason)
     return visit
 
 

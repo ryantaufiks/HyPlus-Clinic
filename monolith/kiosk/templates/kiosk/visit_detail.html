@@ -37,6 +37,9 @@
         <div class="text-end">
             {% if visit.queue_number %}<div class="text-muted small fw-semibold">Queue</div><div class="ticket-number">{{ visit.queue_number }}</div>{% endif %}
             <span class="status {% if visit.status == 'completed' %}status-good{% elif visit.status == 'in_consultation' %}status-info{% elif visit.status == 'called' %}status-warning{% else %}status-neutral{% endif %} mt-2">{{ visit.get_status_display }}{% if visit.room and visit.status != 'waiting' %} · {{ visit.room }}{% endif %}</span>
+            {% if user_can.cancel_visits and visit.is_open %}
+            <button class="btn btn-sm btn-light btn-icon text-danger mt-2" data-cancel-url="{% url 'kiosk:visit-cancel' visit.pk %}" data-cancel-label="{{ visit.queue_number|default:'this visit' }}"><i class="bi bi-x-circle"></i> Cancel visit</button>
+            {% endif %}
             {% if can_edit and visit.status == 'waiting' or can_edit and visit.status == 'called' %}
             <form method="post" action="{% url 'kiosk:visit-call' visit.pk %}" class="mt-2">{% csrf_token %}<button class="btn btn-sm btn-outline-primary btn-icon"><i class="bi bi-megaphone"></i> {% if visit.status == 'called' %}Call again{% else %}Call to my room{% endif %}</button></form>
             {% endif %}
@@ -44,6 +47,12 @@
     </div>
 </section>
 
+{% if visit.status == 'cancelled' %}
+<div class="alert alert-secondary d-flex gap-2 align-items-start mt-3 mb-0" role="status">
+    <i class="bi bi-x-circle fs-5"></i>
+    <div><strong>Cancelled</strong>{% if visit.cancelled_at %} on {{ visit.cancelled_at|date:"j M Y, H:i" }}{% endif %}{% if visit.cancelled_by %} by {{ visit.cancelled_by.get_full_name|default:visit.cancelled_by.get_username }}{% endif %}: {{ visit.cancel_reason }}</div>
+</div>
+{% endif %}
 {% if patient.has_drug_allergy %}
 <div class="alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0" role="alert">
     <i class="bi bi-exclamation-triangle-fill fs-5"></i>
@@ -205,6 +214,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if user_can.cancel_visits and visit.is_open %}{% with next="visit" %}{% include 'kiosk/_cancel_modal.html' %}{% endwith %}{% endif %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
 <script>
