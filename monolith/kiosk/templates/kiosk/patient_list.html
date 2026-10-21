@@ -194,7 +194,7 @@
     <!-- Patient List -->
     {% if patients %}
         {% for patient in patients %}
-        <div class="patient-card fade-in" style="animation-delay: {{ forloop.counter0|add:1|mul:0.1 }}s;">
+        <div class="patient-card fade-in" style="animation-delay: calc({{ forloop.counter }} * 0.1s);">
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <div class="patient-name">
@@ -220,9 +220,13 @@
                         <a href="{% url 'kiosk:patient-detail' patient.id %}" class="btn btn-primary btn-sm">
                             <i class="bi bi-eye"></i> View
                         </a>
-                        <a href="{% url 'kiosk:queue-generate' patient.id %}" class="btn btn-secondary btn-sm">
+                        {% with ticket=patient.queue_tickets.all|first %}
+                        {% if ticket %}
+                        <a href="{% url 'kiosk:ticket-detail' ticket.qr_code_data %}" class="btn btn-secondary btn-sm">
                             <i class="bi bi-ticket-perforated"></i> Ticket
                         </a>
+                        {% endif %}
+                        {% endwith %}
                     </div>
                 </div>
             </div>
