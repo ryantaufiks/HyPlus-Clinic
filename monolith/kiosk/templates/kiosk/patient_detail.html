@@ -1,478 +1,137 @@
 {% extends 'kiosk/base.html' %}
+{% load static %}
 
-{% block title %}Patient Details - {{ patient.name }}{% endblock %}
-
-{% block extra_css %}
-<!-- Three.js Animation CSS -->
-<link rel="stylesheet" href="/static/css/threejs-animations.css" />
-
-<style>
-    .patient-detail-container {
-        min-height: 80vh;
-        padding: 2rem;
-    }
-
-    .patient-header {
-        background: var(--glass-bg);
-        backdrop-filter:</style> blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 2rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .patient-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: var(--primary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--dark-bg);
-        font-size: 2rem;
-        font-weight: bold;
-        margin-right: 1.5rem;
-    }
-
-    .patient-info h2 {
-        color: var(--primary-color);
-        margin-bottom: 0.5rem;
-    }
-
-    .patient-info .patient-meta {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-    }
-
-    .measurements-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .measurement-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        transition: transform 0.3s, box-shadow 0.3s;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .measurement-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0, 188, 212, 0.3);
-    }
-
-    .measurement-card h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-        font-size: 1.3rem;
-    }
-
-    .measurement-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 0.5rem 0;
-        color: #ffffff;
-    }
-
-    .measurement-unit {
-        font-size: 1.2rem;
-        color: var(--text-muted);
-    }
-
-    .measurement-timestamp {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        margin-top: 0.5rem;
-    }
-
-    .status-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 0.5rem;
-    }
-
-    .status-normal {
-        background-color: #2ecc71;
-    }
-
-    .status-warning {
-        background-color: #f39c12;
-    }
-
-    .status-danger {
-        background-color: #e74c3c;
-    }
-
-    .visualization-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        margin-bottom: 2rem;
-    }
-
-    .visualization-card h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-    }
-
-    .history-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-
-    .history-card h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-    }
-
-    .history-item {
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        transition: background-color 0.2s;
-    }
-
-    .history-item:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .action-buttons {
-        margin-top: 2rem;
-        display: flex;
-        gap: 1rem;
-    }
-
-    .action-buttons .btn {
-        min-width: 150px;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .patient-detail-container {
-            padding: 1rem;
-        }
-
-        .patient-header {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .patient-avatar {
-            margin-right: 0;
-            margin-bottom: 1rem;
-        }
-
-        .measurements-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-        }
-    }
-</style>
-{% endblock %}
+{% block title %}{{ patient.name }} - AIVIN{% endblock %}
 
 {% block content %}
-<div class="patient-detail-container">
-    <!-- Patient Header -->
-    <div class="patient-header">
-        <div class="patient-avatar">{{ patient.name|first|upper }}</div>
-        <div class="patient-info">
-            <h2>{{ patient.name }}</h2>
-            <div class="patient-meta">
-                <i class="bi bi-calendar3"></i> Registered: {{ patient.created_at|date:"M d, Y" }}<br>
-                <i class="bi bi-clock-history"></i> Last visit: {{ last_visit|date:"M d, Y"|default:"No previous visits" }}
-            </div>
-        </div>
+<nav class="mb-2"><a href="{% url 'kiosk:patient-list' %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> Patients</a></nav>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ patient.name }}</h1>
+        <p class="page-subtitle">First check-in {{ patient.created_at|date:"j M Y, H:i" }} · {{ measurements|length }} measurement{{ measurements|length|pluralize }}</p>
     </div>
-
-    <!-- Measurements Grid -->
-    <div class="measurements-grid">
-        <!-- Heart Rate -->
-        <div class="measurement-card">
-            <h3><i class="bi bi-heart-pulse"></i> Heart Rate</h3>
-            <div class="measurement-value">{{ latest_measurement.heart_rate_bpm|default:"--" }}</div>
-            <div class="measurement-unit">bpm</div>
-            <div class="measurement-timestamp">
-                {% if latest_measurement.heart_rate_bpm %}
-                    Measured: {{ latest_measurement.measured_at|date:"H:i, M d" }}
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Blood Pressure -->
-        <div class="measurement-card">
-            <h3><i class="bi bi-activity"></i> Blood Pressure</h3>
-            <div class="measurement-value">
-                {{ latest_measurement.systolic_bp|default:"--" }}/{{ latest_measurement.diastolic_bp|default:"--" }}
-            </div>
-            <div class="measurement-unit">mmHg</div>
-            <div class="measurement-timestamp">
-                {% if latest_measurement.systolic_bp %}
-                    Measured: {{ latest_measurement.measured_at|date:"H:i, M d" }}
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Weight -->
-        <div class="measurement-card">
-            <h3><i class="bi bi-speedometer"></i> Weight</h3>
-            <div class="measurement-value">
-                {% if latest_measurement.weight_kg %}
-                    {{ latest_measurement.weight_kg|floatformat:1 }}
-                {% else %}
-                    --
-                {% endif %}
-            </div>
-            <div class="measurement-unit">kg</div>
-            <div class="measurement-timestamp">
-                {% if latest_measurement.weight_kg %}
-                    Measured: {{ latest_measurement.measured_at|date:"H:i, M d" }}
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Three.js Visualizations -->
-    <div class="measurements-grid">
-        <!-- Heart Rate Visualization -->
-        <div class="visualization-card">
-            <h3><i class="bi bi-heart-pulse-fill"></i> Heart Rate Visualization</h3>
-            <div id="heart-rate-3d" class="threejs-visualization"></div>
-        </div>
-
-        <!-- Blood Pressure Visualization -->
-        <div class="visualization-card">
-            <h3><i class="bi bi-activity"></i> Blood Pressure Visualization</h3>
-            <div id="blood-pressure-3d" class="threejs-visualization"></div>
-        </div>
-    </div>
-
-    <!-- Measurement History -->
-    <div class="history-card">
-        <h3><i class="bi bi-clock-history"></i> Measurement History</h3>
-        <div class="history-list">
-            {% for measurement in measurements %}
-                <div class="history-item">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="measurement-date">
-                                <strong>{{ measurement.measured_at|date:"M d, Y" }}</strong> at {{ measurement.measured_at|time:"H:i" }}
-                            </div>
-                            <div class="measurement-details">
-                                {% if measurement.systolic_bp %}
-                                    <span class="badge bg-secondary me-2">BP: {{ measurement.systolic_bp }}/{{ measurement.diastolic_bp }}</span>
-                                {% endif %}
-                                {% if measurement.heart_rate_bpm %}
-                                    <span class="badge bg-secondary me-2">HR: {{ measurement.heart_rate_bpm }} bpm</span>
-                                {% endif %}
-                                {% if measurement.weight_kg %}
-                                    <span class="badge bg-secondary">Weight: {{ measurement.weight_kg|floatformat:1 }} kg</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <a href="#" class="btn btn-sm btn-outline-primary view-details-btn"
-                           data-measurement-id="{{ measurement.id }}">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                    </div>
-            {% empty %}
-                <p>No measurement history available</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="action-buttons">
-        <a href="{% url 'kiosk:dashboard' %}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Back to Dashboard
-        </a>
-        <a href="{% url 'kiosk:home' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> New Checkup
-        </a>
-    </div>
+    {% with ticket=queue_tickets|first %}{% if ticket %}
+    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:ticket-detail' ticket.qr_code_data %}"><i class="bi bi-file-medical"></i> Doctor's summary ({{ ticket.queue_number }})</a>
+    {% endif %}{% endwith %}
 </div>
 
-<!-- Metric Detail Popup (Hidden by default) -->
-<div id="metric-popup" class="metric-detail-popup">
-    <button class="close-btn" onclick="closeMetricPopup()">&times;</button>
-    <h3 id="metric-name">Metric Name</h3>
-    <div class="metric-value">
-        <span id="metric-value">0</span>
-        <span id="metric-unit" class="metric-unit">unit</span>
+<div class="row g-4">
+    <div class="col-lg-4">
+        <section class="surface h-100">
+            <h2 class="section-title"><i class="bi bi-chat-left-text"></i> Reason for visit</h2>
+            <p class="symptoms mb-0">{{ patient.symptoms }}</p>
+        </section>
     </div>
-    <div id="metric-status" class="metric-status">Status</div>
+    <div class="col-lg-8">
+        <section class="surface h-100">
+            <h2 class="section-title"><i class="bi bi-activity"></i> Latest vitals</h2>
+            {% include 'kiosk/_vitals.html' %}
+        </section>
+    </div>
+
+    <div class="col-lg-7">
+        <section class="surface h-100">
+            <div class="chart-head">
+                <h2 class="chart-title">Blood pressure</h2>
+                <ul class="chart-legend">
+                    <li><span class="swatch" style="background: var(--chart-series-1)"></span>Systolic</li>
+                    <li><span class="swatch" style="background: var(--chart-series-2)"></span>Diastolic</li>
+                </ul>
+            </div>
+            {% if chart_data.bp %}
+            <div class="chart-box chart-box-sm"><canvas id="chart-bp" role="img" aria-label="Blood pressure over time"></canvas></div>
+            <details class="chart-table" id="table-bp"></details>
+            {% else %}
+            <div class="empty-state"><i class="bi bi-heart-pulse"></i>No blood pressure readings yet.</div>
+            {% endif %}
+        </section>
+    </div>
+    <div class="col-lg-5">
+        <section class="surface h-100">
+            <div class="chart-head"><h2 class="chart-title">Weight</h2></div>
+            {% if chart_data.weight %}
+            <div class="chart-box chart-box-sm"><canvas id="chart-weight" role="img" aria-label="Weight over time"></canvas></div>
+            <details class="chart-table" id="table-weight"></details>
+            {% else %}
+            <div class="empty-state"><i class="bi bi-speedometer2"></i>No weight readings yet.</div>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="col-12">
+        <section class="surface surface-flush">
+            <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-clock-history"></i> Measurement history</h2></div>
+            {% if measurements %}
+            <div class="table-responsive">
+                <table class="table table-aivin">
+                    <thead><tr><th>Measured</th><th class="num">Weight</th><th class="num">Blood pressure</th><th class="num">Pulse</th><th>Source</th></tr></thead>
+                    <tbody>
+                        {% for m in measurements %}
+                        <tr>
+                            <td class="text-nowrap">{{ m.measured_at|date:"j M Y, H:i" }}</td>
+                            <td class="num">{% if m.weight_kg is not None %}{{ m.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
+                            <td class="num">{% if m.systolic_bp is not None %}{{ m.systolic_bp }}/{{ m.diastolic_bp }} mmHg{% else %}–{% endif %}</td>
+                            <td class="num">{% if m.heart_rate_bpm is not None %}{{ m.heart_rate_bpm }} bpm{% else %}–{% endif %}</td>
+                            <td>
+                                {% if m.source == "device" %}<span class="status status-info"><i class="bi bi-bluetooth"></i>Device</span>
+                                {% else %}<span class="status status-warning"><i class="bi bi-cpu"></i>Simulated</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="bi bi-clipboard"></i>No measurements recorded.</div>
+            {% endif %}
+        </section>
+    </div>
 </div>
+{{ chart_data|json_script:"chart-data" }}
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/aivin-charts.js' %}"></script>
 <script>
-    // Initialize Three.js visualizations when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get health</script> data from template or use defaults
-        const healthData = {
-            heartRate: {{ latest_measurement.heart_rate_bpm|default:"72" }},
-            systolic: {{ latest_measurement.systolic_bp|default:"120" }},
-            diastolic: {{ latest_measurement.diastolic_bp|default:"80" }},
-            weight: {{ latest_measurement.weight_kg|default:"70" }},
-            temperature: {{ latest_measurement.temperature|default:"36.6" }},
-            oxygenSaturation: {{ latest_measurement.oxygen_saturation|default:"98" }}
-        };
+const data = JSON.parse(document.getElementById("chart-data").textContent);
+const { COLORS, renderTable, timeLine } = AivinCharts;
+const label = (p) => formatDate(p.t);
 
-        // Initialize health visualizations
-        setTimeout(() => {
-            // Create heart rate visualization if container exists
-            const heartRateContainer = document.getElementById('heart-rate-3d');
-            if (heartRateContainer && window.HealthVisualization) {
-                window.HealthVisualization.createHeartRateVisualization('heart-rate-3d', healthData);
-            }
+if (data.bp.length) {
+    const chart = timeLine(document.getElementById("chart-bp"), data.bp, [
+        { label: "Systolic", key: "systolic", color: COLORS.series1 },
+        { label: "Diastolic", key: "diastolic", color: COLORS.series2 },
+    ], { yTitle: "mmHg", labelFor: label, suggestedMin: 60, suggestedMax: 160 });
+    chart.options.plugins.tooltip.callbacks = {
+        title: (items) => formatDateTime(data.bp[items[0].dataIndex].t),
+        label: (ctx) => ` ${ctx.dataset.label}: ${ctx.formattedValue} mmHg`,
+        afterBody: (items) => {
+            const pulse = data.bp[items[0].dataIndex].pulse;
+            return pulse != null ? `Pulse: ${pulse} bpm` : "";
+        },
+    };
+    renderTable(document.getElementById("table-bp"), [
+        { label: "Measured", value: (p) => formatDateTime(p.t) },
+        { label: "Systolic", value: (p) => p.systolic, num: true },
+        { label: "Diastolic", value: (p) => p.diastolic, num: true },
+        { label: "Pulse", value: (p) => p.pulse ?? "–", num: true },
+    ], data.bp);
+}
 
-            // Create blood pressure visualization if container exists
-            const bpContainer = document.getElementById('blood-pressure-3d');
-            if (bpContainer && window.HealthVisualization) {
-                window.HealthVisualization.createBloodPressureVisualization('blood-pressure-3d', healthData);
-            }
-        }, 1000);
-
-        // Add event listeners for view details buttons
-        const viewDetailsBtns = document.querySelectorAll('.view-details-btn');
-        viewDetailsBtns.forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const measurementId = this.getAttribute('data-measurement-id');
-                fetchMeasurementDetails(measurementId);
-            });
-        });
-    });
-
-    // Fetch measurement details
-    function fetchMeasurementDetails(measurementId) {
-        fetch(`/api/measurements/${measurementId}/`)
-            .then(response => response.json())
-            .then(data => {
-                // Update visualizations with new data
-                if (window.HealthVisualization) {
-                    // Dispose existing visualizations
-                    window.HealthVisualization.disposeVisualization('heart-rate-3d');
-                    window.HealthVisualization.disposeVisualization('blood-pressure-3d');
-
-                    // Create new visualizations with new data
-                    window.HealthVisualization.createHeartRateVisualization('heart-rate-3d', data);
-                    window.HealthVisualization.createBloodPressureVisualization('blood-pressure-3d', data);
-                }
-
-                // Show success message
-                showNotification('Measurement details loaded', 'success');
-            })
-            .catch(error => {
-                console.error('Error fetching measurement details:', error);
-                showNotification('Failed to load measurement details', 'error');
-            });
-    }
-
-    // Show notification
-    function showNotification(message, type) {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
-        notification.style.position = 'fixed';
-        notification.style.top = '20px';
-        notification.style.right = '20px';
-        notification.style.zIndex = '9999';
-        notification.style.minWidth = '300px';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-
-        // Add to body
-        document.body.appendChild(notification);
-
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 5000);
-    }
-
-    // Show metric detail popup
-    function showMetricDetail(name, value, unit) {
-        const popup = document.getElementById('metric-popup');
-        const nameEl = document.getElementById('metric-name');
-        const valueEl = document.getElementById('metric-value');
-        const unitEl = document.getElementById('metric-unit');
-        const statusEl = document.getElementById('metric-status');
-
-        nameEl.textContent = name;
-        valueEl.textContent = value;
-        unitEl.textContent = unit;
-        statusEl.textContent = getMetricStatus(name, value);
-
-        popup.classList.add('show');
-    }
-
-    // Close metric detail popup
-    function closeMetricPopup() {
-        const popup = document.getElementById('metric-popup');
-        popup.classList.remove('show');
-    }
-
-    // Get metric status based on value
-    function getMetricStatus(name, value) {
-        const numValue = parseFloat(value);
-
-        switch (name) {
-            case 'Heart Rate':
-                if (numValue < 60) return 'Low heart rate (Bradycardia)';
-                else if (numValue < 100) return 'Normal heart rate';
-                else return 'High heart rate (Tachycardia)';
-
-            case 'Blood Pressure':
-                const [systolic, diastolic] = value.split('/').map(v => parseFloat(v));
-                if (systolic < 120 && diastolic < 80) return 'Normal blood pressure';
-                else if (systolic < 140 && diastolic < 90) return 'Elevated blood pressure';
-                else return 'High blood pressure (Hypertension)';
-
-            case 'Weight':
-                return 'Weight recorded successfully';
-
-            case 'Temperature':
-                if (numValue < 36.1) return 'Low temperature (Hypothermia)';
-                else if (numValue < 37.2) return 'Normal temperature';
-                else return 'High temperature (Fever)';
-
-            case 'Oxygen Saturation':
-                if (numValue >= 95) return 'Normal oxygen saturation';
-                else if (numValue >= 91) return 'Mild hypoxemia';
-                else return 'Significant hypoxemia';
-
-            default:
-                return 'Value recorded';
-        }
-    }
+if (data.weight.length) {
+    const chart = timeLine(document.getElementById("chart-weight"), data.weight, [
+        { label: "Weight", key: "weight", color: COLORS.series1 },
+    ], { yTitle: "kg", labelFor: label });
+    chart.options.plugins.tooltip.callbacks = {
+        title: (items) => formatDateTime(data.weight[items[0].dataIndex].t),
+        label: (ctx) => ` ${ctx.formattedValue} kg`,
+    };
+    renderTable(document.getElementById("table-weight"), [
+        { label: "Measured", value: (p) => formatDateTime(p.t) },
+        { label: "Weight (kg)", value: (p) => p.weight, num: true },
+    ], data.weight);
+}
 </script>
 {% endblock %}

@@ -1,445 +1,126 @@
 {% extends 'kiosk/base.html' %}
+{% load static %}
 
-{% block title %}QR Scanner - AIVIN{% endblock %}
+{% block title %}Scan ticket - AIVIN{% endblock %}
 
 {% block extra_css %}
 <style>
-    .scanner-container {
-        max-width: 800px;
-        margin: 0 auto;
+    .scanner-wrap { max-width: 560px; margin: 0 auto; }
+    #qr-reader { border-radius: var(--aivin-radius); overflow: hidden; background: #0f1d2b; aspect-ratio: 1 / 1; display: none; }
+    #qr-reader.active { display: block; }
+    #qr-reader video { object-fit: cover; }
+    .scanner-placeholder {
+        aspect-ratio: 1 / 1; border-radius: var(--aivin-radius); border: 2px dashed var(--aivin-border);
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem;
+        color: var(--aivin-muted); background: var(--aivin-surface-2);
     }
-
-    .scanner-box {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 2px solid var(--primary-color);
-        border-radius: 16px;
-        padding: 2rem;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-
-    .video-container {
-        position: relative;
-        width: 100%;
-        max-width: 500px;
-        margin: 2rem auto;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #000;
-    }
-
-    #qr-video {
-        width: 100%;
-        height: auto;
-        display: block;
-    }
-
-    .scanner-overlay {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 250px;
-        height: 250px;
-        border: 3px solid var(--primary-color);
-        border-radius: 12px;
-        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-    }
-
-    .scanner-corners {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-    }
-
-    .scanner-corners::before,
-    .scanner-corners::after {
-        content: '';
-        position: absolute;
-        width: 30px;
-        height: 30px;
-        border: 3px solid var(--primary-color);
-    }
-
-    .scanner-corners::before {
-        top: -3px;
-        left: -3px;
-        border-right: none;
-        border-bottom: none;
-    }
-
-    .scanner-corners::after {
-        top: -3px;
-        right: -3px;
-        border-left: none;
-        border-bottom: none;
-    }
-
-    .scanner-line {
-        position: absolute;
-        width: 100%;
-        height: 2px;
-        background: var(--primary-color);
-        top: 0;
-        animation: scan 2s linear infinite;
-    }
-
-    @keyframes scan {
-        0%, 100% { top: 0; }
-        50% { top: 100%; }
-    }
-
-    .manual-input-section {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        padding: 2rem;
-        margin-top: 2rem;
-    }
-
-    .result-card {
-        background: linear-gradient(135deg, rgba(0, 188, 212, 0.2), rgba(0, 188, 212, 0.05));
-        border: 2px solid var(--primary-color);
-        border-radius: 16px;
-        padding: 2rem;
-        margin-top: 2rem;
-        display: none;
-    }
-
-    .result-card.show {
-        display: block;
-        animation: slideIn 0.5s ease-out;
-    }
-
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .patient-info-item {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .info-label {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-    }
-
-    .info-value {
-        color: var(--primary-color);
-        font-size: 1.2rem;
-        font-weight: bold;
-    }
-
-    .scanner-status {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: bold;
-        margin-top: 1rem;
-    }
-
-    .status-scanning {
-        background: rgba(0, 188, 212, 0.2);
-        color: var(--primary-color);
-    }
-
-    .status-stopped {
-        background: rgba(158, 158, 158, 0.2);
-        color: #BDBDBD;
-    }
-
-    .status-found {
-        background: rgba(76, 175, 80, 0.2);
-        color: #81C784;
-    }
+    .scanner-placeholder .bi { font-size: 3.5rem; color: var(--aivin-primary); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container scanner-container">
-    <div class="row mb-4">
-        <div class="col-12 text-center">
-            <h1 class="text-white mb-2">
-                <i class="bi bi-qr-code-scan"></i> QR Code Scanner
-            </h1>
-            <p class="text-muted">Scan patient QR code to view their health information</p>
+<div class="scanner-wrap">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Scan ticket</h1>
+            <p class="page-subtitle">Scan the patient's QR code to open their pre-consultation summary.</p>
         </div>
     </div>
 
-    <!-- Scanner Box -->
-    <div class="scanner-box fade-in">
-        <h3 class="mb-4">
-            <i class="bi bi-camera-video"></i> Camera Scanner
-        </h3>
-
-        <div class="video-container" id="video-container" style="display: none;">
-            <video id="qr-video" playsinline></video>
-            <div class="scanner-overlay">
-                <div class="scanner-corners"></div>
-                <div class="scanner-line"></div>
-            </div>
+    <section class="surface">
+        <div id="qr-reader"></div>
+        <div class="scanner-placeholder" id="scanner-placeholder">
+            <i class="bi bi-qr-code-scan"></i>
+            <span>Camera is off</span>
         </div>
-
-        <div id="scanner-controls">
-            <button id="start-scan-btn" class="btn btn-primary btn-lg">
-                <i class="bi bi-camera"></i> Start Camera Scanner
-            </button>
-            <button id="stop-scan-btn" class="btn btn-danger btn-lg" style="display: none;">
-                <i class="bi bi-stop-circle"></i> Stop Scanner
-            </button>
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <button id="start-btn" class="btn btn-primary btn-lg btn-icon"><i class="bi bi-camera"></i> Start camera</button>
+            <button id="stop-btn" class="btn btn-light btn-lg btn-icon d-none"><i class="bi bi-stop-circle"></i> Stop</button>
         </div>
+        <div id="scan-message" class="alert d-none mt-3 mb-0" role="status"></div>
+    </section>
 
-        <div id="scanner-status" class="mt-3">
-            <span class="scanner-status status-stopped">
-                <i class="bi bi-circle-fill"></i> Scanner Stopped
-            </span>
-        </div>
-
-        <div class="mt-3 text-muted">
-            <small>
-                <i class="bi bi-info-circle"></i>
-                Position the QR code within the scanning area. The scanner will automatically detect and process it.
-            </small>
-        </div>
-    </div>
-
-    <!-- Manual Input Section -->
-    <div class="manual-input-section fade-in">
-        <h4 class="mb-3">
-            <i class="bi bi-keyboard"></i> Manual QR Code Entry
-        </h4>
-        <p class="text-muted mb-3">
-            If the camera scanner doesn't work, you can manually enter the QR code UUID below:
-        </p>
-        <form id="manual-qr-form">
-            <div class="row g-3">
-                <div class="col-md-9">
-                    <input
-                        type="text"
-                        class="form-control form-control-lg"
-                        id="manual-qr-input"
-                        placeholder="Enter QR Code (e.g., 550e8400-e29b-41d4-a716-446655440000)"
-                        pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-                    >
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary btn-lg w-100">
-                        <i class="bi bi-search"></i> Search
-                    </button>
-                </div>
-            </div>
+    <section class="surface">
+        <h2 class="section-title"><i class="bi bi-keyboard"></i> Enter the code instead</h2>
+        <form id="manual-form" class="d-flex gap-2">
+            <input class="form-control" id="manual-code" placeholder="Ticket code, e.g. 550e8400-e29b-41d4-…" autocomplete="off" required />
+            <button class="btn btn-primary" type="submit">Open</button>
         </form>
-    </div>
-
-    <!-- Result Card -->
-    <div class="result-card" id="result-card">
-        <div class="text-center mb-4">
-            <i class="bi bi-check-circle-fill" style="font-size: 4rem; color: var(--primary-color);"></i>
-            <h2 class="mt-3">Patient Found!</h2>
-        </div>
-
-        <div id="patient-data">
-            <!-- Patient data will be loaded here -->
-        </div>
-
-        <div class="text-center mt-4">
-            <button class="btn btn-secondary" onclick="resetScanner()">
-                <i class="bi bi-arrow-clockwise"></i> Scan Another Code
-            </button>
-        </div>
-    </div>
-
-    <!-- Error Display -->
-    <div id="error-display" class="alert alert-danger" style="display: none; margin-top: 2rem;"></div>
-
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="spinner-overlay" style="display: none;">
-        <div class="text-center">
-            <div class="spinner-border" style="width: 4rem; height: 4rem;" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="text-white mt-3">Loading patient data...</p>
-        </div>
-    </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- QR Code Scanner Library -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
+<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
 <script>
-let html5QrCode = null;
-let isScanning = false;
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const reader = document.getElementById("qr-reader");
+const placeholder = document.getElementById("scanner-placeholder");
+const startBtn = document.getElementById("start-btn");
+const stopBtn = document.getElementById("stop-btn");
+let scanner = null;
 
-// Start camera scanner
-document.getElementById('start-scan-btn').addEventListener('click', async function() {
-    try {
-        const videoContainer = document.getElementById('video-container');
-        const startBtn = document.getElementById('start-scan-btn');
-        const stopBtn = document.getElementById('stop-scan-btn');
-        const status = document.getElementById('scanner-status');
+function message(text, level) {
+    const el = document.getElementById("scan-message");
+    el.className = `alert alert-${level} mt-3 mb-0`;
+    el.textContent = text;
+}
 
-        // Show video container
-        videoContainer.style.display = 'block';
-        startBtn.style.display = 'none';
-        stopBtn.style.display = 'inline-block';
-        status.innerHTML = '<span class="scanner-status status-scanning"><i class="bi bi-circle-fill"></i> Scanning...</span>';
-
-        // Initialize QR code scanner
-        html5QrCode = new Html5Qrcode("qr-video");
-
-        const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-        };
-
-        await html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            onScanSuccess,
-            onScanFailure
-        );
-
-        isScanning = true;
-
-    } catch (error) {
-        showError('Failed to start camera: ' + error.message);
-        stopScanner();
+async function openTicket(text) {
+    const match = String(text).match(UUID_RE);
+    if (!match) {
+        message("That is not an AIVIN ticket code.", "warning");
+        return;
     }
-});
-
-// Stop scanner
-document.getElementById('stop-scan-btn').addEventListener('click', function() {
-    stopScanner();
-});
-
-function stopScanner() {
-    if (html5QrCode && isScanning) {
-        html5QrCode.stop().then(() => {
-            const videoContainer = document.getElementById('video-container');
-            const startBtn = document.getElementById('start-scan-btn');
-            const stopBtn = document.getElementById('stop-scan-btn');
-            const status = document.getElementById('scanner-status');
-
-            videoContainer.style.display = 'none';
-            startBtn.style.display = 'inline-block';
-            stopBtn.style.display = 'none';
-            status.innerHTML = '<span class="scanner-status status-stopped"><i class="bi bi-circle-fill"></i> Scanner Stopped</span>';
-
-            isScanning = false;
-        }).catch(err => {
-            console.error('Failed to stop scanner:', err);
-        });
-    }
-}
-
-// On scan success
-function onScanSuccess(decodedText, decodedResult) {
-    console.log(`QR Code detected: ${decodedText}`);
-
-    // Stop scanner
-    stopScanner();
-
-    // Update status
-    document.getElementById('scanner-status').innerHTML =
-        '<span class="scanner-status status-found"><i class="bi bi-check-circle-fill"></i> QR Code Found!</span>';
-
-    // Load patient data
-    loadPatientData(decodedText);
-}
-
-// On scan failure (silent)
-function onScanFailure(error) {
-    // Silent fail - this happens frequently when no QR code is in view
-}
-
-// Manual QR form submission
-document.getElementById('manual-qr-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const qrCode = document.getElementById('manual-qr-input').value.trim();
-
-    if (qrCode) {
-        loadPatientData(qrCode);
+    const url = `/ticket/${match[0].toLowerCase()}/`;
+    message("Opening ticket…", "info");
+    const response = await fetch(url, { method: "HEAD" });
+    if (response.ok) {
+        location.href = url;
+    } else if (response.status === 404) {
+        message("Ticket not found. Check the code and try again.", "danger");
     } else {
-        showError('Please enter a valid QR code');
+        message("Could not open the ticket. Please try again.", "danger");
+    }
+}
+
+async function stop() {
+    if (scanner) {
+        try { await scanner.stop(); } catch (e) { /* already stopped */ }
+        scanner = null;
+    }
+    reader.classList.remove("active");
+    placeholder.classList.remove("d-none");
+    startBtn.classList.remove("d-none");
+    stopBtn.classList.add("d-none");
+}
+
+startBtn.addEventListener("click", async () => {
+    reader.classList.add("active");
+    placeholder.classList.add("d-none");
+    startBtn.classList.add("d-none");
+    stopBtn.classList.remove("d-none");
+    scanner = new Html5Qrcode("qr-reader");
+    try {
+        await scanner.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 240, height: 240 } },
+            async (text) => {
+                await stop();
+                openTicket(text);
+            },
+            () => {},
+        );
+    } catch (error) {
+        await stop();
+        message(`Camera unavailable: ${error.message || error}. Use the code field below.`, "warning");
     }
 });
+stopBtn.addEventListener("click", stop);
 
-// Load patient data
-async function loadPatientData(qrCode) {
-    const loading = document.getElementById('loading-overlay');
-    const resultCard = document.getElementById('result-card');
-    const errorDisplay = document.getElementById('error-display');
-
-    // Hide error and result
-    errorDisplay.style.display = 'none';
-    resultCard.classList.remove('show');
-
-    // Show loading
-    loading.style.display = 'flex';
-
-    try {
-        const response = await fetch(`/ticket/${qrCode}/`);
-
-        if (response.ok) {
-            const html = await response.text();
-
-            // Parse the response to extract patient data
-            // For now, we'll redirect to the ticket detail page
-            window.location.href = `/ticket/${qrCode}/`;
-
-        } else if (response.status === 404) {
-            showError('QR Code not found. Please check and try again.');
-        } else {
-            showError('Failed to load patient data. Please try again.');
-        }
-    } catch (error) {
-        showError('Network error: ' + error.message);
-    } finally {
-        loading.style.display = 'none';
-    }
-}
-
-// Show error
-function showError(message) {
-    const errorDisplay = document.getElementById('error-display');
-    errorDisplay.textContent = message;
-    errorDisplay.style.display = 'block';
-
-    setTimeout(() => {
-        errorDisplay.style.display = 'none';
-    }, 5000);
-}
-
-// Reset scanner
-function resetScanner() {
-    document.getElementById('result-card').classList.remove('show');
-    document.getElementById('manual-qr-input').value = '';
-    document.getElementById('error-display').style.display = 'none';
-}
-
-// Clean up on page unload
-window.addEventListener('beforeunload', function() {
-    if (html5QrCode && isScanning) {
-        html5QrCode.stop();
-    }
+document.getElementById("manual-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    openTicket(document.getElementById("manual-code").value.trim());
 });
 </script>
 {% endblock %}

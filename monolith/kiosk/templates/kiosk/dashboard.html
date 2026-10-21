@@ -1,606 +1,229 @@
 {% extends 'kiosk/base.html' %}
+{% load static %}
 
-{% block title %}Health Dashboard{% endblock %}
+{% block title %}Dashboard - AIVIN{% endblock %}
 
 {% block extra_css %}
-<!-- Three.js Animation CSS -->
-<link rel="stylesheet" href="/static/css/threejs-animations.css" />
-
 <style>
-    .dashboard-container {
-        min-height: 80vh;
-        padding: 2rem;
-    }
-
-    .dashboard-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-
-    .dashboard-header h1 {
-        font-size: 2.5rem;
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-        animation: fadeIn 1s ease-out;
-    }
-
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .dashboard-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        transition: transform 0.3s, box-shadow 0.3s;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .dashboard-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0, 188, 212, 0.3);
-    }
-
-    .dashboard-card h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-        font-size: 1.3rem;
-    }
-
-    .metric-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 0.5rem 0;
-        color: #ffffff;
-    }
-
-    .metric-unit {
-        font-size: 1.2rem;
-        color: var(--text-muted);
-    }
-
-    .metric-status {
-        font-size: 0.9rem;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        margin-top: 1rem;
-        background: rgba(0, 188, 212, 0.1);
-        color: var(--text-light);
-    }
-
-    .chart-container {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        margin-bottom: 2rem;
-        position: relative;
-        height: 400px;
-    }
-
-    .chart-container h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-    }
-
-    .status-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 0.5rem;
-    }
-
-    .status-normal {
-        background-color: #2ecc71;
-    }
-
-    .status-warning {
-        background-color: #f39c12;
-    }
-
-    .status-danger {
-        background-color: #e74c3c;
-    }
-
-    .recent-patients {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        border: 1px solid var(--glass-border);
-        padding: 1.5rem;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-
-    .recent-patients h3 {
-        color: var(--primary-color);
-        margin-bottom: 1rem;
-    }
-
-    .patient-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        transition: background-color 0.2s;
-    }
-
-    .patient-item:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .patient-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: var(--primary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--dark-bg);
-        font-weight: bold;
-        margin-right: 1rem;
-    }
-
-    .patient-info {
-        flex-grow: 1;
-    }
-
-    .patient-name {
-        font-weight: 600;
-        margin-bottom: 0.2rem;
-    }
-
-    .patient-time {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-    }
-
-    .patient-status {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-
-    .status-waiting {
-        background: rgba(243, 156, 18, 0.2);
-        color: #f39c12;
-    }
-
-    .status-in-progress {
-        background: rgba(0, 188, 212, 0.2);
-        color: var(--primary-color);
-    }
-
-    .status-completed {
-        background: rgba(46, 204, 113, 0.2);
-        color: #2ecc71;
-    }
-
-    .refresh-button {
-        position: fixed;
-        bottom: 2rem;
-        right: 2rem;
-        background: var(--primary-color);
-        color: var(--dark-bg);
-        border: none;
-        border-radius: 50%;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
-        transition: all 0.3s;
-        cursor: pointer;
-        z-index: 100;
-    }
-
-    .refresh-button:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 16px rgba(0, 188, 212, 0.6);
-    }
-
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-
-    .refresh-button.refreshing {
-        animation: rotate 1s linear infinite;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .dashboard-container {
-            padding: 1rem;
-        }
-
-        .dashboard-header h1 {
-            font-size: 2rem;
-        }
-
-        .dashboard-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .metric-value {
-            font-size: 2rem;
-        }
-
-        .chart-container {
-            height: 300px;
-        }
-    }
+    .bp-cat { display: grid; grid-template-columns: minmax(150px, 1.2fr) 2fr auto; gap: 0.75rem; align-items: center; padding: 0.55rem 0; }
+    .bp-cat + .bp-cat { border-top: 1px solid var(--aivin-border); }
+    .bp-track { height: 10px; border-radius: 999px; background: var(--aivin-surface-2); overflow: hidden; }
+    .bp-fill { height: 100%; border-radius: 999px; min-width: 0; transition: width 0.3s ease; }
+    .bp-count { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-        <h1><i class="bi bi-speedometer2"></i> Health Dashboard</h1>
-        <p class="lead">Real-time health metrics and patient monitoring</p>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Today</h1>
+        <p class="page-subtitle"><span id="today-date"></span> · <span class="live-dot" id="live-status">Connecting…</span></p>
     </div>
-
-    <!-- 3D Visualization Dashboard -->
-    <div class="chart-container">
-        <h3><i class="bi bi-graph-up"></i> 3D Health Metrics</h3>
-        <div id="dashboard-3d" class="threejs-visualization"></div>
-    </div>
-
-    <!-- Health Metrics Grid -->
-    <div class="dashboard-grid">
-        <!-- Heart Rate Card -->
-        <div class="dashboard-card">
-            <h3><i class="bi bi-heart-pulse"></i> Heart Rate</h3>
-            <div id="heart-rate-metric">
-                <span class="metric-value">{{ heart_rate|default:"--" }}</span>
-                <span class="metric-unit">bpm</span>
-            </div>
-            <div class="metric-status">
-                <span class="status-indicator status-normal"></span>
-                Normal
-            </div>
-        </div>
-
-        <!-- Blood Pressure Card -->
-        <div class="dashboard-card">
-            <h3><i class="bi bi-activity"></i> Blood Pressure</h3>
-            <div id="blood-pressure-metric">
-                <span class="metric-value">{{ systolic|default:"--" }}/{{ diastolic|default:"--" }}</span>
-                <span class="metric-unit">mmHg</span>
-            </div>
-            <div class="metric-status">
-                <span class="status-indicator status-normal"></span>
-                Normal
-            </div>
-        </div>
-
-        <!-- Weight Card -->
-        <div class="dashboard-card">
-            <h3><i class="bi bi-speedometer"></i> Weight</h3>
-            <div id="weight-metric">
-                <span class="metric-value">{{ weight|default:"--" }}</span>
-                <span class="metric-unit">kg</span>
-            </div>
-            <div class="metric-status">
-                <span class="status-indicator status-normal"></span>
-                Normal
-            </div>
-        </div>
-
-        <!-- Oxygen Saturation Card -->
-        <div class="dashboard-card">
-            <h3><i class="bi bi-lungs"></i> Oxygen Saturation</h3>
-            <div id="oxygen-metric">
-                <span class="metric-value">{{ oxygen_saturation|default:"--" }}</span>
-                <span class="metric-unit">%</span>
-            </div>
-            <div class="metric-status">
-                <span class="status-indicator status-normal"></span>
-                Normal
-            </div>
-        </div>
-    </div>
-
-    <!-- Health Visualizations -->
-    <div class="dashboard-grid">
-        <!-- Heart Rate Visualization -->
-        <div class="dashboard-card">
-            <h3><i class="bi bi-heart-pulse-fill"></i> Heart Rate Visualization</h3>
-            <div id="heart-rate-3d" class="threejs-visualization">
-                <div class="health-viz-label">Heart Rate</div>
-                <div class="health-viz-value">{{ heart_rate|default:"--" }} bpm</div>
-            </div>
-        </div>
-
-        <!-- Blood Pressure Visualization -->
-        <div class="dashboard-card">
-            <h3><i class="bi bi-activity"></i> Blood Pressure Visualization</h3>
-            <div id="blood-pressure-3d" class="threejs-visualization">
-                <div class="health-viz-label">Blood Pressure</div>
-                <div class="health-viz-value">{{ systolic|default:"--" }}/{{ diastolic|default:"--" }} mmHg</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Patients -->
-    <div class="recent-patients">
-        <h3><i class="bi bi-people"></i> Recent Patients</h3>
-        <div id="recent-patients-list">
-            {% for patient in recent_patients %}
-                <div class="patient-item">
-                    <div class="patient-avatar">{{ patient.name|first|upper }}</div>
-                    <div class="patient-info">
-                        <div class="patient-name">{{ patient.name }}</div>
-                        <div class="patient-time">{{ patient.created_at|timesince }} ago</div>
-                    </div>
-                    <div class="patient-status status-{{ patient.status|default:"waiting" }}">
-                        {{ patient.status|default:"Waiting" }}
-                    </div>
-                </div>
-            {% empty %}
-                <p>No recent patients</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- Refresh Button -->
-    <button id="refresh-btn" class="refresh-button" onclick="refreshDashboard()">
-        <i class="bi bi-arrow-clockwise"></i>
-    </button>
+    <a class="btn btn-outline-primary btn-icon" href="{% url 'kiosk:qr-scanner' %}"><i class="bi bi-qr-code-scan"></i> Scan ticket</a>
 </div>
 
-<!-- Metric Detail Popup (Hidden by default) -->
-<div id="metric-popup" class="metric-detail-popup">
-    <button class="close-btn" onclick="closeMetricPopup()">&times;</button>
-    <h3 id="metric-name">Metric Name</h3>
-    <div class="metric-value">
-        <span id="metric-value">0</span>
-        <span id="metric-unit" class="metric-unit">unit</span>
+<div class="stat-grid">
+    <div class="stat-tile">
+        <span class="stat-icon"><i class="bi bi-person-check"></i></span>
+        <div><div class="stat-label">Check-ins</div><div class="stat-value" id="kpi-checkins">–</div><div class="stat-sub">today</div></div>
     </div>
-    <div id="metric-status" class="metric-status">Status</div>
+    <div class="stat-tile">
+        <span class="stat-icon"><i class="bi bi-hourglass-split"></i></span>
+        <div><div class="stat-label">Waiting for doctor</div><div class="stat-value" id="kpi-waiting">–</div><div class="stat-sub">active tickets</div></div>
+    </div>
+    <div class="stat-tile">
+        <span class="stat-icon" style="background: var(--aivin-critical-soft); color: var(--aivin-critical-ink)"><i class="bi bi-exclamation-octagon"></i></span>
+        <div><div class="stat-label">Needs attention</div><div class="stat-value" id="kpi-attention">–</div><div class="stat-sub">BP stage 2 or crisis</div></div>
+    </div>
+    <div class="stat-tile">
+        <span class="stat-icon"><i class="bi bi-bluetooth"></i></span>
+        <div><div class="stat-label">Devices</div><div class="stat-value fs-5 mt-1" id="kpi-devices">–</div><div class="stat-sub" id="kpi-devices-sub">&nbsp;</div></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <section class="surface h-100">
+            <div class="chart-head">
+                <h2 class="chart-title">Check-ins by hour</h2>
+                <p class="chart-note">Patients who started a check-in at the kiosk</p>
+            </div>
+            <div class="chart-box"><canvas id="chart-checkins" aria-label="Check-ins by hour" role="img"></canvas></div>
+            <details class="chart-table" id="table-checkins"></details>
+        </section>
+    </div>
+    <div class="col-lg-5">
+        <section class="surface h-100">
+            <div class="chart-head">
+                <h2 class="chart-title">Blood pressure today</h2>
+                <p class="chart-note">Latest reading per patient (ACC/AHA)</p>
+            </div>
+            <div id="bp-categories"></div>
+        </section>
+    </div>
+    <div class="col-12">
+        <section class="surface">
+            <div class="chart-head">
+                <div>
+                    <h2 class="chart-title">Latest blood pressure readings</h2>
+                    <p class="chart-note">Last 20 readings from the monitor</p>
+                </div>
+                <ul class="chart-legend">
+                    <li><span class="swatch" style="background: var(--chart-series-1)"></span>Systolic</li>
+                    <li><span class="swatch" style="background: var(--chart-series-2)"></span>Diastolic</li>
+                </ul>
+            </div>
+            <div class="chart-box"><canvas id="chart-bp" aria-label="Latest blood pressure readings" role="img"></canvas></div>
+            <details class="chart-table" id="table-bp"></details>
+        </section>
+    </div>
+    <div class="col-12">
+        <section class="surface surface-flush">
+            <div class="p-4 pb-2 d-flex justify-content-between align-items-center">
+                <h2 class="section-title mb-0"><i class="bi bi-list-ol"></i> Waiting patients</h2>
+                <span class="text-muted small">Open a row for the doctor's summary</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-aivin">
+                    <thead>
+                        <tr><th>Queue</th><th>Patient</th><th>Checked in</th><th class="num">Weight</th><th class="num">Blood pressure</th><th class="num">Pulse</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="queue-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/aivin-charts.js' %}"></script>
 <script>
-    // Initialize dashboard with Three.js visualizations
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get health data from template or use defaults
-        const healthData = {
-            heartRate: {{ heart_rate|default:"72" }},
-            systolic: {{ systolic|default:"120" }},
-            diastolic: {{ diastolic|default:"80" }},
-            weight: {{ weight|default:"70" }},
-            temperature: {{ temperature|default:"36.6" }},
-            oxygenSaturation: {{ oxygen_saturation|default:"98" }}
-        };
+const DATA_URL = "{% url 'kiosk:dashboard-data' %}";
+const REFRESH_MS = 10000;
+const { COLORS, axes, renderTable, timeLine, update } = AivinCharts;
 
-        // Initialize 3D dashboard if container exists
-        const dashboardContainer = document.getElementById('dashboard-3d');
-        if (dashboardContainer && window.Dashboard3D) {
-            window.Dashboard3D.init('dashboard-3d', healthData);
+document.getElementById("today-date").textContent = new Date().toLocaleDateString("en-GB", {
+    timeZone: AIVIN_TIME_ZONE, weekday: "long", day: "numeric", month: "long", year: "numeric",
+});
 
-            // Add event listener for metric selection
-            dashboardContainer.addEventListener('metricSelected', function(event) {
-                showMetricDetail(event.detail.name, event.detail.value, event.detail.unit);
-            });
-        }
+const hourLabel = (h) => `${String(h).padStart(2, "0")}:00`;
 
-        // Initialize health visualizations
-        setTimeout(() => {
-            // Create heart rate visualization if container exists
-            const heartRateContainer = document.getElementById('heart-rate-3d');
-            if (heartRateContainer && window.HealthVisualization) {
-                window.HealthVisualization.createHeartRateVisualization('heart-rate-3d', healthData);
-            }
+const checkinsChart = new Chart(document.getElementById("chart-checkins"), {
+    type: "bar",
+    data: {
+        labels: [],
+        datasets: [{
+            label: "Check-ins",
+            data: [],
+            backgroundColor: COLORS.series1,
+            hoverBackgroundColor: COLORS.series1,
+            borderRadius: { topLeft: 4, topRight: 4 },
+            borderSkipped: "bottom",
+            categoryPercentage: 0.8,
+            barPercentage: 0.9,
+            maxBarThickness: 36,
+        }],
+    },
+    options: {
+        scales: axes(null, { beginAtZero: true, ticks: { precision: 0 } }),
+        plugins: { tooltip: { callbacks: { title: (items) => `${items[0].label}–${items[0].label.slice(0, 2)}:59`, label: (ctx) => ` ${ctx.formattedValue} check-in${ctx.raw === 1 ? "" : "s"}` } } },
+    },
+});
 
-            // Create blood pressure visualization if container exists
-            const bpContainer = document.getElementById('blood-pressure-3d');
-            if (bpContainer && window.HealthVisualization) {
-                window.HealthVisualization.createBloodPressureVisualization('blood-pressure-3d', healthData);
-            }
-        }, 1000);
+const bpChart = timeLine(document.getElementById("chart-bp"), [], [
+    { label: "Systolic", key: "systolic", color: COLORS.series1 },
+    { label: "Diastolic", key: "diastolic", color: COLORS.series2 },
+], { yTitle: "mmHg", labelFor: (p) => formatAxis(p.t), suggestedMin: 60, suggestedMax: 160 });
+bpChart.options.plugins.tooltip.callbacks = {
+    title: (items) => {
+        const p = bpChart.$points[items[0].dataIndex];
+        return `${p.patient} · ${formatDateTime(p.t)}`;
+    },
+    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.formattedValue} mmHg`,
+};
 
-        // Update metric indicators based on values
-        updateMetricIndicators(healthData);
-    });
-
-    // Update metric indicators based on values
-    function updateMetricIndicators(data) {
-        // Heart Rate
-        updateMetricStatus('heart-rate', data.heartRate, {
-            low: { threshold: 60, status: 'warning', text: 'Low' },
-            normal: { threshold: 100, status: 'normal', text: 'Normal' },
-            high: { status: 'danger', text: 'High' }
-        });
-
-        // Blood Pressure
-        const bpStatus = (data.systolic < 120 && data.diastolic < 80) ? 'normal' :
-                         (data.systolic < 140 && data.diastolic < 90) ? 'warning' : 'danger';
-        const bpText = bpStatus === 'normal' ? 'Normal' :
-                      bpStatus === 'warning' ? 'Elevated' : 'High';
-
-        const bpElement = document.querySelector('#blood-pressure-metric').parentElement.querySelector('.metric-status');
-        if (bpElement) {
-            bpElement.innerHTML = `<span class="status-indicator status-${bpStatus}"></span>${bpText}`;
-        }
-
-        // Weight
-        updateMetricStatus('weight', data.weight, {
-            normal: { threshold: Infinity, status: 'normal', text: 'Normal' }
-        });
-
-        // Oxygen Saturation
-        updateMetricStatus('oxygen', data.oxygenSaturation, {
-            high: { threshold: 95, status: 'normal', text: 'Normal' },
-            medium: { threshold: 91, status: 'warning', text: 'Mild Hypoxemia' },
-            low: { status: 'danger', text: 'Significant Hypoxemia' }
-        });
+function renderCategories(categories) {
+    const total = categories.reduce((n, c) => n + c.count, 0);
+    const el = document.getElementById("bp-categories");
+    if (!total) {
+        el.innerHTML = `<div class="empty-state"><i class="bi bi-heart-pulse"></i>No blood pressure readings yet today.</div>`;
+        return;
     }
+    el.innerHTML = categories
+        .map((c) => `
+            <div class="bp-cat">
+                <span class="status status-${c.status}"><i class="bi ${c.icon}"></i>${esc(c.label)}</span>
+                <div class="bp-track" aria-hidden="true"><div class="bp-fill" style="width:${(c.count / total) * 100}%; background: var(--aivin-${c.status})"></div></div>
+                <span class="bp-count">${c.count}</span>
+            </div>`)
+        .join("");
+}
 
-    // Helper function to update metric status
-    function updateMetricStatus(metric, value, statusConfig) {
-        const element = document.querySelector(`#${metric}-metric`).parentElement.querySelector('.metric-status');
-        if (!element) return;
-
-        let status = statusConfig.normal || statusConfig.low;
-
-        if (statusConfig.low && value < statusConfig.low.threshold) {
-            status = statusConfig.low;
-        } else if (statusConfig.high && value >= statusConfig.high.threshold) {
-            status = statusConfig.high;
-        } else if (statusConfig.medium) {
-            status = statusConfig.medium;
-        }
-
-        element.innerHTML = `<span class="status-indicator status-${status.status}"></span>${status.text}`;
+function renderQueue(queue) {
+    const body = document.getElementById("queue-body");
+    if (!queue.length) {
+        body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="bi bi-cup-hot"></i>Nobody is waiting.</div></td></tr>`;
+        return;
     }
+    body.innerHTML = queue
+        .map((q) => `
+            <tr class="row-link" data-href="${esc(q.url)}">
+                <td><strong class="fs-5">${esc(q.queue_number)}</strong></td>
+                <td>${esc(q.patient)}</td>
+                <td class="text-muted">${esc(formatTime(q.created_at))}</td>
+                <td class="num">${q.weight_kg != null ? `${esc(q.weight_kg)} kg` : "–"}</td>
+                <td class="num">${q.bp ? `${esc(q.bp)} <span class="text-muted">mmHg</span>` : "–"}</td>
+                <td class="num">${q.pulse != null ? `${esc(q.pulse)} bpm` : "–"}</td>
+                <td>${q.category ? `<span class="status status-${q.category.status}"><i class="bi ${q.category.icon}"></i>${esc(q.category.label)}</span>` : '<span class="status status-neutral">No BP yet</span>'}</td>
+            </tr>`)
+        .join("");
+    body.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
+}
 
-    // Show metric detail popup
-    function showMetricDetail(name, value, unit) {
-        const popup = document.getElementById('metric-popup');
-        const nameEl = document.getElementById('metric-name');
-        const valueEl = document.getElementById('metric-value');
-        const unitEl = document.getElementById('metric-unit');
-        const statusEl = document.getElementById('metric-status');
+async function refresh() {
+    const status = document.getElementById("live-status");
+    try {
+        const response = await fetch(DATA_URL, { headers: { Accept: "application/json" } });
+        if (response.redirected || !response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
 
-        nameEl.textContent = name;
-        valueEl.textContent = value;
-        unitEl.textContent = unit;
-        statusEl.textContent = getMetricStatus(name, value);
+        document.getElementById("kpi-checkins").textContent = data.kpis.checkins_today;
+        document.getElementById("kpi-waiting").textContent = data.kpis.waiting;
+        document.getElementById("kpi-attention").textContent = data.kpis.needs_attention;
+        document.getElementById("kpi-devices").innerHTML = data.devices.gateway_online
+            ? '<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Online</span>'
+            : '<span class="status status-critical"><i class="bi bi-x-octagon-fill"></i>Offline</span>';
+        document.getElementById("kpi-devices-sub").textContent = `${data.devices.paired} paired`;
 
-        popup.classList.add('show');
+        update(checkinsChart, data.checkins_by_hour.map((r) => hourLabel(r.hour)), [data.checkins_by_hour.map((r) => r.count)]);
+        renderTable(document.getElementById("table-checkins"), [
+            { label: "Hour", value: (r) => hourLabel(r.hour) },
+            { label: "Check-ins", value: (r) => r.count, num: true },
+        ], data.checkins_by_hour);
+
+        bpChart.$points = data.recent_bp;
+        update(bpChart, data.recent_bp.map((p) => formatAxis(p.t)), [data.recent_bp.map((p) => p.systolic), data.recent_bp.map((p) => p.diastolic)]);
+        renderTable(document.getElementById("table-bp"), [
+            { label: "Time", value: (p) => formatDateTime(p.t) },
+            { label: "Patient", value: (p) => p.patient },
+            { label: "Systolic", value: (p) => p.systolic, num: true },
+            { label: "Diastolic", value: (p) => p.diastolic, num: true },
+        ], data.recent_bp);
+
+        renderCategories(data.bp_categories);
+        renderQueue(data.queue);
+
+        status.classList.remove("offline");
+        status.textContent = `Live · updated ${formatTime(data.generated_at)}`;
+    } catch (error) {
+        status.classList.add("offline");
+        status.textContent = "Connection lost, retrying…";
     }
+}
 
-    // Close metric detail popup
-    function closeMetricPopup() {
-        const popup = document.getElementById('metric-popup');
-        popup.classList.remove('show');
-    }
-
-    // Get metric status based on value
-    function getMetricStatus(name, value) {
-        const numValue = parseFloat(value);
-
-        switch (name) {
-            case 'Heart Rate':
-                if (numValue < 60) return 'Low heart rate (Bradycardia)';
-                else if (numValue < 100) return 'Normal heart rate';
-                else return 'High heart rate (Tachycardia)';
-
-            case 'Blood Pressure':
-                const [systolic, diastolic] = value.split('/').map(v => parseFloat(v));
-                if (systolic < 120 && diastolic < 80) return 'Normal blood pressure';
-                else if (systolic < 140 && diastolic < 90) return 'Elevated blood pressure';
-                else return 'High blood pressure (Hypertension)';
-
-            case 'Weight':
-                return 'Weight recorded successfully';
-
-            case 'Oxygen Saturation':
-                if (numValue >= 95) return 'Normal oxygen saturation';
-                else if (numValue >= 91) return 'Mild hypoxemia';
-                else return 'Significant hypoxemia';
-
-            default:
-                return 'Value recorded';
-        }
-    }
-
-    // Refresh dashboard data
-    function refreshDashboard() {
-        const btn = document.getElementById('refresh-btn');
-        btn.classList.add('refreshing');
-
-        fetch('/api/dashboard/')
-            .then(response => response.json())
-            .then(data => {
-                // Update metrics
-                document.querySelector('#heart-rate-metric .metric-value').textContent = data.heart_rate || '--';
-                document.querySelector('#blood-pressure-metric .metric-value').textContent =
-                    `${data.systolic || '--'}/${data.diastolic || '--'}`;
-                document.querySelector('#weight-metric .metric-value').textContent = data.weight || '--';
-                document.querySelector('#oxygen-metric .metric-value').textContent = data.oxygen_saturation || '--';
-
-                // Update visualizations
-                if (window.Dashboard3D && data) {
-                    window.Dashboard3D.update(data);
-                }
-
-                // Update status indicators
-                updateMetricIndicators(data);
-
-                // Update recent patients
-                const patientsList = document.getElementById('recent-patients-list');
-                if (patientsList && data.recent_patients) {
-                    patientsList.innerHTML = '';
-
-                    data.recent_patients.forEach(patient => {
-                        const patientItem = document.createElement('div');
-                        patientItem.className = 'patient-item';
-
-                        const patientInitial = patient.name.charAt(0).toUpperCase();
-                        const statusClass = `status-${patient.status || 'waiting'}`;
-                        const statusText = patient.status || 'Waiting';
-                        const timeAgo = getTimeAgo(patient.created_at);
-
-                        patientItem.innerHTML = `
-                            <div class="patient-avatar">${patientInitial}</div>
-                            <div class="patient-info">
-                                <div class="patient-name">${patient.name}</div>
-                                <div class="patient-time">${timeAgo} ago</div>
-                            </div>
-                            <div class="patient-status ${statusClass}">${statusText}</div>
-                        `;
-
-                        patientsList.appendChild(patientItem);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error refreshing dashboard:', error);
-            })
-            .finally(() => {
-                setTimeout(() => {
-                    btn.classList.remove('refreshing');
-                }, 1000);
-            });
-    }
-
-    // Get time ago string
-    function getTimeAgo(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-
-        if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''}`;
-
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
-
-        const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
-    }
-
-    // Auto-refresh dashboard every 30 seconds
-    setInterval(refreshDashboard, 30000);
+refresh();
+setInterval(refresh, REFRESH_MS);
 </script>
 {% endblock %}

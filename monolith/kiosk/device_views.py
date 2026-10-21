@@ -75,6 +75,11 @@ def gateway_online():
     return cache.get(GATEWAY_STATUS_KEY) is not None
 
 
+def gateway_devices():
+    """Paired devices as last reported by the gateway (empty when it is offline)."""
+    return (cache.get(GATEWAY_STATUS_KEY) or {}).get("devices", [])
+
+
 # --- Internal API (gateway → server) ---------------------------------------------
 
 

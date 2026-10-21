@@ -1,0 +1,64 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}{{ ticket.queue_number }} · {{ ticket.patient.name }} - AIVIN{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <a href="{% url 'kiosk:qr-scanner' %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> Scan another ticket</a>
+    <button class="btn btn-light btn-icon" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+<section class="surface">
+    <div class="ticket-head">
+        <div>
+            <div class="text-muted fw-semibold small text-uppercase">Pre-consultation summary</div>
+            <h1 class="page-title mt-1">{{ ticket.patient.name }}</h1>
+            <p class="page-subtitle">Checked in {{ ticket.created_at|date:"l j F Y, H:i" }}</p>
+        </div>
+        <div class="text-end">
+            <div class="text-muted small fw-semibold">Queue</div>
+            <div class="ticket-number">{{ ticket.queue_number }}</div>
+            <span class="status {% if ticket.is_active %}status-info{% else %}status-neutral{% endif %} mt-2">{{ ticket.get_status_display }}</span>
+        </div>
+    </div>
+</section>
+
+<div class="row g-4 mt-0">
+    <div class="col-lg-8">
+        <section class="surface h-100">
+            <h2 class="section-title"><i class="bi bi-activity"></i> Vitals at check-in</h2>
+            {% include 'kiosk/_vitals.html' %}
+            {% if vitals.bp_category.status == "critical" %}
+            <div class="alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0" role="alert">
+                <i class="bi bi-exclamation-octagon-fill"></i>
+                <div><strong>{{ vitals.bp_category.label }}.</strong> Consider seeing this patient first and re-measuring blood pressure.</div>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+    <div class="col-lg-4">
+        <section class="surface h-100">
+            <h2 class="section-title"><i class="bi bi-chat-left-text"></i> Reason for visit</h2>
+            <p class="symptoms">{{ ticket.patient.symptoms }}</p>
+            <a class="btn btn-outline-primary btn-icon no-print" href="{% url 'kiosk:patient-detail' ticket.patient.pk %}"><i class="bi bi-graph-up"></i> Full history &amp; charts</a>
+        </section>
+    </div>
+    {% if previous_tickets %}
+    <div class="col-12">
+        <section class="surface surface-flush">
+            <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-clock-history"></i> Previous visits</h2></div>
+            <div class="table-responsive">
+                <table class="table table-aivin">
+                    <thead><tr><th>Date</th><th>Queue</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for t in previous_tickets %}
+                        <tr><td>{{ t.created_at|date:"j M Y, H:i" }}</td><td><a href="{% url 'kiosk:ticket-detail' t.qr_code_data %}">{{ t.queue_number }}</a></td><td>{{ t.get_status_display }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

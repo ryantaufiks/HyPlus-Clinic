@@ -2,95 +2,69 @@
 
 {% block title %}Devices - AIVIN{% endblock %}
 
-{% block extra_css %}
-<style>
-    .devices-container { max-width: 1000px; margin: 0 auto; }
-    .device-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .device-card h2 { font-size: 1.25rem; margin-bottom: 1rem; }
-    .status-dot { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.4rem; }
-    .status-dot.online { background: #2ecc71; }
-    .status-dot.offline { background: #e74c3c; }
-    .table { color: inherit; }
-    .table td, .table th { background: transparent; color: inherit; vertical-align: middle; }
-    .pair-steps li { margin-bottom: 0.4rem; }
-    .muted { opacity: 0.7; font-size: 0.9rem; }
-    code { color: inherit; }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="container devices-container">
-    <h1 class="h3 mb-4"><i class="bi bi-bluetooth"></i> Medical devices</h1>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Medical devices</h1>
+        <p class="page-subtitle">Pair, test and manage the blood pressure monitor and scale.</p>
+    </div>
+    <span class="live-dot offline" id="gateway-status">Checking device service…</span>
+</div>
 
     <div id="action-result" class="d-none" role="status"></div>
 
-    <section class="device-card">
-        <h2>Device service</h2>
-        <p class="mb-1" id="gateway-status"><span class="status-dot offline"></span>Checking…</p>
-        <p class="muted mb-0">
-            The device service runs on the server and talks to the devices over the server's Bluetooth.
-            Keep the devices within about 5–10 m of the server.
-        </p>
-    </section>
+    <p class="text-muted small"><i class="bi bi-info-circle"></i> The device service runs on the server and talks to the devices over the server's Bluetooth. Keep the devices within about 5–10 m of the server.</p>
 
-    <section class="device-card">
-        <h2>Paired devices</h2>
-        <div id="paired-empty" class="muted">No devices paired yet. Pair one below.</div>
+    <section class="surface">
+        <h2 class="section-title"><i class="bi bi-link-45deg"></i> Paired devices</h2>
+        <div id="paired-empty" class="text-muted small">No devices paired yet. Pair one below.</div>
         <div class="table-responsive">
-            <table class="table d-none" id="paired-table">
+            <table class="table table-aivin d-none" id="paired-table">
                 <thead>
                     <tr><th>Device</th><th>Address</th><th>Last seen</th><th>Latest reading</th><th></th></tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
-        <p class="muted mb-0">
+        <p class="text-muted small mb-0">
             <strong>Test connection:</strong> devices sleep to save battery. Press the device's Bluetooth button briefly
             (or take a measurement) right before clicking Test, so it is awake. The test reads the latest stored
             measurement and syncs the device clock; nothing is saved to any patient.
         </p>
     </section>
 
-    <section class="device-card">
-        <h2>Pair a new device</h2>
-        <ol class="pair-steps">
+    <section class="surface">
+        <h2 class="section-title"><i class="bi bi-plus-circle"></i> Pair a new device</h2>
+        <ol class="ps-3">
             <li>If the device was used with the <strong>OMRON connect</strong> app, remove it there and in the phone's Bluetooth settings first. A device can only talk to one host.</li>
             <li>Hold the device's <strong>Bluetooth button</strong> until <code>-P-</code> blinks on its display.</li>
             <li>Click <strong>Scan</strong>, then <strong>Pair</strong> while <code>-P-</code> is still blinking. The model is detected from the device automatically. The device shows <code>OK</code> when pairing worked.</li>
         </ol>
-        <button class="btn btn-primary" id="scan-button" onclick="scanDevices()">
+        <button class="btn btn-primary btn-icon" id="scan-button" onclick="scanDevices()">
             <i class="bi bi-search"></i> Scan (10 s)
         </button>
         <div class="table-responsive mt-3">
-            <table class="table d-none" id="scan-table">
+            <table class="table table-aivin d-none" id="scan-table">
                 <thead>
                     <tr><th>Name</th><th>Address</th><th>Signal</th><th>Mode</th><th>Model</th><th></th></tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
-        <div id="scan-empty" class="muted d-none">
+        <div id="scan-empty" class="text-muted small d-none">
             No OMRON devices found. Check that <code>-P-</code> is blinking and the device is close to the server, then scan again.
         </div>
     </section>
 
-    <section class="device-card">
-        <h2>Recent activity</h2>
+    <section class="surface">
+        <h2 class="section-title"><i class="bi bi-clock-history"></i> Recent activity</h2>
         <div class="table-responsive">
-            <table class="table table-sm mb-0" id="activity-table">
+            <table class="table table-aivin table-sm mb-0" id="activity-table">
                 <thead><tr><th>Time</th><th>Action</th><th>Device</th><th>By</th><th>Result</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
     </section>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -99,17 +73,6 @@
 const SUPPORTED_MODELS = JSON.parse(document.getElementById("supported-models").textContent);
 const ACTION_LABELS = { scan: "Scan", pair: "Pair", test: "Test connection", remove: "Remove" };
 let busy = false;
-
-function getCsrfToken() {
-    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
-}
-
-function esc(value) {
-    const div = document.createElement("div");
-    div.textContent = value == null ? "" : String(value);
-    return div.innerHTML;
-}
 
 function timeAgo(value) {
     if (!value) return "never";
@@ -185,7 +148,7 @@ function scanDevices() {
                 <td>${esc(d.name || "Unknown")}</td>
                 <td><code>${esc(d.address)}</code></td>
                 <td>${esc(d.rssi)} dBm</td>
-                <td>${d.pairing_mode ? '<span class="badge bg-success">Pairing mode</span>' : '<span class="badge bg-secondary">Normal</span>'}</td>
+                <td>${d.pairing_mode ? '<span class="status status-good"><i class="bi bi-broadcast"></i>Pairing mode</span>' : '<span class="status status-neutral">Normal</span>'}</td>
                 <td><select class="form-select form-select-sm">${options}</select></td>
                 <td><button class="btn btn-sm btn-primary" data-action-button>Pair</button></td>`;
             row.querySelector("button").addEventListener("click", () => {
@@ -238,9 +201,11 @@ async function refreshStatus() {
         return;
     }
 
-    document.getElementById("gateway-status").innerHTML = data.gateway_online
-        ? `<span class="status-dot online"></span>Online <span class="muted">(last contact ${esc(timeAgo(data.gateway_seen_at))})</span>`
-        : `<span class="status-dot offline"></span>Offline. Start it on the server with <code>make up</code> and check <code>make gateway-logs</code>.`;
+    const gateway = document.getElementById("gateway-status");
+    gateway.classList.toggle("offline", !data.gateway_online);
+    gateway.textContent = data.gateway_online
+        ? `Device service online · ${timeAgo(data.gateway_seen_at)}`
+        : "Device service offline (check make gateway-logs on the server)";
 
     const table = document.getElementById("paired-table");
     const body = table.querySelector("tbody");
@@ -248,12 +213,12 @@ async function refreshStatus() {
     data.devices.forEach((d) => {
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td><strong>${esc(d.model)}</strong><div class="muted">${esc(SUPPORTED_MODELS[d.model] || d.kind)}</div></td>
+            <td><strong>${esc(d.model)}</strong><div class="text-muted small">${esc(SUPPORTED_MODELS[d.model] || d.kind)}</div></td>
             <td><code>${esc(d.address)}</code></td>
             <td>${esc(timeAgo(d.last_seen))}</td>
             <td>${esc(formatReading(d.latest_reading))}</td>
             <td class="text-end text-nowrap">
-                <button class="btn btn-sm btn-outline-light" data-action-button data-test>Test connection</button>
+                <button class="btn btn-sm btn-light" data-action-button data-test>Test connection</button>
                 <button class="btn btn-sm btn-outline-danger" data-action-button data-remove>Remove</button>
             </td>`;
         row.querySelector("[data-test]").addEventListener("click", () => testDevice(d.address));
@@ -266,17 +231,17 @@ async function refreshStatus() {
     const activity = document.querySelector("#activity-table tbody");
     activity.innerHTML = data.recent_commands
         .map((c) => {
-            const badge = { succeeded: "success", failed: "danger", running: "info", pending: "secondary" }[c.status];
-            const detail = c.status === "failed" ? `<div class="muted">${esc(c.error)}</div>` : "";
+            const badge = { succeeded: "good", failed: "critical", running: "info", pending: "neutral" }[c.status];
+            const detail = c.status === "failed" ? `<div class="text-muted small">${esc(c.error)}</div>` : "";
             return `<tr>
                 <td>${esc(formatDateTime(c.created_at))}</td>
                 <td>${esc(ACTION_LABELS[c.action])}${c.action === "pair" ? ` ${esc((c.result && c.result.model) || c.params.model || "(auto)")}` : ""}</td>
                 <td><code>${esc(c.params.address || "")}</code></td>
                 <td>${esc(c.requested_by || "")}</td>
-                <td><span class="badge bg-${badge}">${esc(c.status)}</span>${detail}</td>
+                <td><span class="status status-${badge}">${esc(c.status)}</span>${detail}</td>
             </tr>`;
         })
-        .join("") || `<tr><td colspan="5" class="muted">No activity yet.</td></tr>`;
+        .join("") || `<tr><td colspan="5" class="text-muted small">No activity yet.</td></tr>`;
     if (busy) setBusy(true); // keep freshly rendered buttons disabled
 }
 

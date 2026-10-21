@@ -70,11 +70,6 @@ urlpatterns = [
     ),
     # Dashboard and QR scanner
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
+    path("dashboard/data/", views.DashboardDataView.as_view(), name="dashboard-data"),
     path("scanner/", views.QRScannerView.as_view(), name="qr-scanner"),
-    # Test page for Three.js visualizations
-    path(
-        "test-visualizations/",
-        views.TestVisualizationsView.as_view(),
-        name="test-visualizations",
-    ),
 ]

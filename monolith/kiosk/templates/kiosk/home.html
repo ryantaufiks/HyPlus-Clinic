@@ -1,483 +1,141 @@
+{% extends 'kiosk/base.html' %}
 
-```{% extends 'kiosk/base.html' %}
-
-{% block title %}AIVIN - Welcome{% endblock %}
+{% block title %}AIVIN — Check-in{% endblock %}
 
 {% block extra_css %}
-<!-- Three.js Animation CSS -->
-<link rel="stylesheet" href="/static/css/threejs-animations.css" />
-
 <style>
-    .kiosk-container {
-        min-height: 80vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        position: relative;
-        z-index: 10;
-    }
-
-    .step-container {
-        width: 100%;
-        max-width: 900px;
-        margin: 0 auto;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 2rem;
-        border: 1px solid rgba(0, 188, 212, 0.2);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-
-    .step-indicator {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 3rem;
-        padding: 0 1rem;
-    }
-
-    .step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex: 1;
-        position: relative;
-    }
-
-    .step-circle {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid var(--glass-border);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        transition: all 0.3s;
-        z-index: 2;
-    }
-
-    /* Add floating animation to the kiosk container */
-    @keyframes float {
-        0% {
-            transform: translateY(0px);
-        }
-        50% {
-            transform: translateY(-10px);
-        }
-        100% {
-            transform: translateY(0px);
-        }
-    }
-
-    .step-container {
-        animation: float 6s ease-in-out infinite;
-    }
-
-    .step.active .step-circle {
-        background: var(--primary-color);
-        border-color: var(--primary-color);
-        color: #000;
-        box-shadow: 0 0 20px rgba(0, 188, 212, 0.5);
-    }
-
-    .step.completed .step-circle {
-        background: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-
-    .step-line {
-        position: absolute;
-        top: 25px;
-        left: 50%;
-        width: 100%;
-        height: 2px;
-        background: var(--glass-border);
-        z-index: 1;
-    }
-
-    .step:last-child .step-line {
-        display: none;
-    }
-
-    .step.completed .step-line {
-        background: var(--primary-color);
-    }
-
-    .step-label {
-        font-size: 0.9rem;
-        color: var(--text-muted);
-        text-align: center;
-    }
-
-    .step.active .step-label {
-        color: var(--primary-color);
-        font-weight: 600;
-    }
-
-    .content-card {
-        min-height: 400px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-
-    .icon-large {
-        font-size: 4rem;
-        color: var(--primary-color);
-        margin-bottom: 1.5rem;
-    }
-
-    .listening-indicator {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(0, 188, 212, 0.3) 0%, transparent 70%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 1.5rem 0;
-    }
-
-    @keyframes listening-pulse {
-        0%,
-        100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(0, 188, 212, 0.7);
-        }
-        50% {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 10px rgba(0, 188, 212, 0);
-        }
-    }
-
-    .voice-input-display {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 12px;
-        padding: 1rem;
-        margin: 1rem 0;
-        min-height: 60px;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-light);
-        font-size: 1.1rem;
-        backdrop-filter: blur(5px);
-    }
-
-    .measurement-result {
-        background: rgba(0, 188, 212, 0.15);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
-        width: 100%;
-        text-align: center;
-    }
-
-    .measurement-label {
-        font-size: 1.1rem;
-        color: var(--text-muted);
-        margin-bottom: 0.5rem;
-    }
-
-    .measurement-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: var(--primary-color);
-        margin: 0.5rem 0;
-    }
-
-    .measurement-timestamp {
-        font-size: 0.9rem;
-        color: var(--text-muted);
-        margin-top: 0.5rem;
-    }
-
-    .new-measurement {
-        animation: highlightNew 2s ease-out;
-    }
-
-    .qr-code-container {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1rem 0;
-        display: inline-block;
-    }
-
-    .qr-code-image {
-        max-width: 200px;
-        height: auto;
-    }
-
-    .qr-code-placeholder {
-        width: 200px;
-        height: 200px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #333;
-        font-size: 0.9rem;
-    }
-
-    .debug-panel {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 1rem;
-        color: var(--text-light);
-        font-family: monospace;
-        font-size: 0.8rem;
-        max-width: 300px;
-        z-index: 100;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        display: none;
-    }
-
-    .debug-panel h4 {
-        margin-top: 0;
-        color: var(--primary-color);
-    }
-
-    .debug-item {
-        margin-bottom: 0.5rem;
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .debug-label {
-        color: var(--text-muted);
-    }
-
-    .debug-value {
-        color: var(--primary-color);
-        font-weight: bold;
-    }
-
-    .debug-timestamp {
-        color: var(--text-muted);
-        font-size: 0.7rem;
-        margin-top: 0.5rem;
-        text-align: right;
-    }
-
-    .queue-number {
-        font-size: 4rem;
-        font-weight: bold;
-        color: var(--primary-color);
-        margin: 1.5rem 0;
-        text-align: center;
-    }
-
-    .control-buttons {
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        margin-top: 2rem;
-        flex-wrap: wrap;
-    }
-
-    .btn-lg {
-        padding: 0.75rem 2rem;
-        font-size: 1.2rem;
-    }
-
-    .error-message {
-        background: rgba(244, 67, 54, 0.2);
-        border: 1px solid #e57373;
-        border-radius: 12px;
-        padding: 1rem;
-        margin: 1rem 0;
-        color: #e57373;
-    }
-
-    .success-message {
-        background: rgba(76, 175, 80, 0.2);
-        border: 1px solid #81c784;
-        border-radius: 12px;
-        padding: 1rem;
-        margin: 1rem 0;
-        color: #81c784;
-    }
-
-    @keyframes highlightNew {
-        0%,
-        100% {
-            background: rgba(0, 188, 212, 0.2);
-        }
-        50% {
-            background: rgba(0, 188, 212, 0.4);
-        }
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .kiosk-container {
-            padding: 1rem;
-        }
-
-        .step-container {
-            padding: 1rem;
-        }
-
-        .step-indicator {
-            padding: 0 0.5rem;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .step-circle {
-            width: 40px;
-            height: 40px;
-            font-size: 1.2rem;
-        }
-
-        .step-label {
-            font-size: 0.8rem;
-        }
-
-        .icon-large {
-            font-size: 3rem;
-        }
-
-        h2 {
-            font-size: 1.8rem;
-        }
-
-        .btn-lg {
-            padding: 0.5rem 1rem;
-            font-size: 1rem;
-        }
-
-        .control-buttons {
-            flex-direction: column;
-        }
-
-        .control-buttons .btn {
-            width: 100%;
-        }
-
-        .debug-panel {
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            max-width: 100%;
-        }
-
-        .debug-panel.show-mobile {
-            display: block;
-        }
-    }
-
-    /* Debug toggle button */
-    .debug-toggle {
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background: rgba(0, 188, 212, 0.2);
-        border: 1px solid var(--primary-color);
-        color: var(--primary-color);
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 101;
-        transition: all 0.2s ease;
-    }
-
-    .debug-toggle:active {
-        transform: scale(0.95);
-    }
+    body { touch-action: manipulation; }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Debug Panel Toggle Button (Mobile Only) -->
-<button class="debug-toggle" id="debug-toggle" onclick="toggleDebugPanel()">
-    <i class="bi bi-graph-up"></i>
-</button>
-
-<!-- Debug Panel (for testing) -->
-<div class="debug-panel" id="debug-panel">
-    <h4>Debug Information</h4>
-    <div class="debug-item">
-        <span class="debug-label">Weight:</span>
-        <span class="debug-value" id="debug-weight">--</span>
-    </div>
-    <div class="debug-item">
-        <span class="debug-label">Blood Pressure:</span>
-        <span class="debug-value" id="debug-bp">--</span>
-    </div>
-    <div class="debug-item">
-        <span class="debug-label">Heart Rate:</span>
-        <span class="debug-value" id="debug-hr">--</span>
-    </div>
-    <div class="debug-timestamp" id="debug-time">No data yet</div>
+<div class="kiosk-shell">
+    <ol class="stepper" id="stepper" aria-label="Check-in progress">
+        <li data-step="0"><span class="num">1</span><span class="label">Welcome</span></li>
+        <li data-step="1"><span class="num">2</span><span class="label">About you</span></li>
+        <li data-step="2"><span class="num">3</span><span class="label">Weight</span></li>
+        <li data-step="3"><span class="num">4</span><span class="label">Blood pressure</span></li>
+        <li data-step="4"><span class="num">5</span><span class="label">Done</span></li>
+    </ol>
+    <section class="surface kiosk-card" id="stage" aria-live="polite"></section>
 </div>
-
-<div class="kiosk-container">
-    <div class="step-container">
-        <!-- Step Indicator -->
-        <div class="step-indicator">
-            <div class="step active" id="step-0">
-                <div class="step-circle">1</div>
-                <div class="step-line"></div>
-                <div class="step-label">Welcome</div>
-            </div>
-            <div class="step" id="step-1">
-                <div class="step-circle">2</div>
-                <div class="step-line"></div>
-                <div class="step-label">Patient Info</div>
-            </div>
-            <div class="step" id="step-2">
-                <div class="step-circle">3</div>
-                <div class="step-line"></div>
-                <div class="step-label">Weight</div>
-            </div>
-            <div class="step" id="step-3">
-                <div class="step-circle">4</div>
-                <div class="step-line"></div>
-                <div class="step-label">Blood Pressure</div>
-            </div>
-            <div class="step" id="step-4">
-                <div class="step-circle">5</div>
-                <div class="step-label">Complete</div>
-            </div>
-        </div>
-
-        <!-- Content Area -->
-        <div class="content-card" id="content-area">
-            <!-- Error Display -->
-            <div id="error-display" class="error-message" style="display: none;"></div>
-
-            <!-- Success Display -->
-            <div id="success-display" class="success-message" style="display: none;"></div>
-        </div>
-    </div>
-</div>
+<div id="toast" class="alert kiosk-toast d-none" role="alert"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function getCsrfToken() {
-    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
+const SIMULATION_ENABLED = {{ simulation_enabled|yesno:"true,false" }};
+const IDLE_RESET_MS = 90000; // back to Welcome after the ticket is shown
+
+const state = {
+    step: 0,
+    patientId: null,
+    name: "",
+    symptoms: "",
+    weight: null,           // { kg, at }
+    bp: null,               // { systolic, diastolic, pulse, at }
+    ticket: null,           // { queue_number, qr_code_image }
+    busy: false,
+    listeningFor: null,     // "name" | "symptoms"
+};
+const stage = document.getElementById("stage");
+let resetTimer = null;
+
+/* ---------- helpers ---------- */
+
+function toast(text, level = "danger") {
+    const el = document.getElementById("toast");
+    el.className = `alert alert-${level} kiosk-toast`;
+    el.textContent = text;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.add("d-none"), 5000);
 }
 
-const SIMULATION_ENABLED = {{ simulation_enabled|yesno:"true,false" }};
+async function postJson(url, body) {
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
+        body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+}
+
+/* ---------- voice ---------- */
+
+const Voice = {
+    recognition: null,
+    init() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) return;
+        this.recognition = new SR();
+        this.recognition.lang = "en-US";
+        this.recognition.interimResults = false;
+        this.recognition.maxAlternatives = 1;
+        this.recognition.onresult = (event) => onSpeech(event.results[0][0].transcript.trim());
+        this.recognition.onerror = (event) => {
+            if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+                // No microphone permission: fall back to typing for the rest of the session.
+                this.recognition = null;
+                state.listeningFor = null;
+                document.querySelectorAll("[data-mic]").forEach((btn) => btn.remove());
+                toast("Voice input is not available here. Please type your answers.", "warning");
+            } else if (event.error !== "no-speech" && event.error !== "aborted") {
+                toast(`Voice input: ${event.error}. You can type instead.`, "warning");
+            }
+        };
+        this.recognition.onend = () => {
+            state.listeningFor = null;
+            updateMicButtons();
+        };
+    },
+    get available() { return !!this.recognition; },
+    listen(field) {
+        if (!this.recognition) return;
+        try {
+            this.recognition.abort();
+            state.listeningFor = field;
+            this.recognition.start();
+            updateMicButtons();
+        } catch (e) { /* already listening */ }
+    },
+    stop() {
+        if (this.recognition) this.recognition.abort();
+    },
+    say(text) {
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-US";
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+    },
+};
+
+function onSpeech(text) {
+    const field = state.listeningFor;
+    if (!field || state.step !== 1) return;
+    const input = document.getElementById(`input-${field}`);
+    if (input) input.value = text;
+    state[field] = text;
+    updateContinue();
+    if (field === "name") {
+        Voice.say(`Thank you, ${text}. What brings you in today?`);
+        setTimeout(() => Voice.listen("symptoms"), 2500);
+    }
+}
+
+function updateMicButtons() {
+    document.querySelectorAll("[data-mic]").forEach((btn) => {
+        const on = state.listeningFor === btn.dataset.mic;
+        btn.classList.toggle("listening", on);
+        btn.setAttribute("aria-pressed", on);
+        btn.title = on ? "Listening…" : "Speak";
+    });
+}
+
+/* ---------- devices ---------- */
 
 // Reads measurements from the OMRON devices via the server's BLE gateway.
 // The kiosk announces which kind it waits for, polls for a reading taken
@@ -498,8 +156,7 @@ const DeviceReader = {
             try {
                 await this.poll(kind, onReading);
             } catch (error) {
-                console.warn("Device poll failed:", error);
-                setDeviceStatus("Connection problem, retrying…", "warning");
+                setDeviceStatus("Connection problem, retrying…", true);
             }
             if (this.kind === kind) this.timer = setTimeout(tick, 2000);
         };
@@ -513,14 +170,9 @@ const DeviceReader = {
     },
 
     async poll(kind, onReading) {
-        const headers = { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() };
         if (Date.now() - this.lastWait > 60000) {
-            const wait = await fetch("/api/devices/wait/", {
-                method: "POST",
-                headers,
-                body: JSON.stringify({ kind }),
-            });
-            if (wait.ok) this.lastWait = Date.now();
+            await postJson("/api/devices/wait/", { kind });
+            this.lastWait = Date.now();
         }
         const params = new URLSearchParams({ kind, since: this.since });
         const response = await fetch(`/api/devices/readings/latest/?${params}`);
@@ -528,721 +180,231 @@ const DeviceReader = {
         const data = await response.json();
         if (!data.reading) {
             setDeviceStatus(
-                data.gateway_online
-                    ? "Waiting for the device… The result appears here automatically."
-                    : "Device service is offline. Please ask a nurse for help.",
-                data.gateway_online ? "info" : "danger",
+                data.gateway_online ? "Waiting for the device…" : "Device service is offline. Please ask a nurse.",
+                !data.gateway_online,
             );
             return;
         }
-        const claim = await fetch(`/api/devices/readings/${data.reading.id}/claim/`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ patient_id: AppState.patientId }),
-        });
-        if (claim.status === 409 || claim.status === 410) return; // taken or expired; keep waiting
-        if (!claim.ok) throw new Error(`Claim failed: HTTP ${claim.status}`);
+        let claimed;
+        try {
+            claimed = await postJson(`/api/devices/readings/${data.reading.id}/claim/`, { patient_id: state.patientId });
+        } catch (error) {
+            return; // taken or expired: keep waiting
+        }
         if (this.kind !== kind) return;
         this.stop();
-        onReading((await claim.json()).reading);
+        onReading(claimed.reading);
     },
 };
 
-function setDeviceStatus(text, level) {
+function setDeviceStatus(text, offline) {
     const el = document.getElementById("device-status");
-    if (el) {
-        el.className = `alert alert-${level} mt-3`;
-        el.textContent = text;
+    if (!el) return;
+    el.classList.toggle("offline", !!offline);
+    el.querySelector("span.text").textContent = text;
+}
+
+function onWeight(reading) {
+    state.weight = { kg: reading.weight_kg, at: reading.measured_at };
+    Voice.say(`Your weight is ${reading.weight_kg} kilograms.`);
+    render();
+}
+
+function onBloodPressure(reading) {
+    state.bp = { systolic: reading.systolic_bp, diastolic: reading.diastolic_bp, pulse: reading.heart_rate_bpm, at: reading.measured_at };
+    const pulse = reading.heart_rate_bpm ? ` Your pulse is ${reading.heart_rate_bpm} beats per minute.` : "";
+    Voice.say(`Your blood pressure is ${reading.systolic_bp} over ${reading.diastolic_bp}.${pulse}`);
+    render();
+}
+
+// DEBUG only: the server rejects simulated measurements in production.
+async function simulate(kind) {
+    DeviceReader.stop();
+    const values = kind === "weight"
+        ? { weight_kg: Math.round((50 + Math.random() * 40) * 10) / 10 }
+        : { systolic_bp: 105 + Math.floor(Math.random() * 40), diastolic_bp: 65 + Math.floor(Math.random() * 25), heart_rate_bpm: 58 + Math.floor(Math.random() * 35) };
+    try {
+        await postJson("/api/measurements/", { patient_id: state.patientId, ...values });
+        const now = new Date().toISOString();
+        if (kind === "weight") onWeight({ weight_kg: values.weight_kg, measured_at: now });
+        else onBloodPressure({ systolic_bp: values.systolic_bp, diastolic_bp: values.diastolic_bp, heart_rate_bpm: values.heart_rate_bpm, measured_at: now });
+    } catch (error) {
+        toast(`Simulation failed: ${error.message}`);
     }
 }
 
-function onWeightReading(reading) {
-    AppState.weightKg = reading.weight_kg;
-    AppState.weightMeasuredAt = reading.measured_at;
-    updateDebugPanel();
-    speak(`Your weight is ${AppState.weightKg} kilograms. Thank you.`);
-    renderStep();
-    setTimeout(() => {
-        speak("Now, we will check your blood pressure. Please sit down comfortably.");
-    }, 2000);
+/* ---------- flow ---------- */
+
+function go(step) {
+    state.step = step;
+    Voice.stop();
+    DeviceReader.stop();
+    render();
+    if (step === 1) {
+        Voice.say("Please tell me your full name.");
+        setTimeout(() => Voice.listen("name"), 1800);
+    } else if (step === 2) {
+        Voice.say("Please step onto the scale and stand still.");
+        if (!state.weight) DeviceReader.start("weight", onWeight);
+    } else if (step === 3) {
+        Voice.say("Now let's measure your blood pressure. Wrap the cuff around your wrist and press start on the monitor.");
+        if (!state.bp) DeviceReader.start("bp", onBloodPressure);
+    } else if (step === 4) {
+        finish();
+    }
 }
 
-function onBloodPressureReading(reading) {
-    AppState.systolicBp = reading.systolic_bp;
-    AppState.diastolicBp = reading.diastolic_bp;
-    AppState.heartRateBpm = reading.heart_rate_bpm;
-    AppState.bpMeasuredAt = reading.measured_at;
-    updateDebugPanel();
-    const pulse = AppState.heartRateBpm ? ` Heart rate is ${AppState.heartRateBpm} beats per minute.` : "";
-    speak(`Your blood pressure is ${AppState.systolicBp} over ${AppState.diastolicBp}.${pulse} Thank you for your patience.`);
-    renderStep();
+async function submitPatient(event) {
+    event.preventDefault();
+    if (state.busy) return;
+    state.name = document.getElementById("input-name").value.trim();
+    state.symptoms = document.getElementById("input-symptoms").value.trim();
+    if (state.name.length < 2 || state.symptoms.length < 3) {
+        toast("Please enter your name and the reason for your visit.", "warning");
+        return;
+    }
+    state.busy = true;
+    updateContinue();
+    try {
+        const patient = await postJson("/api/patients/", { name: state.name, symptoms: state.symptoms });
+        state.patientId = patient.id;
+        go(2);
+    } catch (error) {
+        toast(`Could not save your details: ${error.message}`);
+    } finally {
+        state.busy = false;
+        updateContinue();
+    }
 }
 
-// Application State
-const AppState = {
-    currentStep: 0,
-    patientId: null,
-    patientName: "",
-    patientSymptoms: "",
-    weightKg: null,
-    weightMeasuredAt: null,
-    bpMeasuredAt: null,
-    systolicBp: null,
-    diastolicBp: null,
-    heartRateBpm: null,
-    queueNumber: null,
-    qrCodeData: null,
-    qrCodeImage: null,
-    isListening: false,
-    isProcessing: false,
-    recognition: null,
-    synthesis: window.speechSynthesis,
+async function finish() {
+    try {
+        state.ticket = await postJson("/api/queue/generate/", { patient_id: state.patientId });
+        Voice.say(`All done. Your queue number is ${state.ticket.queue_number}. Please have a seat; the doctor will call you.`);
+    } catch (error) {
+        toast(`Could not create your ticket: ${error.message}. Please ask a nurse.`);
+    }
+    render();
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(reset, IDLE_RESET_MS);
+}
+
+function reset() {
+    clearTimeout(resetTimer);
+    Object.assign(state, { patientId: null, name: "", symptoms: "", weight: null, bp: null, ticket: null, busy: false, listeningFor: null });
+    go(0);
+}
+
+function updateContinue() {
+    const btn = document.getElementById("continue-btn");
+    if (!btn) return;
+    const name = document.getElementById("input-name").value.trim();
+    const symptoms = document.getElementById("input-symptoms").value.trim();
+    btn.disabled = state.busy || name.length < 2 || symptoms.length < 3;
+}
+
+/* ---------- views ---------- */
+
+const resultTile = (label, value, unit, at) => `
+    <div class="result-tile">
+        <div class="result-label">${esc(label)}</div>
+        <div class="result-value">${esc(value)}<span class="result-unit">${esc(unit)}</span></div>
+        ${at ? `<div class="result-time">${esc(formatTime(at))}</div>` : ""}
+    </div>`;
+
+const waiting = (text) => `
+    <div class="device-wait" id="device-status">
+        <span class="spinner-grow" aria-hidden="true"></span><span class="text">${esc(text)}</span>
+    </div>`;
+
+const simulateButton = (kind) => SIMULATION_ENABLED
+    ? `<button class="btn btn-light" onclick="simulate('${kind}')"><i class="bi bi-cpu"></i> Simulate (testing)</button>`
+    : "";
+
+const views = {
+    0: () => `
+        <span class="kiosk-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+        <h1 class="kiosk-title">Welcome</h1>
+        <p class="kiosk-lead">Let's check your weight and blood pressure before you see the doctor. It takes about 3 minutes.</p>
+        <div class="kiosk-actions">
+            <button class="btn btn-primary btn-xl btn-icon" onclick="go(1)"><i class="bi bi-play-fill"></i> Start check-in</button>
+        </div>
+        <p class="kiosk-hint mb-0"><i class="bi bi-shield-lock"></i> Your results are only shared with the clinic's nurses and doctors.</p>`,
+
+    1: () => `
+        <span class="kiosk-icon"><i class="bi bi-person"></i></span>
+        <h2 class="kiosk-title">About you</h2>
+        <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answers."}</p>
+        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="submitPatient(event)" novalidate>
+            <div>
+                <label for="input-name">Full name</label>
+                <div class="kiosk-input-row">
+                    <input class="form-control form-control-xl" id="input-name" autocomplete="off" value="${esc(state.name)}" oninput="updateContinue()" required />
+                    ${Voice.available ? `<button type="button" class="btn btn-light btn-mic" data-mic="name" onclick="Voice.listen('name')" aria-label="Speak your name"><i class="bi bi-mic-fill"></i></button>` : ""}
+                </div>
+            </div>
+            <div>
+                <label for="input-symptoms">What brings you in today?</label>
+                <div class="kiosk-input-row">
+                    <textarea class="form-control form-control-xl" id="input-symptoms" rows="2" oninput="updateContinue()" required>${esc(state.symptoms)}</textarea>
+                    ${Voice.available ? `<button type="button" class="btn btn-light btn-mic" data-mic="symptoms" onclick="Voice.listen('symptoms')" aria-label="Speak your reason for visiting"><i class="bi bi-mic-fill"></i></button>` : ""}
+                </div>
+            </div>
+            <div class="kiosk-actions justify-content-between">
+                <button type="button" class="btn btn-light btn-xl" onclick="reset()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-xl btn-icon" id="continue-btn" disabled>Continue <i class="bi bi-arrow-right"></i></button>
+            </div>
+        </form>`,
+
+    2: () => `
+        <span class="kiosk-icon ${state.weight ? "done" : ""}"><i class="bi ${state.weight ? "bi-check-lg" : "bi-speedometer2"}"></i></span>
+        <h2 class="kiosk-title">Weight</h2>
+        ${state.weight
+            ? `<div class="result-grid">${resultTile("Your weight", state.weight.kg, "kg", state.weight.at)}</div>
+               <div class="kiosk-actions"><button class="btn btn-primary btn-xl btn-icon" onclick="go(3)">Next: blood pressure <i class="bi bi-arrow-right"></i></button></div>`
+            : `<p class="kiosk-lead">Remove your shoes and heavy items, then step onto the scale and stand still until the number stops changing.</p>
+               ${waiting("Waiting for the scale…")}
+               <div class="kiosk-actions">${simulateButton("weight")}<button class="btn btn-light" onclick="go(3)">Skip</button></div>`}`,
+
+    3: () => `
+        <span class="kiosk-icon ${state.bp ? "done" : ""}"><i class="bi ${state.bp ? "bi-check-lg" : "bi-heart-pulse"}"></i></span>
+        <h2 class="kiosk-title">Blood pressure</h2>
+        ${state.bp
+            ? `<div class="result-grid">
+                   ${resultTile("Blood pressure", `${state.bp.systolic}/${state.bp.diastolic}`, "mmHg", state.bp.at)}
+                   ${state.bp.pulse ? resultTile("Pulse", state.bp.pulse, "bpm") : ""}
+               </div>
+               <div class="kiosk-actions"><button class="btn btn-primary btn-xl btn-icon" onclick="go(4)">Finish <i class="bi bi-check-lg"></i></button></div>`
+            : `<p class="kiosk-lead">Sit comfortably with your feet flat. Wrap the cuff around your left wrist, hold it at heart level and press <strong>START</strong>. Stay still and quiet until it finishes.</p>
+               ${waiting("Waiting for the blood pressure monitor…")}
+               <div class="kiosk-actions">${simulateButton("bp")}<button class="btn btn-light" onclick="go(4)">Skip</button></div>`}`,
+
+    4: () => state.ticket
+        ? `
+        <span class="kiosk-icon done"><i class="bi bi-check-lg"></i></span>
+        <h2 class="kiosk-title">You're all set, ${esc(state.name.split(" ")[0])}</h2>
+        <div class="text-muted fw-semibold">Your queue number</div>
+        <div class="queue-display">${esc(state.ticket.queue_number)}</div>
+        ${state.ticket.qr_code_image ? `<div class="qr-box"><img src="${esc(state.ticket.qr_code_image)}" alt="Ticket QR code" /></div>` : ""}
+        <p class="kiosk-lead">Please have a seat. Show this code to the doctor when you are called.</p>
+        <div class="kiosk-actions"><button class="btn btn-primary btn-xl" onclick="reset()">Done</button></div>`
+        : `<div class="spinner-border text-primary" role="status"></div><p class="kiosk-lead">Preparing your ticket…</p>`,
 };
 
-// Initialize Speech Recognition
-function initSpeechRecognition() {
-    if (
-        "webkitSpeechRecognition" in window ||
-        "SpeechRecognition" in window
-    ) {
-        const SpeechRecognition =
-            window.SpeechRecognition || window.webkitSpeechRecognition;
-        AppState.recognition = new SpeechRecognition();
-        AppState.recognition.continuous = false;
-        AppState.recognition.lang = "en-US";
-        AppState.recognition.interimResults = false;
-        AppState.recognition.maxAlternatives = 1;
-
-        AppState.recognition.onresult = function (event) {
-            const transcript = event.results[0][0].transcript;
-            handleVoiceInput(transcript);
-        };
-
-        AppState.recognition.onerror = function (event) {
-            showError("Speech recognition error: " + event.error);
-            AppState.isListening = false;
-        };
-
-        AppState.recognition.onend = function () {
-            AppState.isListening = false;
-            renderStep();
-        };
-    } else {
-        console.warn("Speech recognition not supported");
+function render() {
+    stage.innerHTML = views[state.step]();
+    document.querySelectorAll("#stepper li").forEach((li) => {
+        const n = Number(li.dataset.step);
+        li.classList.toggle("done", n < state.step);
+        li.classList.toggle("active", n === state.step);
+    });
+    if (state.step === 1) {
+        updateContinue();
+        updateMicButtons();
     }
 }
 
-// Text to Speech
-function speak(text) {
-    if (AppState.synthesis) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        AppState.synthesis.speak(utterance);
-    }
-}
-
-// Start Listening
-function startListening() {
-    if (AppState.recognition && !AppState.isListening) {
-        AppState.isListening = true;
-        AppState.recognition.start();
-    }
-}
-
-// Stop Listening
-function stopListening() {
-    if (AppState.recognition && AppState.isListening) {
-        AppState.recognition.stop();
-        AppState.isListening = false;
-    }
-}
-
-// Handle Voice Input
-function handleVoiceInput(text) {
-    document.getElementById('voice-input-text').textContent = text;
-
-    if (AppState.currentStep === 1) {
-        if (!AppState.patientName) {
-            AppState.patientName = text;
-            document.getElementById('voice-input-text').textContent = "";
-            renderStep();
-            speak(`Thank you, ${text}. Now, please describe any symptoms you are feeling or the reason for your visit today.`);
-            setTimeout(() => startListening(), 3000);
-        } else {
-            AppState.patientSymptoms = text;
-            createPatientRecord();
-        }
-    }
-}
-
-// Update Step Indicator
-function updateStepIndicator(step) {
-    document.querySelectorAll('.step').forEach(el => el.classList.remove('active', 'completed'));
-
-    for (let i = 0; i < step; i++) {
-        document.getElementById(`step-${i}`).classList.add('completed');
-    }
-
-    document.getElementById(`step-${step}`).classList.add('active');
-}
-
-// Show Error
-function showError(message) {
-    const errorEl = document.getElementById('error-display');
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-    setTimeout(() => { errorEl.style.display = 'none'; }, 5000);
-}
-
-// Show Success
-function showSuccess(message) {
-    const successEl = document.getElementById('success-display');
-    successEl.textContent = message;
-    successEl.style.display = 'block';
-    setTimeout(() => { successEl.style.display = 'none'; }, 5000);
-}
-
-// API Calls
-async function createPatientRecord() {
-    AppState.isProcessing = true;
-    showProcessing();
-
-    try {
-        const response = await fetch("/api/patients/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCsrfToken(),
-            },
-            body: JSON.stringify({
-                name: AppState.patientName,
-                symptoms: AppState.patientSymptoms,
-            }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            AppState.patientId = data.id;
-            showSuccess("Patient record created successfully");
-            speak(
-                "Thank you. The next step is to check your weight. Please remove your shoes and any heavy items, then step onto the scale.",
-            );
-            setTimeout(() => moveToStep(2), 3000);
-        } else {
-            showError(
-                "Failed to create patient record: " +
-                    (data.error || "Unknown error"),
-            );
-        }
-    } catch (error) {
-        showError("Network error: " + error.message);
-    } finally {
-        AppState.isProcessing = false;
-    }
-}
-
-async function createMeasurement(data) {
-    try {
-        const response = await fetch("/api/measurements/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCsrfToken(),
-            },
-            body: JSON.stringify({
-                patient_id: AppState.patientId,
-                ...data,
-            }),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            showSuccess("Measurement recorded successfully");
-            return true;
-        } else {
-            showError(
-                "Failed to save measurement: " +
-                    (result.error || "Unknown error"),
-            );
-            return false;
-        }
-    } catch (error) {
-        showError("Network error: " + error.message);
-        return false;
-    }
-}
-
-async function generateQueueTicket() {
-    AppState.isProcessing = true;
-    showProcessing();
-
-    try {
-        const response = await fetch("/api/queue/generate/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCsrfToken(),
-            },
-            body: JSON.stringify({
-                patient_id: AppState.patientId,
-            }),
-        });
-
-        const data = await response.json();
-        console.log("Queue ticket response:", data);
-
-        if (response.ok) {
-            AppState.queueNumber = data.queue_number;
-            AppState.qrCodeData = data.qr_code_data;
-            AppState.qrCodeImage = data.qr_code_image;
-            console.log("AppState updated - Queue Number:", AppState.queueNumber);
-            console.log("AppState updated - QR Code Data:", AppState.qrCodeData);
-            console.log("AppState updated - QR Code Image:", AppState.qrCodeImage ? "Received" : "Not received");
-            showSuccess("Queue ticket generated");
-            speak(`Your check-up is complete. Your queue number is ${data.queue_number}.`);
-            renderStep();
-        } else {
-            console.error("Queue ticket generation failed:", data);
-            showError(
-                "Failed to generate queue ticket: " +
-                    (data.error || "Unknown error"),
-            );
-        }
-    } catch (error) {
-        showError("Network error: " + error.message);
-    } finally {
-        AppState.isProcessing = false;
-    }
-}
-
-// Show Processing Indicator
-function showProcessing() {
-    const html = `
-        <div class="processing-indicator">
-            <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-                <span class="visually-hidden">Processing...</span>
-            </div>
-            <p>Processing your request...</p>
-        </div>
-    `;
-    document.getElementById("content-area").insertAdjacentHTML('beforeend', html);
-}
-
-// Move to Step
-function moveToStep(step) {
-    AppState.currentStep = step;
-    updateStepIndicator(step);
-    renderStep();
-    if (step === 2 && !AppState.weightKg) {
-        DeviceReader.start("weight", onWeightReading);
-    } else if (step === 3 && !AppState.systolicBp) {
-        DeviceReader.start("bp", onBloodPressureReading);
-    } else {
-        DeviceReader.stop();
-    }
-}
-
-// Render Step Content
-function renderStep() {
-    const contentArea = document.getElementById("content-area");
-    contentArea.innerHTML = '';
-    contentArea.classList.add("fade-in");
-
-    switch (AppState.currentStep) {
-        case 0:
-            renderWelcomeStep();
-            break;
-        case 1:
-            renderPatientInfoStep();
-            break;
-        case 2:
-            renderWeightStep();
-            break;
-        case 3:
-            renderBloodPressureStep();
-            break;
-        case 4:
-            renderFinalizationStep();
-            break;
-    }
-}
-
-// Step 0: Welcome
-function renderWelcomeStep() {
-    const html = `
-        <i class="bi bi-heart-pulse-fill icon-large"></i>
-        <h1 class="mb-4">Welcome to AIVIN</h1>
-        <p class="lead mb-4">
-            I'm your AI health assistant. I'll guide you through a simple health check-up process.
-            The entire process should take about 5 minutes.
-        </p>
-        <p class="mb-4">
-            I'll use voice recognition to collect your information. Please speak clearly when prompted.
-            You can also use on-screen buttons if you prefer.
-        </p>
-        <div class="control-buttons">
-            <button class="btn btn-primary btn-lg" onclick="startHealthCheck()">
-                <i class="bi bi-play-circle"></i> Start Health Check
-            </button>
-            <button class="btn btn-secondary btn-lg" onclick="toggleDebugPanel()">
-                <i class="bi bi-gear"></i> Debug Panel
-            </button>
-        </div>
-    `;
-    contentArea.innerHTML = html;
-    speak(
-        "Hello, I'm AIVIN, your health check assistant. I will be guiding you through the process today.",
-    );
-}
-
-// Step 1: Patient Info
-function renderPatientInfoStep() {
-    const html = `
-        <i class="bi bi-person-fill icon-large"></i>
-        <h2 class="mb-4">${AppState.patientName ? "Describe Your Symptoms" : "Tell Me Your Name"}</h2>
-        <p class="lead mb-4">
-            ${
-                AppState.patientName
-                    ? `Thank you, ${AppState.patientName}. Now please describe any symptoms.`
-                    : "Please tell me your full name."
-            }
-        </p>
-        ${AppState.isListening ? `
-            <div class="listening-indicator">
-                <i class="bi bi-mic-fill" style="font-size: 3rem; color: var(--primary-color);"></i>
-            </div>
-            <p class="text-primary fw-bold">Listening...</p>
-        ` : ''}
-        <div class="voice-input-display" id="voice-input-text">
-            ${AppState.patientName && !AppState.patientSymptoms ? "Waiting for symptoms..." : AppState.patientName ? AppState.patientSymptoms : AppState.patientName}
-        </div>
-        <div class="control-buttons">
-            ${!AppState.isListening ? `
-                <button class="btn btn-primary btn-lg" onclick="startListening()">
-                    <i class="bi bi-mic"></i> Start Speaking
-                </button>
-            ` : `
-                <button class="btn btn-secondary btn-lg" onclick="stopListening()">
-                    <i class="bi bi-stop-circle"></i> Stop
-                </button>
-            `}
-        </div>
-    `;
-    contentArea.innerHTML = html;
-}
-
-// Step 2: Weight
-function renderWeightStep() {
-    const html = `
-        <i class="bi bi-speedometer icon-large"></i>
-        <h2 class="mb-4">Weight Measurement</h2>
-        <p class="lead mb-4">
-            Please step onto the scale for your weight measurement. Make sure to remove any heavy items from your pockets.
-            <br>
-            Stand still on the scale until the number on the scale stops changing.
-            The result appears here automatically.
-        </p>
-        ${!AppState.weightKg ? `<div id="device-status" class="alert alert-info mt-3">Waiting for the scale…</div>` : ''}
-        ${AppState.weightKg ? `
-            <div class="measurement-result new-measurement" id="weight-result">
-                <div class="measurement-label">Your weight:</div>
-                <div class="measurement-value">${typeof AppState.weightKg === "number" ? AppState.weightKg.toFixed(1) : parseFloat(AppState.weightKg).toFixed(1)} kg</div>
-                <div class="measurement-timestamp">⏱️ Measured at: ${formatTime(AppState.weightMeasuredAt)}</div>
-            </div>
-        ` : ''}
-        <div class="control-buttons">
-            ${SIMULATION_ENABLED && !AppState.isProcessing && !AppState.weightKg ? `
-                <button class="btn btn-primary btn-lg" onclick="simulateWeightMeasurement()">
-                    <i class="bi bi-cpu"></i> Simulate Measurement (testing)
-                </button>
-            ` : ''}
-            ${AppState.weightKg ? `
-                <button class="btn btn-primary btn-lg" onclick="moveToStep(3)">
-                    <i class="bi bi-arrow-right-circle"></i> Continue
-                </button>
-            ` : ''}
-        </div>
-    `;
-    contentArea.innerHTML = html;
-}
-
-// Step 3: Blood Pressure
-function renderBloodPressureStep() {
-    const html = `
-        <i class="bi bi-heart-pulse icon-large"></i>
-        <h2 class="mb-4">Blood Pressure Measurement</h2>
-        <p class="lead mb-4">
-            Please use the blood pressure monitor for your reading. Sit comfortably and relax for a minute before measuring.
-            <br>
-            Wrap the cuff around your wrist at heart level and press START on the monitor.
-            Keep still until it finishes. The result appears here automatically.
-        </p>
-        ${!AppState.systolicBp ? `<div id="device-status" class="alert alert-info mt-3">Waiting for the blood pressure monitor…</div>` : ''}
-        ${AppState.systolicBp && AppState.diastolicBp ? `
-            <div class="measurement-result new-measurement" id="bp-result">
-                <div class="measurement-label">Blood Pressure:</div>
-                <div class="measurement-value">${AppState.systolicBp}/${AppState.diastolicBp} mmHg</div>
-                ${
-                    AppState.heartRateBpm
-                        ? `
-                    <div class="measurement-label mt-3">Heart Rate:</div>
-                    <div class="measurement-value" style="font-size: 2rem;">${AppState.heartRateBpm} bpm</div>
-                `
-                        : ""
-                }
-                <div class="measurement-timestamp">⏱️ Measured at: ${formatTime(AppState.bpMeasuredAt)}</div>
-            </div>
-        ` : ''}
-        <div class="control-buttons">
-            ${SIMULATION_ENABLED && !AppState.isProcessing && !AppState.systolicBp ? `
-                <button class="btn btn-primary btn-lg" onclick="simulateBloodPressureMeasurement()">
-                    <i class="bi bi-cpu"></i> Simulate Measurement (testing)
-                </button>
-            ` : ''}
-            ${AppState.systolicBp ? `
-                <button class="btn btn-primary btn-lg" onclick="moveToStep(4); generateQueueTicket();">
-                    <i class="bi bi-arrow-right-circle"></i> Continue
-                </button>
-            ` : ''}
-        </div>
-    `;
-    contentArea.innerHTML = html;
-}
-
-// Step 4: Finalization
-function renderFinalizationStep() {
-    const html = `
-        <i class="bi bi-check-circle-fill icon-large"></i>
-        <h2 class="mb-4">Your check-up is complete!</h2>
-        ${
-            AppState.queueNumber
-                ? `
-            <div class="queue-number">Queue Number: ${AppState.queueNumber}</div>
-            <div class="qr-code-container" id="qr-code-container">
-                ${
-                    AppState.qrCodeImage
-                        ? `<img src="${AppState.qrCodeImage}" alt="QR Code" class="qr-code-image" />`
-                        : `<div class="qr-code-placeholder">Loading QR Code...</div>`
-                }
-            </div>
-            <p class="text-muted">Please show this QR code to the doctor</p>
-            <div class="control-buttons">
-                <button class="btn btn-primary" onclick="resetKiosk()">
-                    <i class="bi bi-arrow-clockwise"></i> New Patient
-                </button>
-            </div>
-        `
-                : ""
-        }
-    `;
-    contentArea.innerHTML = html;
-
-    // Log QR code status
-    if (AppState.qrCodeImage) {
-        console.log("QR Code image loaded successfully");
-    } else if (AppState.qrCodeData) {
-        console.warn("QR Code data available but image not generated");
-    } else {
-        console.warn("No QR code data available");
-    }
-}
-
-// Start Health Check
-function startHealthCheck() {
-    speak("To get started, please tell me your full name.");
-    moveToStep(1);
-    setTimeout(() => startListening(), 2000);
-}
-
-// Simulate Weight Measurement (fallback for testing)
-async function simulateWeightMeasurement() {
-    DeviceReader.stop();
-    AppState.isProcessing = true;
-    showProcessing();
-    speak("Simulating weight measurement. Please wait.");
-
-    setTimeout(async () => {
-        // Generate random weight between 45-95 kg with 1 decimal
-        // Using Date.now() as additional entropy source
-        const seed = (Date.now() % 1000) / 1000;
-        const randomWeight = ((Math.random() + seed) % 1) * 50 + 45;
-        AppState.weightKg = parseFloat(randomWeight.toFixed(1));
-        AppState.weightMeasuredAt = new Date().toISOString();
-
-        console.log("=== Weight Measurement ===");
-        console.log("Simulated Weight:", AppState.weightKg, "kg");
-        console.log("Generated at:", formatTime(new Date()));
-        console.log("Random seed:", seed);
-        console.log("This is a NEW measurement - value should be different each time");
-
-        // Update debug panel
-        updateDebugPanel();
-
-        const success = await createMeasurement({
-            weight_kg: AppState.weightKg,
-        });
-
-        if (success) {
-            speak(
-                `Your weight is ${AppState.weightKg} kilograms. Thank you.`,
-            );
-            AppState.isProcessing = false;
-            renderStep();
-
-            setTimeout(() => {
-                speak(
-                    "Now, we will check your blood pressure. Please sit down comfortably.",
-                );
-            }, 2000);
-        }
-    }, 3000);
-}
-
-// Simulate Blood Pressure Measurement (fallback for testing)
-async function simulateBloodPressureMeasurement() {
-    DeviceReader.stop();
-    AppState.isProcessing = true;
-    showProcessing();
-    speak("Simulating blood pressure measurement. Please wait.");
-
-    setTimeout(async () => {
-        // Generate realistic random values using timestamp as seed
-        // Systolic: 105-145 mmHg
-        // Diastolic: 65-95 mmHg
-        // Heart Rate: 55-95 bpm
-        const seed = Date.now();
-        const systolic = Math.floor(
-            ((Math.random() * 1000 + seed) % 40) + 105,
-        );
-        const diastolic = Math.floor(
-            ((Math.random() * 1000 + seed + 1) % 30) + 65,
-        );
-        const heartRate = Math.floor(
-            ((Math.random() * 1000 + seed + 2) % 40) + 55,
-        );
-
-        AppState.systolicBp = systolic;
-        AppState.diastolicBp = diastolic;
-        AppState.heartRateBpm = heartRate;
-        AppState.bpMeasuredAt = new Date().toISOString();
-
-        console.log("=== Blood Pressure Measurement ===");
-        console.log("Simulated Blood Pressure:", {
-            systolic: AppState.systolicBp,
-            diastolic: AppState.diastolicBp,
-            heartRate: AppState.heartRateBpm,
-            timestamp: formatTime(new Date()),
-            seed: seed,
-        });
-        console.log(
-            "This is a NEW measurement - values should be different each time",
-        );
-
-        // Update debug panel
-        updateDebugPanel();
-
-        const success = await createMeasurement({
-            systolic_bp: AppState.systolicBp,
-            diastolic_bp: AppState.diastolicBp,
-            heart_rate_bpm: AppState.heartRateBpm,
-        });
-
-        if (success) {
-            speak(
-                `Your blood pressure is ${AppState.systolicBp} over ${AppState.diastolicBp}. Heart rate is ${AppState.heartRateBpm} beats per minute. Thank you for your patience.`,
-            );
-            AppState.isProcessing = false;
-            renderStep();
-        }
-    }, 5000);
-}
-
-// Reset Kiosk
-function resetKiosk() {
-    console.log("=== RESETTING KIOSK ===");
-    console.log("Previous state:", JSON.parse(JSON.stringify(AppState)));
-
-    DeviceReader.stop();
-    AppState.currentStep = 0;
-    AppState.patientId = null;
-    AppState.patientName = "";
-    AppState.patientSymptoms = "";
-    AppState.weightKg = null;
-    AppState.weightMeasuredAt = null;
-    AppState.bpMeasuredAt = null;
-    AppState.systolicBp = null;
-    AppState.diastolicBp = null;
-    AppState.heartRateBpm = null;
-    AppState.queueNumber = null;
-    AppState.qrCodeData = null;
-    AppState.qrCodeImage = null;
-    AppState.isListening = false;
-    AppState.isProcessing = false;
-
-    console.log(
-        "Reset complete. New state:",
-        JSON.parse(JSON.stringify(AppState)),
-    );
-
-    // Clear debug panel
-    updateDebugPanel();
-
-    updateStepIndicator(0);
-    renderStep();
-}
-
-// Update Debug Panel
-function updateDebugPanel() {
-    const weightEl = document.getElementById("debug-weight");
-    const bpEl = document.getElementById("debug-bp");
-    const hrEl = document.getElementById("debug-hr");
-    const timeEl = document.getElementById("debug-time");
-
-    if (weightEl) {
-        weightEl.textContent = AppState.weightKg
-            ? `${parseFloat(AppState.weightKg).toFixed(1)} kg`
-            : "--";
-    }
-    if (bpEl) {
-        bpEl.textContent =
-            AppState.systolicBp && AppState.diastolicBp
-                ? `${AppState.systolicBp}/${AppState.diastolicBp} mmHg`
-                : "--";
-    }
-    if (hrEl) {
-        hrEl.textContent = AppState.heartRateBpm
-            ? `${AppState.heartRateBpm} bpm`
-            : "--";
-    }
-    if (timeEl) {
-        timeEl.textContent = `Last update: ${formatTime(new Date())}`;
-    }
-}
-
-// Initialize on page load
-document.addEventListener("DOMContentLoaded", function() {
-    initSpeechRecognition();
-    updateStepIndicator(0);
-    renderStep();
-    updateDebugPanel();
-});
-
-// Toggle debug panel on mobile
-function toggleDebugPanel() {
-    const panel = document.getElementById("debug-panel");
-    const button = document.getElementById("debug-toggle");
-
-    if (panel.style.display === 'block') {
-        panel.style.display = 'none';
-        button.innerHTML = '<i class="bi bi-graph-up"></i>';
-    } else {
-        panel.style.display = 'block';
-        button.innerHTML = '<i class="bi bi-x"></i>';
-    }
-}
+Voice.init();
+render();
 </script>
 {% endblock %}

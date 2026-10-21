@@ -1,339 +1,82 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Patient List - AIVIN{% endblock %}
-
-{% block extra_css %}
-<style>
-    .search-box {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-    }</style>
-
-    .patient-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s;
-    }
-
-    .patient-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(0, 188, 212, 0.3);
-        border-color: var(--primary-color);
-    }
-
-    .patient-name {
-        color: var(--primary-color);
-        font-size: 1.3rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
-    }
-
-    .patient-info {
-        color: var(--text-light);
-        margin-bottom: 0.3rem;
-    }
-
-    .patient-info i {
-        color: var(--primary-color);
-        margin-right: 0.5rem;
-        width: 20px;
-    }
-
-    .badge-measurement {
-        background: rgba(0, 188, 212, 0.2);
-        color: var(--primary-color);
-        padding: 0.25rem 0.5rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-
-    .btn-sm {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.875rem;
-    }
-
-    .pagination-container {
-        display: flex;
-        justify-content: center;
-        margin-top: 2rem;
-    }
-
-    .pagination {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        padding: 0.5rem 1rem;
-    }
-
-    .page-item {
-        margin: 0 0.25rem;
-    }
-
-    .page-link {
-        color: var(--text-light);
-        background: transparent;
-        border: 1px solid var(--glass-border);
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-        transition: all 0.3s;
-    }
-
-    .page-link:hover {
-        background: rgba(0, 188, 212, 0.1);
-        color: var(--primary-color);
-    }
-
-    .page-item.active .page-link {
-        background: var(--primary-color);
-        color: #000;
-        border-color: var(--primary-color);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: var(--text-muted);
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        opacity: 0.5;
-        margin-bottom: 1rem;
-    }
-
-    .stats-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        justify-content: space-around;
-        flex-wrap: wrap;
-    }
-
-    .stat-item {
-        text-align: center;
-        padding: 1rem;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: bold;
-        color: var(--primary-color);
-    }
-
-    .stat-label {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-    }
-</style>
-{% endblock %}
+{% block title %}Patients - AIVIN{% endblock %}
 
 {% block content %}
-<div class="container">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="text-white mb-2">
-                <i class="bi bi-people-fill"></i> Patient Management
-            </h1>
-            <p class="text-muted">View and manage patient records and health measurements</p>
-        </div>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Patients</h1>
+        <p class="page-subtitle">{{ paginator.count }} patient{{ paginator.count|pluralize }}{% if search %} matching “{{ search }}”{% endif %}</p>
     </div>
-
-    <!-- Statistics -->
-    <div class="stats-card">
-        <div class="stat-item">
-            <div class="stat-value">{{ total_patients }}</div>
-            <div class="stat-label">Total Patients</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">{{ total_measurements }}</div>
-            <div class="stat-label">Total Measurements</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">{{ active_tickets }}</div>
-            <div class="stat-label">Active Tickets</div>
-        </div>
-    </div>
-
-    <!-- Search Box -->
-    <div class="search-box">
-        <form method="GET" action="{% url 'kiosk:patient-list' %}">
-            <div class="row g-3 align-items-center">
-                <div class="col-md-8">
-                    <input type="text" name="search" class="form-control" placeholder="Search by name or symptoms..." value="{{ search_query|default:'' }}">
-                </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Search
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-
-    <!-- Patient List -->
-    {% if patients %}
-        {% for patient in patients %}
-        <div class="patient-card fade-in" style="animation-delay: calc({{ forloop.counter }} * 0.1s);">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <div class="patient-name">
-                        <i class="bi bi-person-circle"></i> {{ patient.name }}
-                    </div>
-                    <div class="patient-info">
-                        <i class="bi bi-clipboard-pulse"></i> {{ patient.symptoms|truncatewords:10 }}
-                    </div>
-                    <div class="patient-info">
-                        <i class="bi bi-calendar-event"></i> Registered: {{ patient.created_at|date:"d M Y" }}
-                    </div>
-                    {% if patient.last_measurement %}
-                    <div class="patient-info">
-                        <i class="bi bi-heart-pulse"></i> Last checkup: {{ patient.last_measurement.measured_at|date:"d M Y" }}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="col-md-4 text-end">
-                    <div class="badge-measurement mb-2">
-                        {{ patient.measurements|length }} Measurement{% if patient.measurements|length != 1 %}s{% endif %}
-                    </div>
-                    <div class="action-buttons justify-content-end">
-                        <a href="{% url 'kiosk:patient-detail' patient.id %}" class="btn btn-primary btn-sm">
-                            <i class="bi bi-eye"></i> View
-                        </a>
-                        {% with ticket=patient.queue_tickets.all|first %}
-                        {% if ticket %}
-                        <a href="{% url 'kiosk:ticket-detail' ticket.qr_code_data %}" class="btn btn-secondary btn-sm">
-                            <i class="bi bi-ticket-perforated"></i> Ticket
-                        </a>
-                        {% endif %}
-                        {% endwith %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-        <!-- Pagination -->
-        {% if is_paginated %}
-        <div class="pagination-container">
-            <nav aria-label="Patient list pagination">
-                <ul class="pagination">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    </li>
-                    {% endif %}
-
-                    {% for num in page_obj.paginator.page_range %}
-                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
-                    </li>
-                    {% endfor %}
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
-    {% else %}
-        <div class="empty-state fade-in">
-            <i class="bi bi-people"></i>
-            <h3>No Patients Found</h3>
-            <p>
-                {% if search_query %}
-                    No patients found matching your search criteria.
-                {% else %}
-                    No patients have been registered yet.
-                {% endif %}
-            </p>
-            <div class="mt-3">
-                <a href="{% url 'kiosk:home' %}" class="btn btn-primary">
-                    <i class="bi</p> bi-plus-circle"></i> Register New Patient
-                </a>
-            </div>
-        </div>
-    {% endif %}
+    <form method="get" class="d-flex gap-2" role="search">
+        <input class="form-control" type="search" name="search" value="{{ search }}" placeholder="Search by name" aria-label="Search by name" style="min-width: 240px" />
+        <button class="btn btn-primary btn-icon" type="submit"><i class="bi bi-search"></i><span class="d-none d-sm-inline">Search</span></button>
+    </form>
 </div>
+
+<section class="surface surface-flush">
+    {% if rows %}
+    <div class="table-responsive">
+        <table class="table table-aivin">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Checked in</th>
+                    <th class="num">Weight</th>
+                    <th class="num">Blood pressure</th>
+                    <th>Status</th>
+                    <th>Ticket</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                {% with p=row.patient v=row.vitals %}
+                <tr class="row-link" data-href="{% url 'kiosk:patient-detail' p.pk %}">
+                    <td>
+                        <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:patient-detail' p.pk %}">{{ p.name }}</a>
+                        <div class="text-muted small text-truncate" style="max-width: 320px">{{ p.symptoms }}</div>
+                    </td>
+                    <td class="text-muted text-nowrap">{{ p.created_at|date:"j M Y, H:i" }}</td>
+                    <td class="num">{% if v.weight %}{{ v.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
+                    <td class="num">{% if v.bp %}{{ v.bp.systolic_bp }}/{{ v.bp.diastolic_bp }} <span class="text-muted">mmHg</span>{% else %}–{% endif %}</td>
+                    <td>
+                        {% if v.bp_category %}
+                        <span class="status status-{{ v.bp_category.status }}"><i class="bi {{ v.bp_category.icon }}"></i>{{ v.bp_category.label }}</span>
+                        {% else %}<span class="status status-neutral">No BP</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if row.ticket %}
+                        <a class="status status-info text-decoration-none" href="{% url 'kiosk:ticket-detail' row.ticket.qr_code_data %}"><i class="bi bi-ticket-perforated"></i>{{ row.ticket.queue_number }}</a>
+                        {% else %}<span class="text-muted">–</span>{% endif %}
+                    </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-people"></i>{% if search %}No patients match “{{ search }}”.{% else %}No patients yet. They appear here after a kiosk check-in.{% endif %}</div>
+    {% endif %}
+</section>
+
+{% if is_paginated %}
+<nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Pages">
+    <span class="text-muted small">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+    <div class="d-flex gap-2">
+        {% if page_obj.has_previous %}<a class="btn btn-light btn-icon" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search|urlencode }}{% endif %}"><i class="bi bi-chevron-left"></i>Previous</a>{% endif %}
+        {% if page_obj.has_next %}<a class="btn btn-light btn-icon" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search|urlencode }}{% endif %}">Next<i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>
+</nav>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Add animation to patient cards on load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Focus on search box
-        const searchInput = document.querySelector('input[name="search"]');
-        if (searchInput) {
-            searchInput.focus();
-        }
-
-        // Add keyboard navigation
-        document.addEventListener('</script>keydown', function(e) {
-            // Ctrl/Cmd + K to focus search
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                if (searchInput) searchInput.focus();
-            }
-        });
-
-        // Add auto-submit on search with debounce
-        if (searchInput) {
-            let timeout;
-            searchInput.addEventListener('input', function() {
-                clearTimeout(timeout);
-                timeout = setTimeout(function() {
-                    // Only auto-submit if search is not empty
-                    if (searchInput.value.trim()) {
-                        searchInput.form.submit();
-                    }
-                }, 500);
-            });
-        }
-    });
-
-    // Add keyboard shortcuts for patient cards
-    document.querySelectorAll('.patient-card').forEach((card, index) => {
-        // Press number key 1-9 to open patient details
-        card.setAttribute('data-index', index + 1);
-    });
-
-    document.addEventListener('keydown', function(e) {
-        // Number keys 1-9
-        if (e.key >= '1' && e.key <= '9') {
-            const index = parseInt(e.key) - 1;
-            const patientCard = document.querySelector(`.patient-card:nth-child(${index + 1})`);
-            if (patientCard) {
-                const viewLink = patientCard.querySelector('.btn-primary');
-                if (viewLink) viewLink.click();
-            }
-        }
-    });
+document.querySelectorAll("tr[data-href]").forEach((row) =>
+    row.addEventListener("click", (event) => {
+        if (!event.target.closest("a")) location.href = row.dataset.href;
+    }),
+);
 </script>
 {% endblock %}

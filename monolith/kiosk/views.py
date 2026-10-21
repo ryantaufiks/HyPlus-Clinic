@@ -7,15 +7,21 @@ import qrcode
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import connection
+from django.db.models import Count
+from django.db.models.functions import ExtractHour
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView, TemplateView
 from django_ratelimit.decorators import ratelimit
 
+from .device_views import gateway_devices, gateway_online
 from .models import Measurement, Patient, QueueTicket
+from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
 
 logger = logging.getLogger(__name__)
 
@@ -200,107 +206,190 @@ class QueueGenerateAPIView(View):
             return server_error("Failed to generate queue ticket")
 
 
-class PatientListView(LoginRequiredMixin, ListView):
-    """List all patients"""
+def latest_vitals(measurements):
+    """Newest weight and newest blood pressure among `measurements` (newest first).
 
+    The kiosk stores each device reading as its own Measurement, so a check-in
+    usually has one row for weight and one for blood pressure.
+    """
+    vitals = {}
+    for m in measurements:
+        if "weight" not in vitals and m.weight_kg is not None:
+            vitals["weight"] = m
+        if "bp" not in vitals and m.systolic_bp is not None and m.diastolic_bp is not None:
+            vitals["bp"] = m
+        if len(vitals) == 2:
+            break
+    bp = vitals.get("bp")
+    return {
+        "weight": vitals.get("weight"),
+        "bp": bp,
+        "bp_category": bp_category(bp.systolic_bp, bp.diastolic_bp) if bp else None,
+        "hr_status": heart_rate_status(bp.heart_rate_bpm) if bp else None,
+    }
+
+
+class PatientListView(LoginRequiredMixin, ListView):
     model = Patient
     template_name = "kiosk/patient_list.html"
     context_object_name = "patients"
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset().prefetch_related("queue_tickets")
-        search = self.request.GET.get("search")
+        queryset = super().get_queryset().prefetch_related("queue_tickets", "measurements")
+        search = self.request.GET.get("search", "").strip()
         if search:
             queryset = queryset.filter(name__icontains=search)
         return queryset
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["search"] = self.request.GET.get("search", "").strip()
+        context["rows"] = [
+            {"patient": p, "vitals": latest_vitals(p.measurements.all()), "ticket": next(iter(p.queue_tickets.all()), None)}
+            for p in context["patients"]
+        ]
+        return context
+
 
 class PatientDetailView(LoginRequiredMixin, DetailView):
-    """View patient details with measurements and queue tickets"""
-
     model = Patient
     template_name = "kiosk/patient_detail.html"
     context_object_name = "patient"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["measurements"] = self.object.measurements.all()
-        context["queue_tickets"] = self.object.queue_tickets.all()
-
-        # Get latest measurement for health data visualization
-        latest_measurement = self.object.measurements.order_by("-measured_at").first()
-        context["latest_measurement"] = latest_measurement
-
-        # Get last visit date
-        if context["measurements"].count() > 1:
-            context["last_visit"] = context["measurements"][1].measured_at
-        else:
-            context["last_visit"] = None
-
+        measurements = list(self.object.measurements.order_by("-measured_at"))
+        context["measurements"] = measurements
+        context["queue_tickets"] = self.object.queue_tickets.order_by("-created_at")
+        context["vitals"] = latest_vitals(measurements)
+        oldest_first = list(reversed(measurements))
+        context["chart_data"] = {
+            "bp": [
+                {"t": m.measured_at.isoformat(), "systolic": m.systolic_bp, "diastolic": m.diastolic_bp, "pulse": m.heart_rate_bpm}
+                for m in oldest_first
+                if m.systolic_bp is not None and m.diastolic_bp is not None
+            ],
+            "weight": [
+                {"t": m.measured_at.isoformat(), "weight": m.weight_kg} for m in oldest_first if m.weight_kg is not None
+            ],
+        }
         return context
 
 
 class QueueTicketDetailView(LoginRequiredMixin, DetailView):
-    """View queue ticket details"""
+    """The doctor's summary for a queue ticket, opened by scanning its QR code."""
 
     model = QueueTicket
     template_name = "kiosk/queue_ticket.html"
     context_object_name = "ticket"
-    slug_field = "qr_code_data"
-    slug_url_kwarg = "qr_code"
 
     def get_object(self, queryset=None):
-        qr_code = self.kwargs.get("qr_code")
-        return get_object_or_404(QueueTicket, qr_code_data=qr_code)
-
-
-class DashboardView(LoginRequiredMixin, TemplateView):
-    """Dashboard for viewing all data"""
-
-    template_name = "kiosk/dashboard.html"
+        return get_object_or_404(QueueTicket.objects.select_related("patient"), qr_code_data=self.kwargs["qr_code"])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["total_patients"] = Patient.objects.count()
-        context["total_measurements"] = Measurement.objects.count()
-        context["active_tickets"] = QueueTicket.objects.filter(is_active=True).count()
-        context["recent_patients"] = Patient.objects.all()[:10]
-        context["recent_tickets"] = QueueTicket.objects.filter(is_active=True)[:10]
-
-        # Get latest measurement for health data visualization
-        latest_measurement = Measurement.objects.order_by("-measured_at").first()
-        if latest_measurement:
-            context["heart_rate"] = latest_measurement.heart_rate_bpm
-            context["systolic"] = latest_measurement.systolic_bp
-            context["diastolic"] = latest_measurement.diastolic_bp
-            context["weight"] = latest_measurement.weight_kg
-            context["oxygen_saturation"] = getattr(
-                latest_measurement, "oxygen_saturation", 98
-            )
-        else:
-            # Default values if no measurements exist
-            context["heart_rate"] = 72
-            context["systolic"] = 120
-            context["diastolic"] = 80
-            context["weight"] = 70
-            context["oxygen_saturation"] = 98
-
+        patient = self.object.patient
+        visit = patient.measurements.filter(measured_at__lte=self.object.created_at).order_by("-measured_at")
+        context["vitals"] = latest_vitals(visit)
+        context["previous_tickets"] = patient.queue_tickets.exclude(pk=self.object.pk).order_by("-created_at")[:5]
         return context
+
+
+class DashboardView(LoginRequiredMixin, TemplateView):
+    """Live overview for nurses and doctors; data comes from DashboardDataView."""
+
+    template_name = "kiosk/dashboard.html"
+
+
+class DashboardDataView(LoginRequiredMixin, View):
+    """JSON for the dashboard, polled every few seconds."""
+
+    def get(self, request):
+        today = timezone.localdate()
+        patients_today = Patient.objects.filter(created_at__date=today)
+        measurements_today = Measurement.objects.filter(measured_at__date=today)
+
+        by_hour = dict(
+            patients_today.annotate(hour=ExtractHour("created_at"))
+            .values("hour")
+            .annotate(n=Count("id"))
+            .values_list("hour", "n")
+        )
+        now_hour = timezone.localtime().hour
+        first = min([7, *by_hour.keys()])
+        last = max([min(now_hour, 23), 17, *by_hour.keys()])
+        checkins_by_hour = [{"hour": h, "count": by_hour.get(h, 0)} for h in range(first, last + 1)]
+
+        # Latest BP per patient today, grouped by category.
+        latest_bp = {}
+        for m in measurements_today.filter(systolic_bp__isnull=False, diastolic_bp__isnull=False).order_by("measured_at"):
+            latest_bp[m.patient_id] = m
+        counts = {c.key: 0 for c in BP_CATEGORIES}
+        for m in latest_bp.values():
+            counts[bp_category(m.systolic_bp, m.diastolic_bp).key] += 1
+        bp_categories = [
+            {"key": c.key, "label": c.label, "status": c.status, "icon": c.icon, "count": counts[c.key]}
+            for c in BP_CATEGORIES
+        ]
+
+        recent_bp = list(
+            Measurement.objects.filter(systolic_bp__isnull=False, diastolic_bp__isnull=False)
+            .select_related("patient")
+            .order_by("-measured_at")[:20]
+        )
+        recent_bp.reverse()
+
+        queue = []
+        tickets = (
+            QueueTicket.objects.filter(is_active=True, created_at__date=today)
+            .select_related("patient")
+            .prefetch_related("patient__measurements")
+            .order_by("created_at")[:25]
+        )
+        for ticket in tickets:
+            vitals = latest_vitals(ticket.patient.measurements.all())
+            bp, category = vitals["bp"], vitals["bp_category"]
+            queue.append(
+                {
+                    "queue_number": ticket.queue_number,
+                    "patient": ticket.patient.name,
+                    "created_at": ticket.created_at.isoformat(),
+                    "url": reverse("kiosk:ticket-detail", args=[ticket.qr_code_data]),
+                    "weight_kg": vitals["weight"].weight_kg if vitals["weight"] else None,
+                    "bp": f"{bp.systolic_bp}/{bp.diastolic_bp}" if bp else None,
+                    "pulse": bp.heart_rate_bpm if bp else None,
+                    "category": {"label": category.label, "status": category.status, "icon": category.icon} if category else None,
+                }
+            )
+
+        return JsonResponse(
+            {
+                "generated_at": timezone.now().isoformat(),
+                "kpis": {
+                    "checkins_today": patients_today.count(),
+                    "measurements_today": measurements_today.count(),
+                    "waiting": len(queue),
+                    "needs_attention": counts["stage2"] + counts["crisis"],
+                },
+                "devices": {"gateway_online": gateway_online(), "paired": len(gateway_devices())},
+                "checkins_by_hour": checkins_by_hour,
+                "bp_categories": bp_categories,
+                "recent_bp": [
+                    {
+                        "t": m.measured_at.isoformat(),
+                        "systolic": m.systolic_bp,
+                        "diastolic": m.diastolic_bp,
+                        "patient": m.patient.name,
+                    }
+                    for m in recent_bp
+                ],
+                "queue": queue,
+            }
+        )
 
 
 class QRScannerView(LoginRequiredMixin, TemplateView):
     """QR code scanner for doctors"""
 
     template_name = "kiosk/qr_scanner.html"
-
-
-class TestVisualizationsView(LoginRequiredMixin, TemplateView):
-    """Test page for Three.js visualizations"""
-
-    template_name = "kiosk/test-visualizations.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["title"] = "Three.js Visualization Test"
-        return context

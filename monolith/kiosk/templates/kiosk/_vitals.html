@@ -1,0 +1,25 @@
+{# Latest vitals tiles. Expects `vitals` from views.latest_vitals(). #}
+<div class="vitals-grid">
+    <div class="vital">
+        <div class="vital-label"><i class="bi bi-heart-pulse"></i> Blood pressure</div>
+        {% if vitals.bp %}
+        <div class="vital-value">{{ vitals.bp.systolic_bp }}/{{ vitals.bp.diastolic_bp }} <small>mmHg</small></div>
+        <span class="status status-{{ vitals.bp_category.status }}"><i class="bi {{ vitals.bp_category.icon }}"></i>{{ vitals.bp_category.label }}</span>
+        <div class="text-muted small mt-1">{{ vitals.bp.measured_at|date:"j M, H:i" }}</div>
+        {% else %}<div class="vital-value text-muted">–</div><div class="text-muted small">Not measured</div>{% endif %}
+    </div>
+    <div class="vital">
+        <div class="vital-label"><i class="bi bi-activity"></i> Pulse</div>
+        {% if vitals.bp and vitals.bp.heart_rate_bpm is not None %}
+        <div class="vital-value">{{ vitals.bp.heart_rate_bpm }} <small>bpm</small></div>
+        <span class="status status-{{ vitals.hr_status.status }}"><i class="bi {{ vitals.hr_status.icon }}"></i>{{ vitals.hr_status.label }}</span>
+        {% else %}<div class="vital-value text-muted">–</div><div class="text-muted small">Not measured</div>{% endif %}
+    </div>
+    <div class="vital">
+        <div class="vital-label"><i class="bi bi-speedometer2"></i> Weight</div>
+        {% if vitals.weight %}
+        <div class="vital-value">{{ vitals.weight.weight_kg|floatformat:1 }} <small>kg</small></div>
+        <div class="text-muted small mt-1">{{ vitals.weight.measured_at|date:"j M, H:i" }}</div>
+        {% else %}<div class="vital-value text-muted">–</div><div class="text-muted small">Not measured</div>{% endif %}
+    </div>
+</div>
