@@ -1,0 +1,284 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Devices - AIVIN{% endblock %}
+
+{% block extra_css %}
+<style>
+    .devices-container { max-width: 1000px; margin: 0 auto; }
+    .device-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .device-card h2 { font-size: 1.25rem; margin-bottom: 1rem; }
+    .status-dot { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; margin-right: 0.4rem; }
+    .status-dot.online { background: #2ecc71; }
+    .status-dot.offline { background: #e74c3c; }
+    .table { color: inherit; }
+    .table td, .table th { background: transparent; color: inherit; vertical-align: middle; }
+    .pair-steps li { margin-bottom: 0.4rem; }
+    .muted { opacity: 0.7; font-size: 0.9rem; }
+    code { color: inherit; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container devices-container">
+    <h1 class="h3 mb-4"><i class="bi bi-bluetooth"></i> Medical devices</h1>
+
+    <div id="action-result" class="d-none" role="status"></div>
+
+    <section class="device-card">
+        <h2>Device service</h2>
+        <p class="mb-1" id="gateway-status"><span class="status-dot offline"></span>Checking…</p>
+        <p class="muted mb-0">
+            The device service runs on the server and talks to the devices over the server's Bluetooth.
+            Keep the devices within about 5–10 m of the server.
+        </p>
+    </section>
+
+    <section class="device-card">
+        <h2>Paired devices</h2>
+        <div id="paired-empty" class="muted">No devices paired yet. Pair one below.</div>
+        <div class="table-responsive">
+            <table class="table d-none" id="paired-table">
+                <thead>
+                    <tr><th>Device</th><th>Address</th><th>Last seen</th><th>Latest reading</th><th></th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <p class="muted mb-0">
+            <strong>Test connection:</strong> devices sleep to save battery. Press the device's Bluetooth button briefly
+            (or take a measurement) right before clicking Test, so it is awake. The test reads the latest stored
+            measurement and syncs the device clock; nothing is saved to any patient.
+        </p>
+    </section>
+
+    <section class="device-card">
+        <h2>Pair a new device</h2>
+        <ol class="pair-steps">
+            <li>If the device was used with the <strong>OMRON connect</strong> app, remove it there and in the phone's Bluetooth settings first. A device can only talk to one host.</li>
+            <li>Hold the device's <strong>Bluetooth button</strong> until <code>-P-</code> blinks on its display.</li>
+            <li>Click <strong>Scan</strong>, choose the model, and click <strong>Pair</strong> while <code>-P-</code> is still blinking. The device shows <code>OK</code> when pairing worked.</li>
+        </ol>
+        <button class="btn btn-primary" id="scan-button" onclick="scanDevices()">
+            <i class="bi bi-search"></i> Scan (10 s)
+        </button>
+        <div class="table-responsive mt-3">
+            <table class="table d-none" id="scan-table">
+                <thead>
+                    <tr><th>Name</th><th>Address</th><th>Signal</th><th>Mode</th><th>Model</th><th></th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="scan-empty" class="muted d-none">
+            No OMRON devices found. Check that <code>-P-</code> is blinking and the device is close to the server, then scan again.
+        </div>
+    </section>
+
+    <section class="device-card">
+        <h2>Recent activity</h2>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0" id="activity-table">
+                <thead><tr><th>Time</th><th>Action</th><th>Device</th><th>By</th><th>Result</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ supported_models|json_script:"supported-models" }}
+<script>
+const SUPPORTED_MODELS = JSON.parse(document.getElementById("supported-models").textContent);
+const ACTION_LABELS = { scan: "Scan", pair: "Pair", test: "Test connection", remove: "Remove" };
+let busy = false;
+
+function getCsrfToken() {
+    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+}
+
+function esc(value) {
+    const div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
+}
+
+function timeAgo(value) {
+    if (!value) return "never";
+    const seconds = Math.round((Date.now() - (typeof value === "number" ? value * 1000 : Date.parse(value))) / 1000);
+    if (seconds < 60) return `${Math.max(seconds, 0)} s ago`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)} min ago`;
+    return new Date(typeof value === "number" ? value * 1000 : value).toLocaleString();
+}
+
+function formatReading(r) {
+    if (!r) return "—";
+    if (r.kind === "bp") {
+        return `${r.systolic_bp}/${r.diastolic_bp} mmHg${r.heart_rate_bpm ? `, ${r.heart_rate_bpm} bpm` : ""}`;
+    }
+    return `${r.weight_kg} kg`;
+}
+
+function showResult(text, level) {
+    const el = document.getElementById("action-result");
+    el.className = `alert alert-${level}`;
+    el.innerHTML = text;
+}
+
+function setBusy(value) {
+    busy = value;
+    document.querySelectorAll("[data-action-button], #scan-button").forEach((b) => (b.disabled = value));
+}
+
+async function runCommand(action, params, onDone) {
+    if (busy) return;
+    setBusy(true);
+    showResult(`<span class="spinner-border spinner-border-sm me-2"></span>${esc(ACTION_LABELS[action])}… this can take up to a minute.`, "info");
+    try {
+        const response = await fetch("{% url 'kiosk:devices-command-create' %}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
+            body: JSON.stringify({ action, ...params }),
+        });
+        let command = await response.json();
+        if (!response.ok) throw new Error(command.error || `HTTP ${response.status}`);
+        while (command.status === "pending" || command.status === "running") {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const poll = await fetch(`{% url 'kiosk:devices-command-create' %}${command.id}/`);
+            command = await poll.json();
+        }
+        if (command.status === "succeeded") {
+            onDone && onDone(command.result || {});
+        } else {
+            showResult(`<strong>${esc(ACTION_LABELS[action])} failed.</strong> ${esc(command.error)}`, "danger");
+        }
+    } catch (error) {
+        showResult(`<strong>${esc(ACTION_LABELS[action])} failed.</strong> ${esc(error.message)}`, "danger");
+    } finally {
+        setBusy(false);
+        refreshStatus();
+    }
+}
+
+function scanDevices() {
+    runCommand("scan", {}, (result) => {
+        const devices = result.devices || [];
+        const table = document.getElementById("scan-table");
+        const body = table.querySelector("tbody");
+        body.innerHTML = "";
+        devices.forEach((d) => {
+            const guess = Object.keys(SUPPORTED_MODELS).find((m) => (d.name || "").toUpperCase().includes(m)) || "";
+            const options = Object.entries(SUPPORTED_MODELS)
+                .map(([model, label]) => `<option value="${esc(model)}" ${model === guess ? "selected" : ""}>${esc(model)} – ${esc(label)}</option>`)
+                .join("");
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${esc(d.name || "Unknown")}</td>
+                <td><code>${esc(d.address)}</code></td>
+                <td>${esc(d.rssi)} dBm</td>
+                <td>${d.pairing_mode ? '<span class="badge bg-success">Pairing mode</span>' : '<span class="badge bg-secondary">Normal</span>'}</td>
+                <td><select class="form-select form-select-sm">${options}</select></td>
+                <td><button class="btn btn-sm btn-primary" data-action-button>Pair</button></td>`;
+            row.querySelector("button").addEventListener("click", () => {
+                const model = row.querySelector("select").value;
+                runCommand("pair", { address: d.address, model }, () => {
+                    showResult(`<strong>Paired ${esc(model)}</strong> (${esc(d.address)}). Use <em>Test connection</em> to check it.`, "success");
+                    body.innerHTML = "";
+                    table.classList.add("d-none");
+                });
+            });
+            body.appendChild(row);
+        });
+        table.classList.toggle("d-none", devices.length === 0);
+        document.getElementById("scan-empty").classList.toggle("d-none", devices.length > 0);
+        showResult(`Scan finished: ${devices.length} OMRON device(s) found.`, devices.length ? "success" : "warning");
+    });
+}
+
+function testDevice(address) {
+    runCommand("test", { address }, (result) => {
+        const latest = (result.readings || []).sort((a, b) => b.measured_at.localeCompare(a.measured_at))[0];
+        const reading = latest
+            ? latest.kind === "bp"
+                ? `${latest.systolic}/${latest.diastolic} mmHg${latest.heart_rate ? `, ${latest.heart_rate} bpm` : ""}`
+                : `${latest.weight_kg} kg`
+            : null;
+        showResult(
+            `<strong>Connection OK</strong> (signal ${esc(result.rssi)} dBm). ` +
+                (reading
+                    ? `Latest stored measurement: ${esc(reading)} at ${esc(new Date(latest.measured_at).toLocaleString())}.`
+                    : "The device has no stored measurement yet."),
+            "success",
+        );
+    });
+}
+
+function removeDevice(address, model) {
+    if (!confirm(`Remove ${model} (${address})? You will need to pair it again with -P- to use it.`)) return;
+    runCommand("remove", { address }, () => showResult(`Removed ${esc(model)} (${esc(address)}).`, "success"));
+}
+
+async function refreshStatus() {
+    let data;
+    try {
+        const response = await fetch("{% url 'kiosk:devices-status' %}");
+        if (!response.ok) return;
+        data = await response.json();
+    } catch (error) {
+        return;
+    }
+
+    document.getElementById("gateway-status").innerHTML = data.gateway_online
+        ? `<span class="status-dot online"></span>Online <span class="muted">(last contact ${esc(timeAgo(data.gateway_seen_at))})</span>`
+        : `<span class="status-dot offline"></span>Offline. Start it on the server with <code>make up</code> and check <code>make gateway-logs</code>.`;
+
+    const table = document.getElementById("paired-table");
+    const body = table.querySelector("tbody");
+    body.innerHTML = "";
+    data.devices.forEach((d) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td><strong>${esc(d.model)}</strong><div class="muted">${esc(SUPPORTED_MODELS[d.model] || d.kind)}</div></td>
+            <td><code>${esc(d.address)}</code></td>
+            <td>${esc(timeAgo(d.last_seen))}</td>
+            <td>${esc(formatReading(d.latest_reading))}</td>
+            <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-outline-light" data-action-button data-test>Test connection</button>
+                <button class="btn btn-sm btn-outline-danger" data-action-button data-remove>Remove</button>
+            </td>`;
+        row.querySelector("[data-test]").addEventListener("click", () => testDevice(d.address));
+        row.querySelector("[data-remove]").addEventListener("click", () => removeDevice(d.address, d.model));
+        body.appendChild(row);
+    });
+    table.classList.toggle("d-none", data.devices.length === 0);
+    document.getElementById("paired-empty").classList.toggle("d-none", data.devices.length > 0);
+
+    const activity = document.querySelector("#activity-table tbody");
+    activity.innerHTML = data.recent_commands
+        .map((c) => {
+            const badge = { succeeded: "success", failed: "danger", running: "info", pending: "secondary" }[c.status];
+            const detail = c.status === "failed" ? `<div class="muted">${esc(c.error)}</div>` : "";
+            return `<tr>
+                <td>${esc(new Date(c.created_at).toLocaleString())}</td>
+                <td>${esc(ACTION_LABELS[c.action])}${c.params.model ? ` ${esc(c.params.model)}` : ""}</td>
+                <td><code>${esc(c.params.address || "")}</code></td>
+                <td>${esc(c.requested_by || "")}</td>
+                <td><span class="badge bg-${badge}">${esc(c.status)}</span>${detail}</td>
+            </tr>`;
+        })
+        .join("") || `<tr><td colspan="5" class="muted">No activity yet.</td></tr>`;
+    if (busy) setBusy(true); // keep freshly rendered buttons disabled
+}
+
+refreshStatus();
+setInterval(refreshStatus, 3000);
+</script>
+{% endblock %}

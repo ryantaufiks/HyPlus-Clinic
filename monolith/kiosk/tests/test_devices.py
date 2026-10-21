@@ -1,12 +1,13 @@
 import datetime as dt
 import json
 
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from kiosk.models import DeviceReading, Measurement, Patient
+from kiosk.models import DeviceReading, GatewayCommand, Measurement, Patient
 
 TOKEN = "test-gateway-token"
 
@@ -59,11 +60,11 @@ class GatewayApiTest(TestCase):
 
     def test_heartbeat_reports_waiting_kinds_and_marks_gateway_online(self):
         url = reverse("kiosk:internal-gateway-heartbeat")
-        self.assertEqual(post_json(self.client, url, {}, **self.auth).json(), {"waiting": []})
+        self.assertEqual(post_json(self.client, url, {}, **self.auth).json()["waiting"], [])
 
         wait = post_json(self.client, reverse("kiosk:api-device-wait"), {"kind": "bp"})
         self.assertTrue(wait.json()["gateway_online"])
-        self.assertEqual(post_json(self.client, url, {}, **self.auth).json(), {"waiting": ["bp"]})
+        self.assertEqual(post_json(self.client, url, {}, **self.auth).json()["waiting"], ["bp"])
 
 
 class KioskDeviceReadingTest(TestCase):
@@ -138,3 +139,60 @@ class SimulatedMeasurementTest(TestCase):
     def test_allowed_in_debug_and_marked_simulated(self):
         self.assertEqual(self.post().status_code, 201)
         self.assertEqual(Measurement.objects.get().source, Measurement.SOURCE_SIMULATED)
+
+
+@override_settings(GATEWAY_TOKEN=TOKEN)
+class DeviceCommandTest(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.staff = get_user_model().objects.create_user("nurse", password="a-long-password-123", is_staff=True)
+        self.auth = {"HTTP_AUTHORIZATION": f"Bearer {TOKEN}"}
+
+    def create(self, **data):
+        return post_json(self.client, reverse("kiosk:devices-command-create"), data)
+
+    def test_staff_only(self):
+        self.assertEqual(self.create(action="scan").status_code, 403)
+        self.assertEqual(self.client.get(reverse("kiosk:devices")).status_code, 302)
+        regular = get_user_model().objects.create_user("viewer", password="a-long-password-123")
+        self.client.force_login(regular)
+        self.assertEqual(self.create(action="scan").status_code, 403)
+        self.assertEqual(self.client.get(reverse("kiosk:devices")).status_code, 403)
+
+    def test_validation(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.create(action="explode").status_code, 400)
+        self.assertEqual(self.create(action="pair", address="nope", model="HEM-6232T").status_code, 400)
+        self.assertEqual(self.create(action="pair", address="AA:BB:CC:DD:EE:FF", model="X").status_code, 400)
+
+    def test_full_round_trip_through_gateway(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get(reverse("kiosk:devices")).status_code, 200)
+        created = self.create(action="pair", address="aa:bb:cc:dd:ee:ff", model="HEM-6232T")
+        self.assertEqual(created.status_code, 201)
+        command_id = created.json()["id"]
+        self.assertEqual(created.json()["params"]["address"], "AA:BB:CC:DD:EE:FF")
+
+        # Only one action at a time.
+        self.assertEqual(self.create(action="scan").status_code, 409)
+
+        heartbeat = post_json(self.client, reverse("kiosk:internal-gateway-heartbeat"), {}, **self.auth).json()
+        self.assertEqual([c["id"] for c in heartbeat["commands"]], [command_id])
+        # Handed out once.
+        again = post_json(self.client, reverse("kiosk:internal-gateway-heartbeat"), {}, **self.auth).json()
+        self.assertEqual(again["commands"], [])
+
+        result_url = reverse("kiosk:internal-gateway-command-result", args=[command_id])
+        post_json(self.client, result_url, {"ok": True, "result": {"model": "HEM-6232T"}}, **self.auth)
+        detail = self.client.get(reverse("kiosk:devices-command-detail", args=[command_id])).json()
+        self.assertEqual(detail["status"], "succeeded")
+        self.assertEqual(detail["requested_by"], "nurse")
+
+    def test_unclaimed_command_expires(self):
+        self.client.force_login(self.staff)
+        command_id = self.create(action="scan").json()["id"]
+        GatewayCommand.objects.filter(pk=command_id).update(created_at=timezone.now() - dt.timedelta(minutes=5))
+        detail = self.client.get(reverse("kiosk:devices-command-detail", args=[command_id])).json()
+        self.assertEqual(detail["status"], "failed")
+        self.assertIn("did not respond", detail["error"])
+        self.assertEqual(self.create(action="scan").status_code, 201)

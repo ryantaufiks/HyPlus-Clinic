@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 from .crypto import decrypt, encrypt
@@ -119,6 +120,54 @@ class DeviceReading(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} from {self.device_model} at {self.measured_at}"
+
+
+class GatewayCommand(models.Model):
+    """A device-management action requested from the staff Devices page.
+
+    The BLE gateway picks pending commands up with its heartbeat, runs them on
+    the server's Bluetooth adapter and reports the result back.
+    """
+
+    SCAN = "scan"
+    PAIR = "pair"
+    TEST = "test"
+    REMOVE = "remove"
+    ACTION_CHOICES = [
+        (SCAN, "Scan for devices"),
+        (PAIR, "Pair device"),
+        (TEST, "Test connection"),
+        (REMOVE, "Remove device"),
+    ]
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    STATUS_CHOICES = [
+        (PENDING, "Pending"),
+        (RUNNING, "Running"),
+        (SUCCEEDED, "Succeeded"),
+        (FAILED, "Failed"),
+    ]
+
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    params = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING, db_index=True)
+    result = models.JSONField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_action_display()} ({self.get_status_display()})"
 
 
 class SiteConfiguration(models.Model):

@@ -10,8 +10,10 @@ import datetime as dt
 import hmac
 import json
 import logging
+import re
 
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
@@ -20,10 +22,11 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.generic import TemplateView
 from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 
-from .models import DeviceReading, Measurement, Patient
+from .models import DeviceReading, GatewayCommand, Measurement, Patient
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,12 @@ CLOCK_TOLERANCE = dt.timedelta(minutes=2)
 MAX_LOOKBACK = dt.timedelta(minutes=15)
 
 GATEWAY_STATUS_KEY = "gateway:status"
+
+SUPPORTED_MODELS = {"HEM-6232T": "Blood pressure monitor (wrist)", "HN-300T2": "Weight scale"}
+ADDRESS_RE = re.compile(r"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")
+# A command the gateway has not picked up by then is failed, as is one that runs too long.
+COMMAND_PICKUP_TIMEOUT = dt.timedelta(seconds=30)
+COMMAND_RUN_TIMEOUT = dt.timedelta(minutes=4)
 
 
 def _waiting_key(kind):
@@ -91,7 +100,33 @@ class GatewayHeartbeatView(GatewayAuthMixin, View):
             GATEWAY_STATUS_TTL_SECONDS,
         )
         waiting = [kind for kind in sorted(KINDS) if cache.get(_waiting_key(kind))]
-        return JsonResponse({"waiting": waiting})
+        with transaction.atomic():
+            pending = list(
+                GatewayCommand.objects.select_for_update(skip_locked=True)
+                .filter(status=GatewayCommand.PENDING)
+                .order_by("created_at")
+            )
+            now = timezone.now()
+            for command in pending:
+                command.status = GatewayCommand.RUNNING
+                command.started_at = now
+                command.save(update_fields=["status", "started_at"])
+        commands = [{"id": c.id, "action": c.action, "params": c.params} for c in pending]
+        return JsonResponse({"waiting": waiting, "commands": commands})
+
+
+class GatewayCommandResultView(GatewayAuthMixin, View):
+    def post(self, request, pk):
+        data = _json_body(request)
+        if data is None:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+        command = get_object_or_404(GatewayCommand, pk=pk, status=GatewayCommand.RUNNING)
+        command.status = GatewayCommand.SUCCEEDED if data.get("ok") else GatewayCommand.FAILED
+        command.result = data.get("result")
+        command.error = str(data.get("error") or "")[:2000]
+        command.finished_at = timezone.now()
+        command.save(update_fields=["status", "result", "error", "finished_at"])
+        return JsonResponse({"status": command.status})
 
 
 class DeviceReadingIngestView(GatewayAuthMixin, View):
@@ -207,3 +242,113 @@ class ClaimDeviceReadingView(View):
             reading.measurement = measurement
             reading.save(update_fields=["measurement"])
         return JsonResponse({"measurement_id": measurement.id, "reading": _reading_json(reading)}, status=201)
+
+
+# --- Staff device management ---------------------------------------------------------
+
+
+class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+class StaffJsonMixin(StaffRequiredMixin):
+    def handle_no_permission(self):
+        return JsonResponse({"error": "Staff login required"}, status=403)
+
+
+def _command_json(command):
+    _expire_if_stale(command)
+    return {
+        "id": command.id,
+        "action": command.action,
+        "params": command.params,
+        "status": command.status,
+        "result": command.result,
+        "error": command.error,
+        "created_at": command.created_at.isoformat(),
+        "finished_at": command.finished_at.isoformat() if command.finished_at else None,
+        "requested_by": command.requested_by.get_username() if command.requested_by else None,
+    }
+
+
+def _expire_if_stale(command):
+    now = timezone.now()
+    if command.status == GatewayCommand.PENDING and command.created_at < now - COMMAND_PICKUP_TIMEOUT:
+        error = "The device service did not respond. Check that the gateway is running (make gateway-logs)."
+    elif command.status == GatewayCommand.RUNNING and command.started_at < now - COMMAND_RUN_TIMEOUT:
+        error = "Timed out waiting for the device service."
+    else:
+        return
+    command.status = GatewayCommand.FAILED
+    command.error = error
+    command.finished_at = now
+    command.save(update_fields=["status", "error", "finished_at"])
+
+
+class DevicesPageView(StaffRequiredMixin, TemplateView):
+    template_name = "kiosk/devices.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["supported_models"] = SUPPORTED_MODELS
+        return context
+
+
+class DeviceStatusView(StaffJsonMixin, View):
+    def get(self, request):
+        status = cache.get(GATEWAY_STATUS_KEY)
+        devices = []
+        for device in (status or {}).get("devices", []):
+            latest = (
+                DeviceReading.objects.filter(device_address=str(device.get("address", "")).upper())
+                .order_by("-received_at")
+                .first()
+            )
+            devices.append({**device, "latest_reading": _reading_json(latest) if latest else None})
+        recent = GatewayCommand.objects.select_related("requested_by")[:10]
+        return JsonResponse(
+            {
+                "gateway_online": status is not None,
+                "gateway_seen_at": status["at"] if status else None,
+                "devices": devices,
+                "recent_commands": [_command_json(c) for c in recent],
+            }
+        )
+
+
+@method_decorator(ratelimit(key="user", rate="30/m", method="POST", block=True), name="post")
+class DeviceCommandCreateView(StaffJsonMixin, View):
+    def post(self, request):
+        data = _json_body(request) or {}
+        action = data.get("action")
+        params = {}
+        if action == GatewayCommand.SCAN:
+            params["seconds"] = 10
+        elif action in (GatewayCommand.PAIR, GatewayCommand.TEST, GatewayCommand.REMOVE):
+            address = str(data.get("address", "")).strip().upper()
+            if not ADDRESS_RE.match(address):
+                return JsonResponse({"error": "Invalid device address"}, status=400)
+            params["address"] = address
+            if action == GatewayCommand.PAIR:
+                if data.get("model") not in SUPPORTED_MODELS:
+                    return JsonResponse({"error": "Choose a supported model"}, status=400)
+                params["model"] = data["model"]
+        else:
+            return JsonResponse({"error": "Unknown action"}, status=400)
+
+        # One action at a time: the gateway has a single Bluetooth adapter.
+        active = GatewayCommand.objects.filter(status__in=[GatewayCommand.PENDING, GatewayCommand.RUNNING])
+        for command in active:
+            _expire_if_stale(command)
+        if active.exists():
+            return JsonResponse({"error": "Another device action is still running. Please wait."}, status=409)
+
+        command = GatewayCommand.objects.create(action=action, params=params, requested_by=request.user)
+        return JsonResponse(_command_json(command), status=201)
+
+
+class DeviceCommandDetailView(StaffJsonMixin, View):
+    def get(self, request, pk):
+        command = get_object_or_404(GatewayCommand.objects.select_related("requested_by"), pk=pk)
+        return JsonResponse(_command_json(command))

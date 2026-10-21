@@ -43,6 +43,20 @@ urlpatterns = [
         device_views.DeviceReadingIngestView.as_view(),
         name="internal-device-reading",
     ),
+    path(
+        "internal/gateway/commands/<int:pk>/",
+        device_views.GatewayCommandResultView.as_view(),
+        name="internal-gateway-command-result",
+    ),
+    # Staff device management
+    path("devices/", device_views.DevicesPageView.as_view(), name="devices"),
+    path("devices/status/", device_views.DeviceStatusView.as_view(), name="devices-status"),
+    path("devices/commands/", device_views.DeviceCommandCreateView.as_view(), name="devices-command-create"),
+    path(
+        "devices/commands/<int:pk>/",
+        device_views.DeviceCommandDetailView.as_view(),
+        name="devices-command-detail",
+    ),
     # Patient management
     path("patients/", views.PatientListView.as_view(), name="patient-list"),
     path(
