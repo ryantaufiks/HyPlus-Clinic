@@ -41,26 +41,33 @@
 <main>
     <!-- Hero -->
     <section class="hero">
-        <div class="container">
+        <div class="hero-bg" aria-hidden="true">
+            <span class="blob blob-1" data-depth="0.25"></span>
+            <span class="blob blob-2" data-depth="0.45"></span>
+            <span class="grid-fade"></span>
+        </div>
+        <div class="container position-relative">
             <div class="row g-5 align-items-center">
                 <div class="col-lg-7">
-                    <span class="eyebrow"><i class="bi bi-shield-check"></i> Registered doctors · Records kept private</span>
-                    <h1 class="hero-title">See a doctor,<br /><span>without the wait.</span></h1>
-                    <p class="hero-lead">Book your consultation online, get your weight and blood pressure checked in about three minutes at our kiosk, and keep your diagnoses and prescriptions in one place.</p>
-                    <div class="d-flex flex-wrap gap-2 mt-4">
-                        <a class="btn btn-primary btn-lg btn-icon" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
+                    <span class="eyebrow" data-rise><i class="bi bi-shield-check"></i> Registered doctors · Records kept private</span>
+                    <h1 class="hero-title" data-rise style="--i: 1">See a doctor,<br /><span>without the wait.</span></h1>
+                    <p class="hero-lead" data-rise style="--i: 2">Book your consultation online, get your weight and blood pressure checked in about three minutes at our kiosk, and keep your diagnoses and prescriptions in one place.</p>
+                    <div class="d-flex flex-wrap gap-2 mt-4" data-rise style="--i: 3">
+                        <a class="btn btn-primary btn-lg btn-icon btn-glow" href="{% url 'kiosk:book' %}"><i class="bi bi-calendar2-plus"></i> Book a consultation</a>
                         <a class="btn btn-light btn-lg" href="#services">View services</a>
                     </div>
                     {% if from_price is not None %}
-                    <p class="hero-price">Services from <strong>SGD {{ from_price|floatformat:"-2" }}</strong> · you see every fee before you book</p>
+                    <p class="hero-price" data-rise style="--i: 4">Services from <strong>SGD {{ from_price|floatformat:"-2" }}</strong> · you see every fee before you book</p>
                     {% endif %}
                 </div>
-                <div class="col-lg-5">
-                    <div class="today-card">
+                <div class="col-lg-5 hero-visual">
+                    <canvas id="orb" class="orb" aria-hidden="true"></canvas>
+                    <div class="today-card glass glow-border" data-rise style="--i: 2">
                         <div class="today-head">
                             <span><i class="bi bi-hospital"></i> Today at the clinic</span>
                             {% if doctors_today %}<span class="live"><span class="dot"></span>Live</span>{% endif %}
                         </div>
+                        <svg class="ekg" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true"><path class="base" d="M0 22 H70 L80 22 L88 8 L96 34 L104 4 L112 30 L118 22 H190 L198 22 L204 14 L210 26 L216 22 H300" /><path class="pulse" pathLength="100" d="M0 22 H70 L80 22 L88 8 L96 34 L104 4 L112 30 L118 22 H190 L198 22 L204 14 L210 26 L216 22 H300" /></svg>
                         {% for d in doctors_today|slice:":4" %}
                         <div class="today-doctor">
                             {% if d.face.photo %}<img class="avatar" src="{{ d.face.photo }}" alt="" style="--avatar-size: 48px" />{% else %}<span class="avatar avatar-initials" aria-hidden="true" style="--avatar-size: 48px; --avatar-bg: {{ d.face.color }}">{{ d.face.initials }}</span>{% endif %}
@@ -88,10 +95,10 @@
                 <p>A clinic visit that respects your time, with the doctor fully prepared when you walk in.</p>
             </div>
             <div class="row g-3">
-                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-heart-pulse"></i><h3>Vitals before you sit down</h3><p>Weight and blood pressure are measured automatically and sent straight to your doctor.</p></div></div>
-                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-person-check"></i><h3>Choose your doctor</h3><p>See the doctor you prefer, or the first one available for the shortest wait.</p></div></div>
-                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-phone"></i><h3>Follow the queue</h3><p>Scan your ticket to see your place in line, so you can wait where you like.</p></div></div>
-                <div class="col-sm-6 col-lg-3"><div class="value-tile"><i class="bi bi-folder2-open"></i><h3>Your records, always with you</h3><p>Diagnoses, prescriptions and blood pressure trends in your own patient portal.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 0"><i class="bi bi-heart-pulse"></i><h3>Vitals before you sit down</h3><p>Weight and blood pressure are measured automatically and sent straight to your doctor.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-person-check"></i><h3>Choose your doctor</h3><p>See the doctor you prefer, or the first one available for the shortest wait.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-phone"></i><h3>Follow the queue</h3><p>Scan your ticket to see your place in line, so you can wait where you like.</p></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 3"><i class="bi bi-folder2-open"></i><h3>Your records, always with you</h3><p>Diagnoses, prescriptions and blood pressure trends in your own patient portal.</p></div></div>
             </div>
         </div>
     </section>
@@ -106,7 +113,7 @@
             <div class="row g-3">
                 {% for s in services %}
                 <div class="col-md-6 col-xl-3">
-                    <article class="service-card">
+                    <article class="service-card spotlight" data-reveal style="--i: {{ forloop.counter0 }}">
                         <span class="service-icon"><i class="bi {{ s.icon }}"></i></span>
                         <h3>{{ s.name }}</h3>
                         <p>{{ s.summary }}</p>
@@ -132,7 +139,7 @@
                 <h2>How it works</h2>
                 <p>From booking to prescription, in four simple steps.</p>
             </div>
-            <ol class="steps">
+            <ol class="steps" data-reveal>
                 <li><span class="step-num">1</span><h3>Book or walk in</h3><p>Request a time online and we confirm it on WhatsApp, or simply come to the clinic.</p></li>
                 <li><span class="step-num">2</span><h3>Check in at the kiosk</h3><p>Choose your doctor, step on the scale and measure your blood pressure. Get your queue ticket.</p></li>
                 <li><span class="step-num">3</span><h3>See your doctor</h3><p>Your number appears on the screen. Scan your ticket at the door; your doctor already has your vitals.</p></li>
@@ -152,7 +159,7 @@
             <div class="row g-3">
                 {% for r in reviews %}
                 <div class="col-md-6 col-lg-4">
-                    <figure class="review-card">
+                    <figure class="review-card" data-reveal style="--i: {{ forloop.counter0 }}">
                         <div class="stars" aria-label="{{ r.rating }} out of 5 stars">{% for i in "12345" %}<i class="bi {% if forloop.counter <= r.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>{% endfor %}</div>
                         <blockquote>{{ r.comment }}</blockquote>
                         <figcaption><strong>{{ r.display_name }}</strong> · <span class="text-muted">verified visit, {{ r.created_at|date:"M Y" }}</span></figcaption>
@@ -167,7 +174,7 @@
     <!-- Call to action -->
     <section class="section">
         <div class="container">
-            <div class="cta-band">
+            <div class="cta-band glow-border" data-reveal>
                 <div>
                     <h2>Ready to see a doctor?</h2>
                     <p>Book in under a minute. We'll confirm your time on WhatsApp.</p>
@@ -192,5 +199,6 @@
         <span>© {% now "Y" %} AIVIN</span>
     </div>
 </footer>
+<script src="{% static 'js/landing.js' %}" defer></script>
 </body>
 </html>

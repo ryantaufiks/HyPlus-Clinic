@@ -83,3 +83,79 @@
 .choice-group input:checked + label { border-color: var(--aivin-primary); background: var(--aivin-primary-soft); color: var(--aivin-primary-strong); }
 .choice-group input:focus-visible + label { outline: 3px solid var(--bs-focus-ring-color); }
 .booking-aside { position: sticky; top: 1.5rem; }
+
+/* ---- Motion & depth ---------------------------------------------------------------
+ * Everything below is decoration: content is fully readable without it, and it
+ * switches off for people who ask for reduced motion.
+ */
+
+@property --angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+@keyframes spin { to { --angle: 360deg; } }
+@keyframes shimmer { to { background-position: 200% 50%; } }
+@keyframes ekg { from { stroke-dashoffset: 100; } to { stroke-dashoffset: -30; } }
+
+/* Hero background: soft blobs and a faded grid, moved by scroll (parallax) */
+.hero { position: relative; overflow: hidden; }
+.hero-bg { position: absolute; inset: 0; pointer-events: none; }
+.blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55; will-change: transform; }
+.blob-1 { width: 520px; height: 520px; right: -120px; top: -160px; background: radial-gradient(circle, #8fe0db, transparent 70%); }
+.blob-2 { width: 420px; height: 420px; left: -160px; bottom: -200px; background: radial-gradient(circle, #b8d4f5, transparent 70%); }
+.grid-fade { position: absolute; inset: 0; background-image: linear-gradient(rgba(11, 122, 131, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(11, 122, 131, 0.07) 1px, transparent 1px); background-size: 44px 44px; mask-image: radial-gradient(ellipse 70% 60% at 70% 30%, #000, transparent 75%); -webkit-mask-image: radial-gradient(ellipse 70% 60% at 70% 30%, #000, transparent 75%); }
+
+.hero-title span { background: linear-gradient(90deg, var(--aivin-primary), #2a9bb5 40%, #2a78d6 55%, var(--aivin-primary) 80%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 8s linear infinite; }
+
+.btn-glow { box-shadow: 0 8px 24px rgba(11, 122, 131, 0.32); transition: transform 0.15s, box-shadow 0.15s; }
+.btn-glow:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(11, 122, 131, 0.42); }
+
+/* The 3D particle orb sits behind the glass card */
+.hero-visual { position: relative; }
+.orb { position: absolute; left: 68%; top: 34%; width: 640px; height: 640px; max-width: 140%; transform: translate(-50%, -50%); pointer-events: none; }
+.hero-visual .today-card { margin: 7rem 3.5rem 0 0; }
+@media (max-width: 991.98px) { .orb { left: 50%; top: 30%; width: 460px; height: 460px; } .hero-visual .today-card { margin: 9rem 0 0; } }
+.hero-visual .today-card { position: relative; z-index: 1; }
+
+/* Glass */
+.glass { background: rgba(255, 255, 255, 0.58); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255, 255, 255, 0.75); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 18px 48px rgba(15, 29, 43, 0.12); }
+.glass .today-doctor, .glass .today-empty { border-top-color: rgba(15, 29, 43, 0.08); }
+.glass .today-steps span { background: rgba(255, 255, 255, 0.6); }
+
+/* A light travelling around the border */
+.glow-border { position: relative; isolation: isolate; }
+.glow-border::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none; z-index: 2; background: conic-gradient(from var(--angle), transparent 0 62%, rgba(63, 208, 201, 0.95) 76%, rgba(42, 120, 214, 0.9) 84%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: spin 6s linear infinite; }
+.today-card.glow-border { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 18px 48px rgba(15, 29, 43, 0.12), 0 0 40px rgba(63, 208, 201, 0.18); }
+
+/* Heartbeat line */
+.ekg { display: block; width: 100%; height: 34px; margin: 0.1rem 0 0.3rem; }
+.ekg path { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ekg .base { stroke: rgba(11, 122, 131, 0.16); }
+.ekg .pulse { stroke: var(--aivin-primary); stroke-dasharray: 30 100; filter: drop-shadow(0 0 4px rgba(63, 208, 201, 0.8)); animation: ekg 2.6s linear infinite; }
+
+/* Service cards: a soft light follows the pointer */
+.spotlight { position: relative; overflow: hidden; }
+.spotlight::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgba(63, 208, 201, 0.16), transparent 45%); }
+.spotlight:hover::before { opacity: 1; }
+.spotlight:hover { border-color: rgba(11, 122, 131, 0.35); }
+.spotlight > * { position: relative; }
+
+.cta-band { overflow: hidden; }
+.cta-band::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(600px 200px at 90% 0%, rgba(143, 224, 219, 0.35), transparent 70%); z-index: -1; }
+.cta-band.glow-border::before { background: conic-gradient(from var(--angle), transparent 0 62%, rgba(255, 255, 255, 0.9) 78%, transparent 92%); }
+
+/* Steps: the connecting line fills in when the section comes into view */
+.steps::after { content: ""; position: absolute; top: 1.4rem; left: 1.4rem; right: 12%; height: 2px; background: linear-gradient(90deg, var(--aivin-primary), #2a78d6); transform: scaleX(0); transform-origin: left; transition: transform 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s; }
+.steps.is-visible::after { transform: scaleX(1); }
+@media (max-width: 991.98px) { .steps::after { display: none; } }
+
+/* Hero entrance: a slide only, never hidden, so the first screen is readable even where animations do not run */
+@keyframes rise { from { transform: translateY(14px); } to { transform: none; } }
+[data-rise] { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+
+/* Scroll reveal (only when the script runs, so content never stays hidden) */
+.js-motion [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: calc(var(--i, 0) * 90ms); }
+.js-motion [data-reveal].is-visible { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-title span, .glow-border::before, .ekg .pulse, .live .dot, [data-rise] { animation: none; }
+    .js-motion [data-reveal] { opacity: 1; transform: none; transition: none; }
+    .steps::after { transform: none; transition: none; }
+}
