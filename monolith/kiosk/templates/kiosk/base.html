@@ -103,6 +103,9 @@
                             {% endif %}
                             {% if user.is_superuser %}
                             <li class="nav-item">
+                                <a class="nav-link {% if current == 'staff-list' or current == 'staff-create' or current == 'staff-edit' %}active{% endif %}" href="{% url 'kiosk:staff-list' %}"><i class="bi bi-person-badge"></i> Staff</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" href="{% url 'admin:index' %}" title="Admin"><i class="bi bi-gear"></i> <span class="d-lg-none">Admin</span></a>
                             </li>
                             {% endif %}

@@ -52,8 +52,14 @@ Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{
 
 - **Patient ID**: every patient gets a 5-character ID (e.g. `K7M2Q`), shown on the kiosk ticket. Returning patients choose *I have a Patient ID* at the kiosk.
 - **Ticket QR code** links to `PUBLIC_BASE_URL/v/<token>/`. Staff who scan it while signed in open the visit. A patient who scans it with their phone gets a form to complete their registration. The form never shows stored data, expires after 7 days, and its answers wait in **Registrations** until staff approve them.
-- **Staff** (any account) can register and edit patients, review registrations and see records. Merging duplicate records needs a staff (`is_staff`) account.
-- **Doctors**: add the user to the **Doctor** group in Admin → Users. Only doctors (and superusers) can record diagnoses and prescriptions. Prescriptions are checked by name against the patient's recorded drug allergies; cross-reactivity between drug classes is not detected.
+- **Staff accounts** are managed by administrators under **Staff** (or *Add staff member* on Registrations). Roles:
+  - *Doctor*: records diagnoses and prescriptions.
+  - *Nurse*: also manages the OMRON devices and merges duplicate records.
+  - *Front desk*: registers patients and reviews registrations.
+  - *Administrator*: everything, including staff accounts.
+
+  Administrators never set passwords: a new account (or a reset) gives a one-time setup link, valid 3 days, to send to the staff member. Accounts are deactivated, not deleted, so records keep their author.
+- Prescriptions are checked by name against the patient's recorded drug allergies; cross-reactivity between drug classes is not detected.
 - Only the last 4 characters of an ID document are stored. Changes to registration and medical data are recorded in an audit log shown on each patient's page.
 
 ## Medical devices (OMRON)

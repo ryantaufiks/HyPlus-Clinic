@@ -2,9 +2,11 @@ import datetime as dt
 import re
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import Patient, PrescriptionItem, Visit
+from .roles import ROLE_CHOICES
 
 PROFILE_FIELDS = [
     "name",
@@ -189,3 +191,28 @@ def allergy_conflicts(patient, drug_names):
         if any(term in lowered or lowered in term for term in terms):
             conflicts.append(drug)
     return conflicts
+
+
+class StaffAccountForm(BootstrapMixin, forms.ModelForm):
+    """Create or edit a staff account. Passwords are set by the staff member via a setup link."""
+
+    role = forms.ChoiceField(choices=ROLE_CHOICES)
+
+    class Meta:
+        model = get_user_model()
+        fields = ["first_name", "last_name", "username", "email"]
+        labels = {"email": "Email (optional)"}
+        help_texts = {"username": "Used to log in. Letters, digits and . _ - only."}
+
+    def __init__(self, *args, editing_self=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["first_name"].required = True
+        if editing_self:
+            # An administrator cannot remove their own administrator role.
+            self.fields["role"].disabled = True
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip().lower()
+        if not re.fullmatch(r"[a-z0-9._-]{3,30}", username):
+            raise forms.ValidationError("Use 3–30 letters, digits, dots, dashes or underscores.")
+        return username

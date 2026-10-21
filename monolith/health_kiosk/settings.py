@@ -154,6 +154,9 @@ LOGOUT_REDIRECT_URL = "login"
 # Staff sessions last one shift.
 SESSION_COOKIE_AGE = 60 * 60 * 8
 
+# Account setup links for new staff (and password resets) stay valid for 3 days.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3
+
 # --- I18N ----------------------------------------------------------------------
 
 LANGUAGE_CODE = "en-us"

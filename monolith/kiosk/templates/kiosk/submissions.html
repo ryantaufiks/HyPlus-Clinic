@@ -15,7 +15,10 @@
         <h1 class="page-title">Registrations</h1>
         <p class="page-subtitle">Details patients sent from their phone. Check them, then approve to update the record.</p>
     </div>
-    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-register' %}"><i class="bi bi-person-plus"></i> Register patient</a>
+    <div class="d-flex flex-wrap gap-2">
+        {% if user.is_superuser %}<a class="btn btn-light btn-icon" href="{% url 'kiosk:staff-create' %}"><i class="bi bi-person-badge"></i> Add staff member</a>{% endif %}
+        <a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-register' %}"><i class="bi bi-person-plus"></i> Register patient</a>
+    </div>
 </div>
 
 {% for row in rows %}

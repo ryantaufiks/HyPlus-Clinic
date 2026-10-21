@@ -1,0 +1,37 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Staff accounts - AIVIN{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Staff accounts</h1>
+        <p class="page-subtitle">Doctors, nurses and front-desk staff who can sign in.</p>
+    </div>
+    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:staff-create' %}"><i class="bi bi-person-plus"></i> Add staff member</a>
+</div>
+
+<section class="surface surface-flush">
+    <div class="table-responsive">
+        <table class="table table-aivin">
+            <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr></thead>
+            <tbody>
+                {% for m in members %}
+                <tr class="{% if not m.user.is_active %}text-muted{% endif %}">
+                    <td class="fw-semibold">{{ m.user.get_full_name|default:"—" }}{% if m.user == user %} <span class="text-muted fw-normal">(you)</span>{% endif %}</td>
+                    <td>{{ m.user.username }}</td>
+                    <td><span class="status {% if m.role == 'Doctor' %}status-info{% elif m.role == 'Administrator' %}status-warning{% else %}status-neutral{% endif %}">{{ m.role }}</span></td>
+                    <td>
+                        {% if not m.user.is_active %}<span class="status status-neutral"><i class="bi bi-slash-circle"></i>Deactivated</span>
+                        {% elif not m.activated %}<span class="status status-warning"><i class="bi bi-hourglass"></i>Waiting for setup</span>
+                        {% else %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Active</span>{% endif %}
+                    </td>
+                    <td class="text-muted text-nowrap">{{ m.user.last_login|date:"j M Y, H:i"|default:"Never" }}</td>
+                    <td class="text-end"><a class="btn btn-light btn-sm" href="{% url 'kiosk:staff-edit' m.user.pk %}">Manage</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

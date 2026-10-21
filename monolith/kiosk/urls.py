@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import clinical_views, device_views, kiosk_api, views
+from . import accounts_views, clinical_views, device_views, kiosk_api, views
 
 app_name = "kiosk"
 
@@ -66,6 +66,10 @@ urlpatterns = [
         clinical_views.SubmissionReviewView.as_view(),
         name="submission-review",
     ),
+    # Staff accounts (administrators)
+    path("staff/", accounts_views.StaffListView.as_view(), name="staff-list"),
+    path("staff/new/", accounts_views.StaffCreateView.as_view(), name="staff-create"),
+    path("staff/<int:pk>/", accounts_views.StaffEditView.as_view(), name="staff-edit"),
     # Doctor
     path("doctor/", clinical_views.DoctorQueueView.as_view(), name="doctor-queue"),
     path("visits/<int:pk>/", clinical_views.VisitDetailView.as_view(), name="visit-detail"),

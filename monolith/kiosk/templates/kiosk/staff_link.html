@@ -1,0 +1,40 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Setup link - AIVIN{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 680px">
+    <section class="surface">
+        <div class="text-center mb-3">
+            <span class="kiosk-icon done mb-2" style="width: 72px; height: 72px; font-size: 2rem"><i class="bi bi-link-45deg"></i></span>
+            <h1 class="h4 mb-1">{% if created %}Account created{% else %}New link for {{ member.get_full_name|default:member.username }}{% endif %}</h1>
+            <p class="text-muted mb-0">{{ member.get_full_name|default:member.username }} · {{ role }} · username <strong>{{ member.username }}</strong></p>
+        </div>
+        <p>Send this link to {{ member.first_name|default:member.username }}. They open it to choose their own password. It works <strong>once</strong> and expires in <strong>{{ valid_days }} days</strong>.</p>
+        <div class="input-group mb-3">
+            <input class="form-control" id="setup-link" value="{{ link }}" readonly aria-label="Setup link" />
+            <button class="btn btn-primary btn-icon" type="button" id="copy-btn"><i class="bi bi-clipboard"></i> Copy</button>
+        </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-between">
+            <a class="btn btn-light btn-icon" target="_blank" rel="noopener" href="https://wa.me/?text={{ "Your AIVIN account is ready. Set your password here (valid "|urlencode }}{{ valid_days }}{{ " days): "|urlencode }}{{ link|urlencode }}"><i class="bi bi-whatsapp"></i> Share via WhatsApp</a>
+            <a class="btn btn-light" href="{% url 'kiosk:staff-list' %}">Done</a>
+        </div>
+        <p class="text-muted small mt-3 mb-0"><i class="bi bi-info-circle"></i> This page is the only place the link is shown. If it gets lost or expires, create a new one from the staff member's page.</p>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById("copy-btn").addEventListener("click", async () => {
+    const input = document.getElementById("setup-link");
+    try {
+        await navigator.clipboard.writeText(input.value);
+    } catch (e) {
+        input.select();
+        document.execCommand("copy");
+    }
+    document.getElementById("copy-btn").innerHTML = '<i class="bi bi-check-lg"></i> Copied';
+});
+</script>
+{% endblock %}

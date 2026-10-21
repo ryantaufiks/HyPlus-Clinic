@@ -10,6 +10,9 @@
             <h1 class="h4 mb-1">Staff login</h1>
             <p class="text-muted small mb-0">Patient data is only available to nurses, doctors and administrators.</p>
         </div>
+        {% if request.GET.setup == "done" %}
+        <div class="alert alert-success py-2" role="status"><i class="bi bi-check-circle"></i> Password saved. You can log in now.</div>
+        {% endif %}
         {% if form.errors %}
         <div class="alert alert-danger py-2" role="alert"><i class="bi bi-exclamation-circle"></i> Incorrect username or password.</div>
         {% endif %}
