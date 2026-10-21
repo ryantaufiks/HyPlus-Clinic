@@ -1,7 +1,6 @@
 import logging
 
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import connection
 from django.db.models import Count, Q
 from django.db.models.functions import ExtractHour
@@ -15,6 +14,7 @@ from django.views.generic import DetailView, ListView, TemplateView
 
 from .device_views import gateway_devices, gateway_online
 from .models import Measurement, Patient, PatientSubmission, Visit
+from .roles import StaffAreaMixin
 from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def patient_search_q(query):
     return Q(name__icontains=query) | Q(patient_id__iexact=query) | Q(phone__icontains=query)
 
 
-class PatientListView(LoginRequiredMixin, ListView):
+class PatientListView(StaffAreaMixin, ListView):
     model = Patient
     template_name = "kiosk/patient_list.html"
     context_object_name = "patients"
@@ -101,7 +101,7 @@ class PatientListView(LoginRequiredMixin, ListView):
         return context
 
 
-class PatientDetailView(LoginRequiredMixin, DetailView):
+class PatientDetailView(StaffAreaMixin, DetailView):
     model = Patient
     template_name = "kiosk/patient_detail.html"
     context_object_name = "patient"
@@ -132,13 +132,13 @@ class PatientDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class DashboardView(LoginRequiredMixin, TemplateView):
+class DashboardView(StaffAreaMixin, TemplateView):
     """Live overview for nurses and doctors; data comes from DashboardDataView."""
 
     template_name = "kiosk/dashboard.html"
 
 
-class DashboardDataView(LoginRequiredMixin, View):
+class DashboardDataView(StaffAreaMixin, View):
     """JSON for the dashboard, polled every few seconds."""
 
     def get(self, request):

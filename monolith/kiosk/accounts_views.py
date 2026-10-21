@@ -61,7 +61,12 @@ class StaffListView(AdminRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        users = User.objects.prefetch_related("groups").select_related("profile").order_by("-is_active", "first_name", "username")
+        users = (
+            User.objects.filter(patient_record__isnull=True)  # patient portal accounts are managed per patient
+            .prefetch_related("groups")
+            .select_related("profile")
+            .order_by("-is_active", "first_name", "username")
+        )
         context["members"] = [
             {
                 "user": u,
@@ -102,12 +107,12 @@ class StaffEditView(AdminRequiredMixin, View):
         return {"form": form, "member": member, "is_self": member == self.request.user}
 
     def get(self, request, pk):
-        member = get_object_or_404(User, pk=pk)
+        member = get_object_or_404(User.objects.filter(patient_record__isnull=True), pk=pk)
         form = StaffAccountForm(instance=member, initial=_initial(member), editing_self=member == request.user)
         return render(request, self.template_name, self._context(member, form))
 
     def post(self, request, pk):
-        member = get_object_or_404(User, pk=pk)
+        member = get_object_or_404(User.objects.filter(patient_record__isnull=True), pk=pk)
         is_self = member == request.user
         action = request.POST.get("action")
 

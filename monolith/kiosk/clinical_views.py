@@ -4,7 +4,6 @@ import datetime as dt
 import logging
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -25,7 +24,8 @@ from .forms import (
 )
 from . import queue
 from .models import AuditEvent, Measurement, Patient, PatientSubmission, StaffProfile, Visit
-from .roles import CapabilityRequiredMixin, is_doctor
+from .roles import CapabilityRequiredMixin, StaffAreaMixin, can, is_doctor
+from .portal_views import render_invite
 from .views import latest_vitals
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class PatientRegisterView(CapabilityRequiredMixin, View):
         return redirect("kiosk:patient-detail", patient.pk)
 
 
-class PatientEditView(LoginRequiredMixin, View):
+class PatientEditView(StaffAreaMixin, View):
     template_name = "kiosk/patient_form.html"
 
     def get(self, request, pk):
@@ -109,7 +109,7 @@ class VisitTokenView(View):
 
     def get(self, request, token):
         visit = self._visit(token)
-        if request.user.is_authenticated:
+        if can(request.user, "staff_area"):
             return redirect("kiosk:visit-detail", visit.pk)
         if self._expired(visit):
             return render(request, self.template_name, {"expired": True, "visit": visit})
@@ -192,7 +192,11 @@ class SubmissionReviewView(CapabilityRequiredMixin, View):
                 _record_weight(patient, submission.visit, weight, Measurement.SOURCE_PATIENT)
                 submission.status = PatientSubmission.APPROVED
                 AuditEvent.record(request.user, "submission.approved", patient=patient, fields=_changed_fields(before, patient))
-            messages.success(request, f"Details for {patient.name} ({patient.patient_id}) approved.")
+            submission.reviewed_by = request.user
+            submission.reviewed_at = timezone.now()
+            submission.save()
+            # Same as for staff: hand the patient a one-time link to their own account.
+            return render_invite(request, patient, approved=True)
         else:
             submission.status = PatientSubmission.REJECTED
             submission.review_note = request.POST.get("note", "")[:200]
@@ -272,7 +276,7 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
         return context
 
 
-class VisitDetailView(LoginRequiredMixin, View):
+class VisitDetailView(StaffAreaMixin, View):
     """The doctor's workspace for one visit; read-only for other staff."""
 
     template_name = "kiosk/visit_detail.html"
@@ -359,7 +363,7 @@ class VisitDetailView(LoginRequiredMixin, View):
         return redirect("kiosk:doctor-queue")
 
 
-class PrescriptionPrintView(LoginRequiredMixin, TemplateView):
+class PrescriptionPrintView(StaffAreaMixin, TemplateView):
     template_name = "kiosk/prescription_print.html"
 
     def get_context_data(self, **kwargs):

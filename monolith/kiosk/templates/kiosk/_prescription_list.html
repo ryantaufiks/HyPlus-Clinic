@@ -7,7 +7,7 @@
             {% for p in items %}
             <tr>
                 <td class="fw-semibold">{{ p.drug }}{% if p.allergy_override %} <span class="status status-critical" title="Prescribed despite an allergy warning"><i class="bi bi-exclamation-octagon-fill"></i>Allergy override</span>{% endif %}</td>
-                <td>{{ p.dose }}</td><td>{{ p.frequency }}</td><td>{{ p.duration|default:"—" }}</td><td>{{ p.instructions|default:"—" }}</td>
+                <td class="text-nowrap">{{ p.dose }}</td><td>{{ p.frequency }}</td><td>{{ p.duration|default:"—" }}</td><td>{{ p.instructions|default:"—" }}</td>
             </tr>
             {% endfor %}
         </tbody>

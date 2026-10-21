@@ -1,0 +1,31 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Patient sign in - AIVIN{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <section class="surface">
+        <div class="text-center mb-4">
+            <span class="brand-mark mb-3" style="width: 56px; height: 56px; font-size: 1.6rem; border-radius: 16px"><i class="bi bi-person-heart"></i></span>
+            <h1 class="h4 mb-1">Patient sign in</h1>
+            <p class="text-muted small mb-0">See your visits, vital signs, diagnoses and prescriptions.</p>
+        </div>
+        {% if request.GET.setup == "done" %}<div class="alert alert-success py-2" role="status"><i class="bi bi-check-circle"></i> Account activated. Sign in with your Patient ID.</div>{% endif %}
+        {% if form.errors %}<div class="alert alert-danger py-2" role="alert"><i class="bi bi-exclamation-circle"></i> Incorrect Patient ID or password.</div>{% endif %}
+        <form method="post" action="{% url 'portal-login' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}" />
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="id_username">Patient ID</label>
+                <input class="form-control text-uppercase" type="text" name="username" id="id_username" maxlength="10" autocomplete="username" autocapitalize="characters" required autofocus />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold" for="id_password">Password</label>
+                <input class="form-control" type="password" name="password" id="id_password" autocomplete="current-password" required />
+            </div>
+            <button type="submit" class="btn btn-primary w-100 btn-lg">Sign in</button>
+        </form>
+        <p class="text-muted small text-center mt-3 mb-0">Forgot your password? Ask the clinic for a new link.</p>
+    </section>
+</div>
+{% endblock %}

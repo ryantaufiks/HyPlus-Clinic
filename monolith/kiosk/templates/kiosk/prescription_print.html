@@ -14,7 +14,7 @@
 {% block content %}
 <div class="rx-sheet">
     <div class="d-flex justify-content-end gap-2 mb-3 no-print">
-        <a class="btn btn-light" href="{% url 'kiosk:visit-detail' visit.pk %}">Back</a>
+        <a class="btn btn-light" href="{% if portal %}{% url 'portal-home' %}{% else %}{% url 'kiosk:visit-detail' visit.pk %}{% endif %}">Back</a>
         <button class="btn btn-primary btn-icon" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
     </div>
     <section class="surface">

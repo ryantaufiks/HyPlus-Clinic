@@ -1,0 +1,57 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Activate your account - AIVIN{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 560px">
+    <section class="surface">
+        {% if invalid %}
+        <div class="text-center">
+            <span class="kiosk-icon mb-3"><i class="bi bi-link-45deg"></i></span>
+            <h1 class="h4">This link is no longer valid</h1>
+            <p class="text-muted mb-0">It was already used or has expired. Ask the clinic for a new link.</p>
+        </div>
+        {% else %}
+        <div class="text-center mb-4">
+            <span class="brand-mark mb-3" style="width: 56px; height: 56px; font-size: 1.6rem; border-radius: 16px"><i class="bi bi-person-heart"></i></span>
+            <h1 class="h4 mb-1">Activate your account</h1>
+            <p class="text-muted small mb-0">Patient ID <strong>{{ patient.patient_id }}</strong>. You'll use it with your password to sign in.</p>
+        </div>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="{{ form.date_of_birth.id_for_label }}">{{ form.date_of_birth.label }}</label>
+                {{ form.date_of_birth }}
+                <div class="form-text">To confirm it's you.</div>
+                {% for e in form.date_of_birth.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="id_new_password1">New password</label>
+                {{ form.new_password1 }}
+                <div class="form-text">At least 12 characters that you don't use elsewhere.</div>
+                {% for e in form.new_password1.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="id_new_password2">Repeat password</label>
+                {{ form.new_password2 }}
+                {% for e in form.new_password2.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <details class="mb-3 small">
+                <summary class="fw-semibold">Privacy notice</summary>
+                <div class="text-muted mt-2">
+                    <p class="mb-2">The clinic keeps your registration details, vital signs, diagnoses and prescriptions to provide your care. This account lets you see that information. Only you (with your password) and the clinic's nurses, doctors and staff can see it.</p>
+                    <p class="mb-0">You can ask the clinic to correct your details or close this account at any time.</p>
+                </div>
+            </details>
+            <div class="form-check mb-4">
+                <input class="form-check-input {% if form.consent.errors %}is-invalid{% endif %}" type="checkbox" name="consent" id="id_consent" {% if form.consent.value %}checked{% endif %} />
+                <label class="form-check-label small" for="id_consent">{{ form.consent.label }}</label>
+                {% for e in form.consent.errors %}<div class="invalid-feedback d-block">You must agree to activate your account.</div>{% endfor %}
+            </div>
+            <button class="btn btn-primary btn-lg w-100" type="submit">Activate account</button>
+        </form>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

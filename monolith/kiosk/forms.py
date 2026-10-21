@@ -225,4 +225,6 @@ class StaffAccountForm(BootstrapMixin, forms.ModelForm):
         username = self.cleaned_data["username"].strip().lower()
         if not re.fullmatch(r"[a-z0-9._-]{3,30}", username):
             raise forms.ValidationError("Use 3–30 letters, digits, dots, dashes or underscores.")
+        if username.startswith("patient-"):
+            raise forms.ValidationError("Usernames starting with “patient-” are reserved for patient accounts.")
         return username

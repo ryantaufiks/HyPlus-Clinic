@@ -73,6 +73,15 @@ Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{
 5. The doctor records the diagnosis and prescription and presses **Complete & call next**; the TV moves on to the next number. Critical blood pressure is called first.
 6. Doctors, nurses and administrators can **cancel** a queued visit (no-show, patient left, duplicate…). A reason is required. The visit leaves the queue and the TV but is never deleted: its record, vitals, the reason and who cancelled it are kept.
 
+## Patient portal
+
+Patients can have their own account to see their visits, vital signs (with charts), diagnoses and prescriptions; doctors' internal notes are never shown.
+
+- Approving a registration (or **Portal access → Send account link** on a patient's page) creates a one-time link, valid 3 days, with a button to send it on WhatsApp to the patient's phone, exactly like staff invitations.
+- To activate, the patient confirms their date of birth, agrees to the privacy notice and chooses a password. They sign in at `/portal/login/` with their Patient ID.
+- Front desk, nurses and administrators can send a new link (password reset) or disable access. Patient accounts never appear in, and cannot be turned into, staff accounts; every staff page refuses them.
+- Health data is "specific personal data" under Indonesia's UU PDP (No. 27/2022): have the clinic review the privacy notice text in `kiosk/templates/kiosk/portal_setup.html`.
+
 ## Medical devices (OMRON)
 
 Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. They are read by the BLE gateway (`monolith/gateway`) on the server's own Bluetooth adapter, so **the devices must be within Bluetooth range of the server** (same room, roughly 5–10 m). Tablets and phones only need a browser.

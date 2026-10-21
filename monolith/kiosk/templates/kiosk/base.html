@@ -77,7 +77,18 @@
                     </button>
                     <div class="collapse navbar-collapse" id="app-nav">
                         <ul class="navbar-nav app-nav ms-auto align-items-lg-center gap-1">
-                            {% if user.is_authenticated %}
+                            {% if user.is_authenticated and user_role == "Patient" %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'portal-home' %}active{% endif %}" href="{% url 'portal-home' %}"><i class="bi bi-person-heart"></i> My health</a>
+                            </li>
+                            <li class="nav-item">
+                                <form method="post" action="{% url 'logout' %}" class="m-0">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{% url 'portal-login' %}" />
+                                    <button type="submit" class="nav-link btn btn-link"><i class="bi bi-box-arrow-right"></i> Sign out</button>
+                                </form>
+                            </li>
+                            {% elif user.is_authenticated %}
                             {% if user_can.use_kiosk %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'home' %}active{% endif %}" href="{% url 'kiosk:home' %}"><i class="bi bi-display"></i> Kiosk</a>
@@ -127,6 +138,9 @@
                                 </form>
                             </li>
                             {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if current == 'portal-login' %}active{% endif %}" href="{% url 'portal-login' %}"><i class="bi bi-person-heart"></i> Patient sign in</a>
+                            </li>
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'login' %}active{% endif %}" href="{% url 'login' %}"><i class="bi bi-person-lock"></i> Staff login</a>
                             </li>

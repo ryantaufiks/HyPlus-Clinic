@@ -1,0 +1,152 @@
+{% extends 'kiosk/base.html' %}
+{% load static %}
+
+{% block title %}My health - AIVIN{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Hello, {{ patient.name }}</h1>
+        <p class="page-subtitle"><span class="status status-info">{{ patient.patient_id }}</span> · your health record at the clinic</p>
+    </div>
+</div>
+
+{% if patient.has_drug_allergy %}
+<div class="alert alert-danger d-flex gap-2 align-items-start" role="alert"><i class="bi bi-exclamation-triangle-fill fs-5"></i><div><strong>Drug allergy on record:</strong> {{ patient.drug_allergies }}</div></div>
+{% endif %}
+
+{% if open_visit %}
+<section class="surface d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+        <div class="text-muted small fw-semibold text-uppercase">Today's visit</div>
+        <div class="ticket-number">{{ open_visit.queue_number }}</div>
+        <span id="live-status" class="status status-info mt-1">{{ open_visit.get_status_display }}</span>
+    </div>
+    <a class="btn btn-primary btn-icon" href="{% url 'kiosk:visit-token' open_visit.token %}"><i class="bi bi-qr-code"></i> Show my ticket</a>
+</section>
+{% endif %}
+
+<div class="row g-4 {% if open_visit %}mt-0{% endif %}">
+    <div class="col-lg-8">
+        <section class="surface h-100">
+            <h2 class="section-title"><i class="bi bi-activity"></i> Latest vital signs</h2>
+            {% include 'kiosk/_vitals.html' %}
+        </section>
+    </div>
+    <div class="col-lg-4">
+        <section class="surface h-100">
+            <h2 class="section-title"><i class="bi bi-person-vcard"></i> My details</h2>
+            <dl class="row small mb-2">
+                <dt class="col-5 text-muted fw-semibold">Date of birth</dt><dd class="col-7">{{ patient.date_of_birth|date:"j M Y"|default:"—" }}</dd>
+                <dt class="col-5 text-muted fw-semibold">Phone</dt><dd class="col-7">{{ patient.phone|default:"—" }}</dd>
+                <dt class="col-5 text-muted fw-semibold">ID document</dt><dd class="col-7">{% if patient.id_type %}{{ patient.get_id_type_display }} ···{{ patient.id_last4 }}{% else %}—{% endif %}</dd>
+                <dt class="col-5 text-muted fw-semibold">Height</dt><dd class="col-7">{% if patient.height_cm %}{{ patient.height_cm|floatformat:0 }} cm{% else %}—{% endif %}</dd>
+            </dl>
+            <p class="text-muted small mb-0">To correct your details, ask the clinic's front desk.</p>
+        </section>
+    </div>
+
+    <div class="col-lg-7">
+        <section class="surface h-100">
+            <div class="chart-head">
+                <h2 class="chart-title">Blood pressure</h2>
+                <ul class="chart-legend">
+                    <li><span class="swatch" style="background: var(--chart-series-1)"></span>Systolic</li>
+                    <li><span class="swatch" style="background: var(--chart-series-2)"></span>Diastolic</li>
+                </ul>
+            </div>
+            {% if chart_data.bp %}
+            <div class="chart-box chart-box-sm"><canvas id="chart-bp" role="img" aria-label="My blood pressure over time"></canvas></div>
+            <details class="chart-table" id="table-bp"></details>
+            {% else %}<div class="empty-state"><i class="bi bi-heart-pulse"></i>No readings yet.</div>{% endif %}
+        </section>
+    </div>
+    <div class="col-lg-5">
+        <section class="surface h-100">
+            <div class="chart-head"><h2 class="chart-title">Weight</h2></div>
+            {% if chart_data.weight %}
+            <div class="chart-box chart-box-sm"><canvas id="chart-weight" role="img" aria-label="My weight over time"></canvas></div>
+            <details class="chart-table" id="table-weight"></details>
+            {% else %}<div class="empty-state"><i class="bi bi-speedometer2"></i>No readings yet.</div>{% endif %}
+        </section>
+    </div>
+</div>
+
+<h2 class="h5 mt-4 mb-3"><i class="bi bi-calendar2-check"></i> My visits</h2>
+{% for row in visits %}{% with v=row.visit vit=row.vitals %}
+<section class="surface">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+        <div>
+            <div class="fw-semibold">{{ v.created_at|date:"l j F Y" }}{% if v.queue_number %} · {{ v.queue_number }}{% endif %}</div>
+            <div class="text-muted small">{{ v.reason }}</div>
+        </div>
+        <span class="status {% if v.status == 'completed' %}status-good{% else %}status-info{% endif %}">{{ v.get_status_display }}</span>
+    </div>
+    <div class="small mb-2">
+        {% if vit.bp %}<span class="me-3"><i class="bi bi-heart-pulse"></i> {{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }} mmHg{% if vit.bp.heart_rate_bpm %}, {{ vit.bp.heart_rate_bpm }} bpm{% endif %}</span>{% endif %}
+        {% if vit.weight %}<span><i class="bi bi-speedometer2"></i> {{ vit.weight.weight_kg|floatformat:1 }} kg</span>{% endif %}
+    </div>
+    {% if v.diagnosis %}
+    <div class="mb-2"><span class="text-muted small">Diagnosis</span><div class="fw-semibold">{{ v.diagnosis }}{% if v.diagnosis_code %} <span class="status status-neutral">{{ v.diagnosis_code }}</span>{% endif %}</div>
+        {% if v.doctor %}<div class="text-muted small">{{ v.doctor.get_full_name|default:v.doctor.get_username }}</div>{% endif %}</div>
+    {% endif %}
+    {% if v.prescriptions.all %}
+    {% include 'kiosk/_prescription_list.html' with items=v.prescriptions.all %}
+    <a class="btn btn-light btn-sm btn-icon" href="{% url 'portal-prescription' v.pk %}" target="_blank"><i class="bi bi-printer"></i> Prescription</a>
+    {% endif %}
+</section>
+{% endwith %}{% empty %}
+<section class="surface"><div class="empty-state"><i class="bi bi-calendar"></i>No visits yet.</div></section>
+{% endfor %}
+{{ chart_data|json_script:"chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script src="{% static 'js/aivin-charts.js' %}"></script>
+<script>
+const data = JSON.parse(document.getElementById("chart-data").textContent);
+const { COLORS, renderTable, timeLine } = AivinCharts;
+if (data.bp.length) {
+    const chart = timeLine(document.getElementById("chart-bp"), data.bp, [
+        { label: "Systolic", key: "systolic", color: COLORS.series1 },
+        { label: "Diastolic", key: "diastolic", color: COLORS.series2 },
+    ], { yTitle: "mmHg", labelFor: (p) => formatAxis(p.t), suggestedMin: 60, suggestedMax: 160 });
+    chart.options.plugins.tooltip.callbacks = {
+        title: (items) => formatDateTime(data.bp[items[0].dataIndex].t),
+        label: (ctx) => ` ${ctx.dataset.label}: ${ctx.formattedValue} mmHg`,
+    };
+    renderTable(document.getElementById("table-bp"), [
+        { label: "Measured", value: (p) => formatDateTime(p.t) },
+        { label: "Systolic", value: (p) => p.systolic, num: true },
+        { label: "Diastolic", value: (p) => p.diastolic, num: true },
+    ], data.bp);
+}
+if (data.weight.length) {
+    const chart = timeLine(document.getElementById("chart-weight"), data.weight, [
+        { label: "Weight", key: "weight", color: COLORS.series1 },
+    ], { yTitle: "kg", labelFor: (p) => formatAxis(p.t) });
+    chart.options.plugins.tooltip.callbacks = {
+        title: (items) => formatDateTime(data.weight[items[0].dataIndex].t),
+        label: (ctx) => ` ${ctx.formattedValue} kg`,
+    };
+    renderTable(document.getElementById("table-weight"), [
+        { label: "Measured", value: (p) => formatDateTime(p.t) },
+        { label: "Weight (kg)", value: (p) => p.weight, num: true },
+    ], data.weight);
+}
+{% if open_visit %}
+(async function status() {
+    try {
+        const d = await (await fetch("{% url 'kiosk:visit-status' open_visit.token %}", { cache: "no-store" })).json();
+        const el = document.getElementById("live-status");
+        el.textContent = d.status === "waiting"
+            ? (d.ahead === 0 ? "You're next — please stay nearby" : `Waiting · ${d.ahead} patient${d.ahead === 1 ? "" : "s"} ahead of you`)
+            : d.status === "called" ? `Please go to ${d.room} now` : d.status_label;
+        el.className = `status ${d.status === "called" ? "status-warning" : "status-info"} mt-1`;
+    } catch (e) {}
+    setTimeout(status, 10000);
+})();
+{% endif %}
+</script>
+{% endblock %}

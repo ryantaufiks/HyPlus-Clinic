@@ -4,6 +4,8 @@ from django.urls import include, path, reverse_lazy
 from django.utils.text import format_lazy
 from django_ratelimit.decorators import ratelimit
 
+from kiosk import portal_views
+from kiosk.portal_views import RoleAwareLoginView
 from kiosk.views import healthz
 
 urlpatterns = [
@@ -11,9 +13,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path(
         "accounts/login/",
-        ratelimit(key="ip", rate="10/m", method="POST", block=True)(
-            auth_views.LoginView.as_view(redirect_authenticated_user=True)
-        ),
+        ratelimit(key="ip", rate="10/m", method="POST", block=True)(RoleAwareLoginView.as_view()),
         name="login",
     ),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
@@ -25,6 +25,15 @@ urlpatterns = [
             success_url=format_lazy("{}?setup=done", reverse_lazy("login")),
         ),
         name="account-setup",
+    ),
+    # Patient portal
+    path("portal/", portal_views.PortalHomeView.as_view(), name="portal-home"),
+    path("portal/login/", portal_views.PortalLoginView.as_view(), name="portal-login"),
+    path("portal/setup/<uidb64>/<token>/", portal_views.PortalSetupView.as_view(), name="portal-setup"),
+    path(
+        "portal/visits/<int:pk>/prescription/",
+        portal_views.PortalPrescriptionView.as_view(),
+        name="portal-prescription",
     ),
     path("", include("kiosk.urls")),
 ]

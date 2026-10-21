@@ -53,6 +53,32 @@
         </section>
     </div>
 
+    {% if user_can.register_patients %}
+    <div class="col-12">
+        <section class="surface d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h2 class="section-title mb-1"><i class="bi bi-person-heart"></i> Portal access</h2>
+                <div class="small text-muted">
+                    {% if not patient.user %}No patient account yet.
+                    {% elif not patient.user.is_active %}Disabled.
+                    {% elif patient.user.has_usable_password %}Active{% if patient.portal_consent_at %} · agreed to the privacy notice {{ patient.portal_consent_at|date:"j M Y" }}{% endif %}{% if patient.user.last_login %} · last sign-in {{ patient.user.last_login|date:"j M Y, H:i" }}{% endif %}.
+                    {% else %}Invited; waiting for the patient to activate.{% endif %}
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <form method="post" action="{% url 'kiosk:patient-portal-invite' patient.pk %}">{% csrf_token %}
+                    <button class="btn btn-light btn-icon"><i class="bi bi-link-45deg"></i> {% if patient.user and patient.user.has_usable_password %}Password reset link{% else %}Send account link{% endif %}</button>
+                </form>
+                {% if patient.user and patient.user.is_active %}
+                <form method="post" action="{% url 'kiosk:patient-portal-disable' patient.pk %}" onsubmit="return confirm('Disable this patient\'s portal access?')">{% csrf_token %}
+                    <button class="btn btn-light btn-icon text-danger"><i class="bi bi-slash-circle"></i> Disable</button>
+                </form>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+    {% endif %}
+
     <div class="col-12">
         <section class="surface surface-flush">
             <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-calendar2-check"></i> Visits</h2></div>
