@@ -25,6 +25,7 @@
         <nav class="site-nav d-none d-lg-flex" aria-label="Sections">
             <a href="#services">Services</a>
             <a href="#how">How it works</a>
+            <a href="#features">Features</a>
             {% if reviews %}<a href="#reviews">Reviews</a>{% endif %}
         </nav>
         {% if user.is_authenticated and user_role == "Patient" %}
@@ -99,60 +100,6 @@
                 <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-person-check"></i><h3>Choose your doctor</h3><p>See the doctor you prefer, or the first one available for the shortest wait.</p></div></div>
                 <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-phone"></i><h3>Follow the queue</h3><p>Scan your ticket to see your place in line, so you can wait where you like.</p></div></div>
                 <div class="col-sm-6 col-lg-3"><div class="value-tile" data-reveal style="--i: 3"><i class="bi bi-folder2-open"></i><h3>Your records, always with you</h3><p>Diagnoses, prescriptions and health-check trends in your own patient portal.</p></div></div>
-            </div>
-
-            <div class="features" data-reveal>
-                <div class="features-head">
-                    <h3>Everything in one platform</h3>
-                    <p>From the first booking to the last prescription, every step runs on Hy+ Clinic.</p>
-                </div>
-                <div class="feature-tabs" role="tablist" aria-label="Features by user" hidden>
-                <button type="button" role="tab" id="tab-patients" aria-controls="panel-patients" aria-selected="true" class="active"><i class="bi bi-person-heart"></i> For patients</button>
-                <button type="button" role="tab" id="tab-kiosk" aria-controls="panel-kiosk" aria-selected="false" class=""><i class="bi bi-display"></i> At the kiosk · AIVIN</button>
-                <button type="button" role="tab" id="tab-team" aria-controls="panel-team" aria-selected="false" class=""><i class="bi bi-clipboard2-pulse"></i> For doctors &amp; staff</button>
-                <button type="button" role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" class="tab-ai"><i class="bi bi-stars"></i> AI features <span class="soon">Soon</span></button>
-                </div>
-                <div class="feature-panel" role="tabpanel" id="panel-patients" aria-labelledby="tab-patients">
-                    <h3 class="feature-panel-title"><i class="bi bi-person-heart"></i> For patients</h3>
-                    <div class="feature"><i class="bi bi-calendar2-check"></i><div><h4>Online booking &amp; queue numbers</h4><p>Book any service, or take today's queue number from home.</p></div></div>
-                    <div class="feature"><i class="bi bi-person-check"></i><div><h4>Choose your doctor</h4><p>Pick a doctor on duty, or the first available for the shortest wait.</p></div></div>
-                    <div class="feature"><i class="bi bi-phone"></i><div><h4>Live queue on your phone</h4><p>See how many are ahead of you; your number appears on the clinic TV with a chime.</p></div></div>
-                    <div class="feature"><i class="bi bi-qr-code"></i><div><h4>QR ticket</h4><p>One code to check in, open the consulting-room door and follow your visit.</p></div></div>
-                    <div class="feature"><i class="bi bi-folder2-open"></i><div><h4>Patient portal</h4><p>Your visits, diagnoses, health-check trends and printable prescriptions.</p></div></div>
-                    <div class="feature"><i class="bi bi-pencil-square"></i><div><h4>Register from your phone</h4><p>Complete your details from home; the clinic checks them before they are saved.</p></div></div>
-                </div>
-                <div class="feature-panel" role="tabpanel" id="panel-kiosk" aria-labelledby="tab-kiosk">
-                    <h3 class="feature-panel-title"><i class="bi bi-display"></i> At the kiosk · AIVIN</h3>
-                    <div class="feature"><i class="bi bi-bluetooth"></i><div><h4>Connected medical devices</h4><p>Wireless devices send results straight to the kiosk: no typing, no transcription mistakes.</p></div></div>
-                    <div class="feature"><i class="bi bi-mic"></i><div><h4>Answer by voice</h4><p>Say your name and why you came; the kiosk fills in the form for you.</p></div></div>
-                    <div class="feature"><i class="bi bi-heart-pulse"></i><div><h4>Results, explained</h4><p>Every reading is checked against clinical guidelines, such as ACC/AHA for blood pressure, and flagged for the doctor.</p></div></div>
-                    <div class="feature"><i class="bi bi-exclamation-triangle"></i><div><h4>Urgent patients first</h4><p>A reading that needs urgent attention, such as a very high blood pressure, moves the patient to the front of the queue.</p></div></div>
-                    <div class="feature"><i class="bi bi-printer"></i><div><h4>Ticket in minutes</h4><p>A printed or on-screen ticket with queue number, doctor and QR code.</p></div></div>
-                    <div class="feature"><i class="bi bi-people"></i><div><h4>Works for walk-ins and online tickets</h4><p>New patients, returning patients by Patient ID, and online queue numbers.</p></div></div>
-                    <div class="feature feature-soon feature-full"><i class="bi bi-plus-circle-dotted"></i><div><h4>More health checks <span class="soon">Coming soon</span></h4><p>Pulse oximetry (SpO₂), and blood glucose, uric acid and cholesterol from one portable all-in-one meter, all on wireless devices that send results straight to your record.</p></div></div>
-                </div>
-                <div class="feature-panel" role="tabpanel" id="panel-team" aria-labelledby="tab-team">
-                    <h3 class="feature-panel-title"><i class="bi bi-clipboard2-pulse"></i> For doctors &amp; staff</h3>
-                    <div class="feature feature-ai"><i class="bi bi-stars"></i><div><h4>AI pre-consultation summary <span class="new">New · AI</span></h4><p>One tap gives the doctor a short summary of the complaint, today's vitals, history, allergies and recent prescriptions, with points to check. Only de-identified data is sent to the AI, and the doctor always reviews it.</p></div></div>
-                    <div class="feature"><i class="bi bi-journal-medical"></i><div><h4>Doctor's workspace</h4><p>History, allergies and vital-sign trends on one screen; diagnosis with ICD-10 codes.</p></div></div>
-                    <div class="feature"><i class="bi bi-capsule"></i><div><h4>Safer prescriptions</h4><p>Structured prescriptions with an automatic check against the patient's drug allergies.</p></div></div>
-                    <div class="feature"><i class="bi bi-megaphone"></i><div><h4>One-tap calling</h4><p>Call the next patient in your own line; the TV and the patient's phone update instantly.</p></div></div>
-                    <div class="feature"><i class="bi bi-graph-up"></i><div><h4>Live clinic dashboard</h4><p>Check-ins, waiting patients, abnormal readings and device status in real time.</p></div></div>
-                    <div class="feature"><i class="bi bi-inbox"></i><div><h4>Front desk tools</h4><p>Bookings confirmed on WhatsApp, registration approvals and review moderation.</p></div></div>
-                    <div class="feature"><i class="bi bi-shield-lock"></i><div><h4>Secure by design</h4><p>Role-based access, an audit trail of every change, and encrypted sensitive settings.</p></div></div>
-                    <div class="feature"><i class="bi bi-calendar-week"></i><div><h4>Weekly doctor schedules</h4><p>Each doctor sets their consulting hours and days off; bookings outside them are refused automatically.</p></div></div>
-                    <div class="feature feature-soon feature-wide"><i class="bi bi-fingerprint"></i><div><h4>Staff attendance <span class="soon">Coming soon</span></h4><p>Clock in and out from the staff app with location or QR check, compared with each doctor's schedule, with monthly attendance reports for payroll.</p></div></div>
-                </div>
-                <div class="feature-panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai">
-                    <h3 class="feature-panel-title"><i class="bi bi-stars"></i> AI features <span class="soon">Coming soon</span></h3>
-                    <p class="feature-note"><i class="bi bi-info-circle"></i> On our roadmap. Every AI suggestion is reviewed by a doctor: AI assists, it never diagnoses.</p>
-                    <div class="feature feature-soon"><i class="bi bi-ui-checks"></i><div><h4>Smart symptom questions <span class="soon">Coming soon</span></h4><p>The kiosk asks a few follow-up questions about your symptoms, so the doctor knows more before you walk in.</p></div></div>
-                    <div class="feature feature-soon"><i class="bi bi-pencil"></i><div><h4>AI-drafted clinical notes <span class="soon">Coming soon</span></h4><p>Notes and referral letters drafted from the consultation, reviewed and signed by the doctor.</p></div></div>
-                    <div class="feature feature-soon"><i class="bi bi-capsule-pill"></i><div><h4>Smart prescription assistant <span class="soon">Coming soon</span></h4><p>Suggests doses and flags drug interactions as well as allergies; the doctor always decides.</p></div></div>
-                    <div class="feature feature-soon"><i class="bi bi-whatsapp"></i><div><h4>WhatsApp assistant <span class="soon">Coming soon</span></h4><p>Book, take a queue number and get reminders by chatting with the clinic, any time.</p></div></div>
-                    <div class="feature feature-soon"><i class="bi bi-hourglass-split"></i><div><h4>Wait-time prediction <span class="soon">Coming soon</span></h4><p>Learns from past visits to tell you when to leave home so you arrive just in time.</p></div></div>
-                    <div class="feature feature-soon"><i class="bi bi-translate"></i><div><h4>Multilingual voice kiosk <span class="soon">Coming soon</span></h4><p>Speak to the kiosk in English or Bahasa Indonesia.</p></div></div>
-                </div>
             </div>
         </div>
     </section>
@@ -244,9 +191,68 @@
         </div>
     </section>
 
+    <!-- Platform features -->
+    <section class="section section-alt" id="features">
+        <div class="container">
+            <div class="section-head">
+                <h2>Everything in one platform</h2>
+                <p>From the first booking to the last prescription, every step runs on Hy+ Clinic.</p>
+            </div>
+            <div class="features" data-reveal>
+                <div class="feature-tabs" role="tablist" aria-label="Features by user" hidden>
+                <button type="button" role="tab" id="tab-patients" aria-controls="panel-patients" aria-selected="true" class="active"><i class="bi bi-person-heart"></i> For patients</button>
+                <button type="button" role="tab" id="tab-kiosk" aria-controls="panel-kiosk" aria-selected="false" class=""><i class="bi bi-display"></i> At the kiosk · AIVIN</button>
+                <button type="button" role="tab" id="tab-team" aria-controls="panel-team" aria-selected="false" class=""><i class="bi bi-clipboard2-pulse"></i> For doctors &amp; staff</button>
+                <button type="button" role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="false" class="tab-ai"><i class="bi bi-stars"></i> AI features <span class="soon">Soon</span></button>
+                </div>
+                <div class="feature-panel" role="tabpanel" id="panel-patients" aria-labelledby="tab-patients">
+                    <h3 class="feature-panel-title"><i class="bi bi-person-heart"></i> For patients</h3>
+                    <div class="feature"><i class="bi bi-calendar2-check"></i><div><h4>Online booking &amp; queue numbers</h4><p>Book any service, or take today's queue number from home.</p></div></div>
+                    <div class="feature"><i class="bi bi-person-check"></i><div><h4>Choose your doctor</h4><p>Pick a doctor on duty, or the first available for the shortest wait.</p></div></div>
+                    <div class="feature"><i class="bi bi-phone"></i><div><h4>Live queue on your phone</h4><p>See how many are ahead of you; your number appears on the clinic TV with a chime.</p></div></div>
+                    <div class="feature"><i class="bi bi-qr-code"></i><div><h4>QR ticket</h4><p>One code to check in, open the consulting-room door and follow your visit.</p></div></div>
+                    <div class="feature"><i class="bi bi-folder2-open"></i><div><h4>Patient portal</h4><p>Your visits, diagnoses, health-check trends and printable prescriptions.</p></div></div>
+                    <div class="feature"><i class="bi bi-pencil-square"></i><div><h4>Register from your phone</h4><p>Complete your details from home; the clinic checks them before they are saved.</p></div></div>
+                </div>
+                <div class="feature-panel" role="tabpanel" id="panel-kiosk" aria-labelledby="tab-kiosk">
+                    <h3 class="feature-panel-title"><i class="bi bi-display"></i> At the kiosk · AIVIN</h3>
+                    <div class="feature"><i class="bi bi-bluetooth"></i><div><h4>Connected medical devices</h4><p>Wireless devices send results straight to the kiosk: no typing, no transcription mistakes.</p></div></div>
+                    <div class="feature"><i class="bi bi-mic"></i><div><h4>Answer by voice</h4><p>Say your name and why you came; the kiosk fills in the form for you.</p></div></div>
+                    <div class="feature"><i class="bi bi-heart-pulse"></i><div><h4>Results, explained</h4><p>Every reading is checked against clinical guidelines, such as ACC/AHA for blood pressure, and flagged for the doctor.</p></div></div>
+                    <div class="feature"><i class="bi bi-exclamation-triangle"></i><div><h4>Urgent patients first</h4><p>A reading that needs urgent attention, such as a very high blood pressure, moves the patient to the front of the queue.</p></div></div>
+                    <div class="feature"><i class="bi bi-printer"></i><div><h4>Ticket in minutes</h4><p>A printed or on-screen ticket with queue number, doctor and QR code.</p></div></div>
+                    <div class="feature"><i class="bi bi-people"></i><div><h4>Works for walk-ins and online tickets</h4><p>New patients, returning patients by Patient ID, and online queue numbers.</p></div></div>
+                    <div class="feature feature-soon feature-full"><i class="bi bi-plus-circle-dotted"></i><div><h4>More health checks <span class="soon">Coming soon</span></h4><p>Pulse oximetry (SpO₂), and blood glucose, uric acid and cholesterol from one portable all-in-one meter, all on wireless devices that send results straight to your record.</p></div></div>
+                </div>
+                <div class="feature-panel" role="tabpanel" id="panel-team" aria-labelledby="tab-team">
+                    <h3 class="feature-panel-title"><i class="bi bi-clipboard2-pulse"></i> For doctors &amp; staff</h3>
+                    <div class="feature feature-ai"><i class="bi bi-stars"></i><div><h4>AI pre-consultation summary <span class="new">New · AI</span></h4><p>One tap gives the doctor a short summary of the complaint, today's vitals, history, allergies and recent prescriptions, with points to check. Only de-identified data is sent to the AI, and the doctor always reviews it.</p></div></div>
+                    <div class="feature"><i class="bi bi-journal-medical"></i><div><h4>Doctor's workspace</h4><p>History, allergies and vital-sign trends on one screen; diagnosis with ICD-10 codes.</p></div></div>
+                    <div class="feature"><i class="bi bi-capsule"></i><div><h4>Safer prescriptions</h4><p>Structured prescriptions with an automatic check against the patient's drug allergies.</p></div></div>
+                    <div class="feature"><i class="bi bi-megaphone"></i><div><h4>One-tap calling</h4><p>Call the next patient in your own line; the TV and the patient's phone update instantly.</p></div></div>
+                    <div class="feature"><i class="bi bi-graph-up"></i><div><h4>Live clinic dashboard</h4><p>Check-ins, waiting patients, abnormal readings and device status in real time.</p></div></div>
+                    <div class="feature"><i class="bi bi-inbox"></i><div><h4>Front desk tools</h4><p>Bookings confirmed on WhatsApp, registration approvals and review moderation.</p></div></div>
+                    <div class="feature"><i class="bi bi-shield-lock"></i><div><h4>Secure by design</h4><p>Role-based access, an audit trail of every change, and encrypted sensitive settings.</p></div></div>
+                    <div class="feature"><i class="bi bi-calendar-week"></i><div><h4>Weekly doctor schedules</h4><p>Each doctor sets their consulting hours and days off; bookings outside them are refused automatically.</p></div></div>
+                    <div class="feature feature-soon feature-wide"><i class="bi bi-fingerprint"></i><div><h4>Staff attendance <span class="soon">Coming soon</span></h4><p>Clock in and out from the staff app with location or QR check, compared with each doctor's schedule, with monthly attendance reports for payroll.</p></div></div>
+                </div>
+                <div class="feature-panel" role="tabpanel" id="panel-ai" aria-labelledby="tab-ai">
+                    <h3 class="feature-panel-title"><i class="bi bi-stars"></i> AI features <span class="soon">Coming soon</span></h3>
+                    <p class="feature-note"><i class="bi bi-info-circle"></i> On our roadmap. Every AI suggestion is reviewed by a doctor: AI assists, it never diagnoses.</p>
+                    <div class="feature feature-soon"><i class="bi bi-ui-checks"></i><div><h4>Smart symptom questions <span class="soon">Coming soon</span></h4><p>The kiosk asks a few follow-up questions about your symptoms, so the doctor knows more before you walk in.</p></div></div>
+                    <div class="feature feature-soon"><i class="bi bi-pencil"></i><div><h4>AI-drafted clinical notes <span class="soon">Coming soon</span></h4><p>Notes and referral letters drafted from the consultation, reviewed and signed by the doctor.</p></div></div>
+                    <div class="feature feature-soon"><i class="bi bi-capsule-pill"></i><div><h4>Smart prescription assistant <span class="soon">Coming soon</span></h4><p>Suggests doses and flags drug interactions as well as allergies; the doctor always decides.</p></div></div>
+                    <div class="feature feature-soon"><i class="bi bi-whatsapp"></i><div><h4>WhatsApp assistant <span class="soon">Coming soon</span></h4><p>Book, take a queue number and get reminders by chatting with the clinic, any time.</p></div></div>
+                    <div class="feature feature-soon"><i class="bi bi-hourglass-split"></i><div><h4>Wait-time prediction <span class="soon">Coming soon</span></h4><p>Learns from past visits to tell you when to leave home so you arrive just in time.</p></div></div>
+                    <div class="feature feature-soon"><i class="bi bi-translate"></i><div><h4>Multilingual voice kiosk <span class="soon">Coming soon</span></h4><p>Speak to the kiosk in English or Bahasa Indonesia.</p></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     {% if reviews %}
     <!-- Reviews -->
-    <section class="section section-alt" id="reviews">
+    <section class="section" id="reviews">
         <div class="container">
             <div class="section-head">
                 <h2>What our patients say</h2>
