@@ -222,3 +222,14 @@ class StaffRoomTest(TestCase):
         self.assertFalse(get_user_model().objects.filter(username="dr.budi").exists())
         self.client.post(reverse("kiosk:staff-create"), {**data, "room": "Room 2"})
         self.assertEqual(StaffProfile.room_for(get_user_model().objects.get(username="dr.budi")), "Room 2")
+
+
+class DisplayRobustnessTest(TestCase):
+    def test_called_visit_without_call_time_does_not_break_the_tv(self):
+        Visit.objects.create(
+            patient=Patient.objects.create(name="Edited"), reason="r", queue_date=timezone.localdate(),
+            queue_number="A001", status=Visit.CALLED, room="Room 1",
+        )
+        response = self.client.get(reverse("kiosk:display-data"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["called"][0]["queue_number"], "A001")

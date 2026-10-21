@@ -71,7 +71,8 @@ class DisplayDataView(View):
                         "room": v.room,
                         "doctor": _doctor_name(v.doctor),
                         "face": _doctor_face(v.doctor),
-                        "called_at": v.called_at.isoformat(),
+                        # A visit set to Called by hand (e.g. in the admin) may have no call time.
+                        "called_at": (v.called_at or v.created_at).isoformat(),
                         "call_id": f"{v.pk}-{v.call_count}",
                     }
                     for v in called
