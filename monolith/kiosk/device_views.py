@@ -35,6 +35,9 @@ WAIT_TTL_SECONDS = 180
 GATEWAY_STATUS_TTL_SECONDS = 30
 # Tolerance between the device clock (synced by the gateway) and the server.
 CLOCK_TOLERANCE = dt.timedelta(minutes=2)
+# How far a device clock may lag before its readings are no longer trusted
+# at all (see LatestDeviceReadingView).
+MAX_CLOCK_LAG = dt.timedelta(hours=6)
 # The kiosk may only look back this far, so the public endpoint never exposes old readings.
 MAX_LOOKBACK = dt.timedelta(minutes=15)
 
@@ -185,13 +188,27 @@ class DeviceWaitView(View):
         kind = data.get("kind")
         if kind not in KINDS:
             return JsonResponse({"error": "Unknown device kind"}, status=400)
-        cache.set(_waiting_key(kind), True, WAIT_TTL_SECONDS)
+        if data.get("waiting", True):
+            cache.set(_waiting_key(kind), True, WAIT_TTL_SECONDS)
+        else:
+            # The kiosk left the step: stop polling the device (saves its battery).
+            cache.delete(_waiting_key(kind))
         return JsonResponse({"gateway_online": gateway_online()})
 
 
 @method_decorator(kiosk_ratelimit, name="dispatch")
 class LatestDeviceReadingView(View):
-    """The newest unclaimed reading of `kind` taken since `since` (ISO 8601)."""
+    """The newest unclaimed reading of `kind` taken since `since` (ISO 8601).
+
+    A reading counts as taken during this step when the server first received
+    it after the step started, and either
+    - its device timestamp is after the step started (device clock correct), or
+    - it is newer than every reading that device had sent before the step
+      started (device clock wrong: some OMRON monitors drift and do not
+      always accept the gateway's clock sync). This needs at least one such
+      earlier reading.
+    Records still in the device's memory from earlier patients fail both.
+    """
 
     def get(self, request):
         kind = request.GET.get("kind")
@@ -200,23 +217,49 @@ class LatestDeviceReadingView(View):
             return JsonResponse({"error": "kind and timezone-aware since are required"}, status=400)
         now = timezone.now()
         since = max(since, now - MAX_LOOKBACK)
-
-        reading = (
-            DeviceReading.objects.filter(
-                kind=kind,
-                measurement__isnull=True,
-                measured_at__gte=since - CLOCK_TOLERANCE,
-                received_at__gte=since,
-            )
-            .order_by("-measured_at")
-            .first()
-        )
         return JsonResponse(
             {
-                "reading": _reading_json(reading) if reading else None,
+                "reading": _reading_json(reading) if (reading := fresh_reading(kind, since)) else None,
                 "gateway_online": gateway_online(),
             }
         )
+
+
+def fresh_reading(kind, since):
+    """The reading of `kind` taken after `since`; see LatestDeviceReadingView."""
+    candidates = DeviceReading.objects.filter(
+        kind=kind,
+        measurement__isnull=True,
+        received_at__gte=since,
+        measured_at__gte=since - MAX_CLOCK_LAG,
+    ).order_by("-measured_at")
+
+    on_time = candidates.filter(measured_at__gte=since - CLOCK_TOLERANCE).first()
+    if on_time:
+        return on_time
+
+    for reading in candidates:
+        newest_before = (
+            DeviceReading.objects.filter(
+                device_address=reading.device_address, kind=kind, received_at__lt=since
+            )
+            .order_by("-measured_at")
+            .values_list("measured_at", flat=True)
+            .first()
+        )
+        # Without an earlier reading to compare with, an old record could pass
+        # as new; the gateway's polls and Test connection provide one.
+        if newest_before is not None and reading.measured_at > newest_before:
+            logger.warning(
+                "%s clock is about %d min behind: accepting reading %s measured at %s",
+                reading.device_model,
+                (since - reading.measured_at).total_seconds() // 60,
+                reading.id,
+                reading.measured_at.isoformat(),
+            )
+            return reading
+        break  # older candidates are older still
+    return None
 
 
 @method_decorator(kiosk_ratelimit, name="dispatch")

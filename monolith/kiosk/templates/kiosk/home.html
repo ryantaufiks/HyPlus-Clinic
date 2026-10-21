@@ -164,6 +164,15 @@ const DeviceReader = {
     },
 
     stop() {
+        if (this.kind) {
+            // Tell the gateway to stop polling this device (saves its battery).
+            fetch("/api/devices/wait/", {
+                method: "POST",
+                keepalive: true,
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
+                body: JSON.stringify({ kind: this.kind, waiting: false }),
+            }).catch(() => {});
+        }
         this.kind = null;
         clearTimeout(this.timer);
         this.timer = null;

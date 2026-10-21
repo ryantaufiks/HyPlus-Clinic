@@ -94,6 +94,43 @@ class KioskDeviceReadingTest(TestCase):
         fresh = self.make_reading()
         self.assertEqual(self.latest()["id"], fresh.id)
 
+    def make_received(self, measured_at, received_at, **fields):
+        reading = self.make_reading(measured_at=measured_at, **fields)
+        DeviceReading.objects.filter(pk=reading.pk).update(received_at=received_at)
+        return reading
+
+    def test_lagging_device_clock(self):
+        # Ryan's case: the monitor's clock was ~36 min behind, so its reading
+        # for this step carried a time before the step started.
+        now = timezone.now()
+        self.make_received(now - dt.timedelta(hours=2), now - dt.timedelta(hours=1))  # earlier patient
+        lagging = self.make_received(now - dt.timedelta(minutes=36), now)
+        self.assertEqual(self.latest()["id"], lagging.id)
+
+    def test_lagging_clock_still_rejects_records_already_in_memory(self):
+        now = timezone.now()
+        self.make_received(now - dt.timedelta(minutes=30), now - dt.timedelta(minutes=20))  # already seen
+        self.make_received(now - dt.timedelta(minutes=40), now)  # older record, re-sent
+        self.assertIsNone(self.latest())
+
+    def test_lagging_clock_needs_a_baseline(self):
+        # Without an earlier reading the server cannot tell new from old.
+        self.make_received(timezone.now() - dt.timedelta(minutes=36), timezone.now())
+        self.assertIsNone(self.latest())
+
+    def test_very_old_record_is_never_fresh(self):
+        now = timezone.now()
+        self.make_received(now - dt.timedelta(days=400), now - dt.timedelta(days=1))
+        self.make_received(now - dt.timedelta(days=330), now)  # user 2's record from last year
+        self.assertIsNone(self.latest())
+
+    def test_leaving_the_step_stops_waiting(self):
+        url = reverse("kiosk:api-device-wait")
+        post_json(self.client, url, {"kind": "bp"})
+        self.assertTrue(cache.get("kiosk:waiting:bp"))
+        post_json(self.client, url, {"kind": "bp", "waiting": False})
+        self.assertIsNone(cache.get("kiosk:waiting:bp"))
+
     def test_claim_creates_device_measurement_once(self):
         reading = self.make_reading()
         url = reverse("kiosk:api-device-reading-claim", args=[reading.id])

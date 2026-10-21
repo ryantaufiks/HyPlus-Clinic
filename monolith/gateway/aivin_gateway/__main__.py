@@ -405,8 +405,15 @@ class Gateway:
             paired.credential_hex = data.pending_credential.hex()
             data.pending_credential = None
             store.save(self.devices)
-        # Reported to staff only; not posted as a reading, so no patient can claim it.
-        return {"rssi": entry[1], "readings": readings.extract(update, paired.kind)}
+        found = readings.extract(update, paired.kind)
+        # Also recorded on the server: it is the baseline that tells later
+        # readings from records already in the device's memory.
+        for reading in found:
+            try:
+                await self.client.post_reading(address, paired.model, reading)
+            except httpx.HTTPError as exc:
+                log.warning("Could not post test reading: %s", exc)
+        return {"rssi": entry[1], "readings": found}
 
     async def cmd_remove(self, params: dict) -> dict:
         address = params["address"]
