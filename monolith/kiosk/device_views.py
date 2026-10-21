@@ -28,6 +28,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 
 from .models import DeviceReading, GatewayCommand, Measurement, Visit
+from .roles import can
 
 logger = logging.getLogger(__name__)
 
@@ -298,7 +299,7 @@ class ClaimDeviceReadingView(View):
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
-        return self.request.user.is_staff
+        return can(self.request.user, "manage_devices")
 
 
 class StaffJsonMixin(StaffRequiredMixin):

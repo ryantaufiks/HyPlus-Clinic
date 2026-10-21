@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from kiosk.roles import apply_role
 from kiosk.models import AuditEvent, Measurement, Patient, PatientSubmission, PrescriptionItem, Visit
 
 PROFILE = {
@@ -25,9 +26,12 @@ PROFILE = {
 
 
 def make_user(username, doctor=False, staff=False):
-    user = get_user_model().objects.create_user(username, password="a-long-password-123", is_staff=staff)
+    """A front-desk user by default; doctor or nurse (staff) on request."""
+    user = get_user_model().objects.create_user(username, password="a-long-password-123")
     if doctor:
-        user.groups.add(Group.objects.get(name="Doctor"))
+        apply_role(user, "doctor")
+    elif staff:
+        apply_role(user, "nurse")
     return user
 
 

@@ -77,31 +77,39 @@
                     </button>
                     <div class="collapse navbar-collapse" id="app-nav">
                         <ul class="navbar-nav app-nav ms-auto align-items-lg-center gap-1">
+                            {% if user.is_authenticated %}
+                            {% if user_can.use_kiosk %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'home' %}active{% endif %}" href="{% url 'kiosk:home' %}"><i class="bi bi-display"></i> Kiosk</a>
                             </li>
-                            {% if user.is_authenticated %}
+                            {% endif %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'dashboard' %}active{% endif %}" href="{% url 'kiosk:dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'patient-list' or current == 'patient-detail' or current == 'patient-register' or current == 'patient-edit' or current == 'patient-merge' %}active{% endif %}" href="{% url 'kiosk:patient-list' %}"><i class="bi bi-people"></i> Patients</a>
                             </li>
+                            {% if user_can.consultations %}
                             <li class="nav-item">
-                                <a class="nav-link {% if current == 'doctor-queue' or current == 'visit-detail' %}active{% endif %}" href="{% url 'kiosk:doctor-queue' %}"><i class="bi bi-clipboard2-pulse"></i> Doctor</a>
+                                <a class="nav-link {% if current == 'doctor-queue' or current == 'visit-detail' %}active{% endif %}" href="{% url 'kiosk:doctor-queue' %}"><i class="bi bi-clipboard2-pulse"></i> Consultations</a>
                             </li>
+                            {% endif %}
+                            {% if user_can.review_registrations %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'submissions' %}active{% endif %}" href="{% url 'kiosk:submissions' %}"><i class="bi bi-inbox"></i> Registrations{% if pending_submissions %} <span class="badge rounded-pill text-bg-danger">{{ pending_submissions }}</span>{% endif %}</a>
                             </li>
+                            {% endif %}
+                            {% if user_can.scan_tickets %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'qr-scanner' %}active{% endif %}" href="{% url 'kiosk:qr-scanner' %}" title="Scan ticket"><i class="bi bi-qr-code-scan"></i> <span class="d-lg-none">Scan ticket</span></a>
                             </li>
-                            {% if user.is_staff %}
+                            {% endif %}
+                            {% if user_can.manage_devices %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'devices' %}active{% endif %}" href="{% url 'kiosk:devices' %}" title="Devices"><i class="bi bi-bluetooth"></i> <span class="d-lg-none">Devices</span></a>
                             </li>
                             {% endif %}
-                            {% if user.is_superuser %}
+                            {% if user_can.manage_staff %}
                             <li class="nav-item">
                                 <a class="nav-link {% if current == 'staff-list' or current == 'staff-create' or current == 'staff-edit' %}active{% endif %}" href="{% url 'kiosk:staff-list' %}"><i class="bi bi-person-badge"></i> Staff</a>
                             </li>
@@ -112,7 +120,8 @@
                             <li class="nav-item">
                                 <form method="post" action="{% url 'logout' %}" class="m-0">
                                     {% csrf_token %}
-                                    <button type="submit" class="nav-link btn btn-link" title="Log out {{ user.get_username }}">
+                                    <button type="submit" class="nav-link btn btn-link" title="Log out">
+                                        <span class="status status-neutral">{{ user.get_short_name|default:user.get_username }} · {{ user_role }}</span>
                                         <i class="bi bi-box-arrow-right"></i> <span class="d-lg-none">Log out</span>
                                     </button>
                                 </form>

@@ -13,7 +13,7 @@
             <input class="form-control" type="search" name="search" value="{{ search }}" placeholder="Name, Patient ID or phone" aria-label="Search patients" style="min-width: 240px" />
             <button class="btn btn-light btn-icon" type="submit"><i class="bi bi-search"></i><span class="d-none d-sm-inline">Search</span></button>
         </form>
-        <a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-register' %}"><i class="bi bi-person-plus"></i> Register</a>
+        {% if user_can.register_patients %}<a class="btn btn-primary btn-icon" href="{% url 'kiosk:patient-register' %}"><i class="bi bi-person-plus"></i> Register</a>{% endif %}
     </div>
 </div>
 

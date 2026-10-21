@@ -18,6 +18,23 @@ ROLE_CHOICES = [
 ROLE_LABELS = dict(ROLE_CHOICES)
 
 
+# What each role may do. Views enforce these; the navigation only shows what is allowed.
+CAPABILITIES = {
+    "use_kiosk": {"nurse", "frontdesk", "admin"},
+    "register_patients": {"nurse", "frontdesk", "admin"},
+    "review_registrations": {"nurse", "frontdesk", "admin"},
+    "scan_tickets": {"nurse", "frontdesk", "admin"},
+    "consultations": {"doctor", "nurse", "admin"},
+    "merge_patients": {"nurse", "admin"},
+    "manage_devices": {"nurse", "admin"},
+    "manage_staff": {"admin"},
+}
+
+
+def can(user, capability):
+    return bool(user.is_authenticated and user.is_active and role_of(user) in CAPABILITIES[capability])
+
+
 def is_doctor(user):
     """Doctors (members of the Doctor group) record diagnoses and prescriptions."""
     return user.is_authenticated and (
@@ -56,3 +73,12 @@ class DoctorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         return self.request.user.is_superuser
+
+
+class CapabilityRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Restrict a view to the roles that have `capability`."""
+
+    capability = None
+
+    def test_func(self):
+        return can(self.request.user, self.capability)

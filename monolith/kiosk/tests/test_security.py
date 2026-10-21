@@ -31,7 +31,7 @@ class StaffPagesRequireLoginTest(TestCase):
             self.assertTrue(response["Location"].startswith(reverse("login")), url)
 
     def test_staff_can_open_pages(self):
-        user = get_user_model().objects.create_user("nurse", password="a-long-password-123")
+        user = get_user_model().objects.create_superuser("admin", password="a-long-password-123")
         self.client.force_login(user)
         for url in self.urls:
             self.assertEqual(self.client.get(url).status_code, 200, url)

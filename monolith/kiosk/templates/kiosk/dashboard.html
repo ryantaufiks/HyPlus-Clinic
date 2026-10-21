@@ -19,7 +19,8 @@
         <h1 class="page-title">Today</h1>
         <p class="page-subtitle"><span id="today-date"></span> · <span class="live-dot" id="live-status">Connecting…</span></p>
     </div>
-    <a class="btn btn-outline-primary btn-icon" href="{% url 'kiosk:qr-scanner' %}"><i class="bi bi-qr-code-scan"></i> Scan ticket</a>
+    {% if user_can.scan_tickets %}<a class="btn btn-outline-primary btn-icon" href="{% url 'kiosk:qr-scanner' %}"><i class="bi bi-qr-code-scan"></i> Scan ticket</a>
+    {% elif user_can.consultations %}<a class="btn btn-outline-primary btn-icon" href="{% url 'kiosk:doctor-queue' %}"><i class="bi bi-clipboard2-pulse"></i> Consultations</a>{% endif %}
 </div>
 
 <div class="stat-grid">

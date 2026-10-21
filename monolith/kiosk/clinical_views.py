@@ -4,7 +4,7 @@ import datetime as dt
 import logging
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -24,7 +24,7 @@ from .forms import (
     allergy_conflicts,
 )
 from .models import AuditEvent, Measurement, Patient, PatientSubmission, Visit
-from .roles import DoctorRequiredMixin, is_doctor
+from .roles import CapabilityRequiredMixin, is_doctor
 from .views import latest_vitals
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,8 @@ def _changed_fields(before, patient):
 # --- Registration (staff) ----------------------------------------------------------
 
 
-class PatientRegisterView(LoginRequiredMixin, View):
+class PatientRegisterView(CapabilityRequiredMixin, View):
+    capability = "register_patients"
     template_name = "kiosk/patient_form.html"
 
     def get(self, request):
@@ -133,7 +134,8 @@ class VisitTokenView(View):
 # --- Review of patient submissions (staff) -------------------------------------------------
 
 
-class SubmissionListView(LoginRequiredMixin, TemplateView):
+class SubmissionListView(CapabilityRequiredMixin, TemplateView):
+    capability = "review_registrations"
     template_name = "kiosk/submissions.html"
 
     def get_context_data(self, **kwargs):
@@ -167,7 +169,9 @@ def _display(name, value):
     return str(value)
 
 
-class SubmissionReviewView(LoginRequiredMixin, View):
+class SubmissionReviewView(CapabilityRequiredMixin, View):
+    capability = "review_registrations"
+
     def post(self, request, pk):
         submission = get_object_or_404(PatientSubmission, pk=pk, status=PatientSubmission.PENDING)
         patient = submission.patient
@@ -202,13 +206,11 @@ class SubmissionReviewView(LoginRequiredMixin, View):
 # --- Merging duplicate patients (staff) ---------------------------------------------------
 
 
-class PatientMergeView(LoginRequiredMixin, UserPassesTestMixin, View):
+class PatientMergeView(CapabilityRequiredMixin, View):
     """Move everything from a duplicate record into the patient's main record."""
 
+    capability = "merge_patients"
     template_name = "kiosk/patient_merge.html"
-
-    def test_func(self):
-        return self.request.user.is_staff
 
     def get(self, request, pk):
         return render(request, self.template_name, {"patient": get_object_or_404(Patient, pk=pk)})
@@ -238,7 +240,8 @@ class PatientMergeView(LoginRequiredMixin, UserPassesTestMixin, View):
 # --- Doctor ---------------------------------------------------------------------------------
 
 
-class DoctorQueueView(LoginRequiredMixin, TemplateView):
+class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
+    capability = "consultations"
     template_name = "kiosk/doctor_queue.html"
 
     def get_context_data(self, **kwargs):

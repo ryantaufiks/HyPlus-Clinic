@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from kiosk.roles import apply_role
 from kiosk.models import DeviceReading, GatewayCommand, Measurement, Patient, Visit
 
 TOKEN = "test-gateway-token"
@@ -185,7 +186,8 @@ class SimulatedMeasurementTest(TestCase):
 class DeviceCommandTest(TestCase):
     def setUp(self):
         cache.clear()
-        self.staff = get_user_model().objects.create_user("nurse", password="a-long-password-123", is_staff=True)
+        self.staff = get_user_model().objects.create_user("nurse", password="a-long-password-123")
+        apply_role(self.staff, "nurse")
         self.auth = {"HTTP_AUTHORIZATION": f"Bearer {TOKEN}"}
 
     def create(self, **data):

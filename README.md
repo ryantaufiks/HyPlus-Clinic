@@ -58,6 +58,8 @@ Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{
   - *Front desk*: registers patients and reviews registrations.
   - *Administrator*: everything, including staff accounts.
 
+  Each role only sees the menus it can use, and the server refuses the rest (doctors, for example, have no Kiosk, Registrations or Scan ticket pages).
+
   Administrators never set passwords: a new account (or a reset) gives a one-time setup link, valid 3 days, to send to the staff member. Accounts are deactivated, not deleted, so records keep their author.
 - Prescriptions are checked by name against the patient's recorded drug allergies; cross-reactivity between drug classes is not detected.
 - Only the last 4 characters of an ID document are stored. Changes to registration and medical data are recorded in an audit log shown on each patient's page.

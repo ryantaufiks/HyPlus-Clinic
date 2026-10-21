@@ -1,7 +1,7 @@
 from django.conf import settings
 
 from .models import PatientSubmission
-from .roles import is_doctor
+from .roles import CAPABILITIES, ROLE_LABELS, can, is_doctor, role_of
 
 
 def app_settings(request):
@@ -11,7 +11,11 @@ def app_settings(request):
     return {
         "app_time_zone": settings.TIME_ZONE,
         "user_is_doctor": signed_in and is_doctor(user),
+        "user_role": ROLE_LABELS[role_of(user)] if signed_in else "",
+        "user_can": {name: can(user, name) for name in CAPABILITIES} if signed_in else {},
         "pending_submissions": (
-            PatientSubmission.objects.filter(status=PatientSubmission.PENDING).count() if signed_in else 0
+            PatientSubmission.objects.filter(status=PatientSubmission.PENDING).count()
+            if signed_in and can(user, "review_registrations")
+            else 0
         ),
     }
