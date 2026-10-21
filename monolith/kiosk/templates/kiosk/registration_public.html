@@ -64,7 +64,7 @@
 
 {% block extra_js %}
 {% if not submitted and not expired %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
     const el = document.getElementById("live-status");
     async function refresh() {

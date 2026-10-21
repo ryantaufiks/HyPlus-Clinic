@@ -71,7 +71,7 @@
                     <button class="btn btn-light btn-icon"><i class="bi bi-link-45deg"></i> {% if patient.user and patient.user.has_usable_password %}Password reset link{% else %}Send account link{% endif %}</button>
                 </form>
                 {% if patient.user and patient.user.is_active %}
-                <form method="post" action="{% url 'kiosk:patient-portal-disable' patient.pk %}" onsubmit="return confirm('Disable this patient\'s portal access?')">{% csrf_token %}
+                <form method="post" action="{% url 'kiosk:patient-portal-disable' patient.pk %}" data-confirm="Disable this patient&#39;s portal access?">{% csrf_token %}
                     <button class="btn btn-light btn-icon text-danger"><i class="bi bi-slash-circle"></i> Disable</button>
                 </form>
                 {% endif %}
@@ -186,7 +186,7 @@
 {% block extra_js %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
 
 const data = JSON.parse(document.getElementById("chart-data").textContent);

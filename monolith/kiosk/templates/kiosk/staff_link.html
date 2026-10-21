@@ -25,7 +25,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.getElementById("copy-btn").addEventListener("click", async () => {
     const input = document.getElementById("setup-link");
     try {

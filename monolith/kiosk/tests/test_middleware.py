@@ -25,3 +25,27 @@ class OldDomainRedirectTest(TestCase):
         response = self.client.get("/v/abc/?new=1", HTTP_HOST="old.example.org", HTTP_X_FORWARDED_PROTO="https")
         self.assertEqual((response.status_code, response["Location"]), (301, "https://new.example.org/v/abc/?new=1"))
         self.assertEqual(self.client.get(reverse("login"), HTTP_HOST="new.example.org", HTTP_X_FORWARDED_PROTO="https").status_code, 200)
+
+
+class ContentSecurityPolicyTest(TestCase):
+    def test_scripts_need_the_request_nonce(self):
+        response = self.client.get(reverse("login"))  # base.html has inline scripts
+        policy = response["Content-Security-Policy"]
+        self.assertIn("object-src 'none'", policy)
+        self.assertIn("frame-ancestors 'none'", policy)
+        self.assertNotIn("'unsafe-inline' 'unsafe-eval'", policy)
+        nonce = policy.split("'nonce-")[1].split("'")[0]
+        self.assertIn(f'<script nonce="{nonce}">', response.content.decode())
+        self.assertNotEqual(nonce, self.client.get("/").headers["Content-Security-Policy"].split("'nonce-")[1].split("'")[0])
+
+    def test_templates_have_no_inline_event_handlers(self):
+        import pathlib
+        import re
+
+        templates = pathlib.Path(__file__).resolve().parents[1] / "templates"
+        offenders = [
+            f"{path.name}: {m.group(0)}"
+            for path in templates.rglob("*.html")
+            for m in re.finditer(r"\son[a-z]+=\"", path.read_text())
+        ]
+        self.assertEqual(offenders, [])

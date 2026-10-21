@@ -80,7 +80,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.querySelectorAll("[data-day-toggle]").forEach((toggle) => toggle.addEventListener("change", () => {
     toggle.closest("[data-day]").classList.toggle("off", !toggle.checked);
 }));

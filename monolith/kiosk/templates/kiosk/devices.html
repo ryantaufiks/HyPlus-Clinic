@@ -40,7 +40,7 @@
             <li>Hold the device's <strong>Bluetooth button</strong> until <code>-P-</code> blinks on its display.</li>
             <li>Click <strong>Scan</strong>, then <strong>Pair</strong> while <code>-P-</code> is still blinking. The model is detected from the device automatically. The device shows <code>OK</code> when pairing worked.</li>
         </ol>
-        <button class="btn btn-primary btn-icon" id="scan-button" onclick="scanDevices()">
+        <button class="btn btn-primary btn-icon" id="scan-button" data-action="scanDevices">
             <i class="bi bi-search"></i> Scan (10 s)
         </button>
         <div class="table-responsive mt-3">
@@ -101,7 +101,7 @@
 
 {% block extra_js %}
 {{ supported_models|json_script:"supported-models" }}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const SUPPORTED_MODELS = JSON.parse(document.getElementById("supported-models").textContent);
 const ACTION_LABELS = { scan: "Scan", pair: "Pair", test: "Test connection", remove: "Remove" };
 let busy = false;

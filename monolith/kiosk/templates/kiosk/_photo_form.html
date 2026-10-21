@@ -3,8 +3,8 @@
     {% csrf_token %}
     <label class="btn btn-light btn-icon mb-0">
         <i class="bi bi-camera"></i> {% if has_photo %}Change photo{% else %}Upload photo{% endif %}
-        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="d-none" onchange="this.form.submit()" />
+        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="d-none" data-autosubmit />
     </label>
-    {% if has_photo %}<button class="btn btn-light btn-icon text-danger" name="action" value="remove" onclick="return confirm('Remove your photo?')"><i class="bi bi-trash"></i> Remove</button>{% endif %}
+    {% if has_photo %}<button class="btn btn-light btn-icon text-danger" name="action" value="remove" data-confirm="Remove your photo?"><i class="bi bi-trash"></i> Remove</button>{% endif %}
     <span class="text-muted small">JPG, PNG or WebP, up to 5 MB. Location data in the photo is removed.</span>
 </form>

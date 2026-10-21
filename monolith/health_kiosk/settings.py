@@ -72,6 +72,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "kiosk.middleware.PublicHostHttpsRedirectMiddleware",
+    "kiosk.middleware.ContentSecurityPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -213,6 +214,8 @@ SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 # Rate limiting for the public kiosk API.
 RATELIMIT_IP_META_KEY = "kiosk.ratelimit.client_ip"
 KIOSK_API_RATE = env("KIOSK_API_RATE", "60/m")
+# Send the Content-Security-Policy as report-only (for troubleshooting).
+CSP_REPORT_ONLY = env_bool("CSP_REPORT_ONLY", False)
 # Model for the AI pre-consultation summary (the API key is set in the admin).
 OPENAI_MODEL = env("OPENAI_MODEL", "gpt-4o-mini")
 

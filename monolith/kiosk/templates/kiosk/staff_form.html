@@ -49,7 +49,7 @@
                 {% csrf_token %}
                 <button class="btn btn-light btn-icon" name="action" value="setup-link"><i class="bi bi-link-45deg"></i> {% if member.has_usable_password %}Password reset link{% else %}New setup link{% endif %}</button>
                 {% if member.is_active %}
-                <button class="btn btn-light btn-icon text-danger" name="action" value="deactivate" onclick="return confirm('Deactivate this account? They will no longer be able to sign in.')"><i class="bi bi-slash-circle"></i> Deactivate</button>
+                <button class="btn btn-light btn-icon text-danger" name="action" value="deactivate" data-confirm="Deactivate this account? They will no longer be able to sign in."><i class="bi bi-slash-circle"></i> Deactivate</button>
                 {% else %}
                 <button class="btn btn-light btn-icon" name="action" value="activate"><i class="bi bi-check-circle"></i> Reactivate</button>
                 {% endif %}
@@ -62,7 +62,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
     const role = document.getElementById("{{ form.role.id_for_label }}");
     const room = document.getElementById("room-field");

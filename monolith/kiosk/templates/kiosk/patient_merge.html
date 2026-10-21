@@ -17,7 +17,7 @@
     <input class="form-control mb-3" id="target" name="target" maxlength="5" placeholder="e.g. K7M2Q" required autocomplete="off" style="max-width: 12rem; text-transform: uppercase" />
     <div class="d-flex gap-2 justify-content-end">
         <a class="btn btn-light" href="{% url 'kiosk:patient-detail' patient.pk %}">Cancel</a>
-        <button class="btn btn-primary" type="submit" onclick="return confirm('Merge {{ patient.patient_id }} into the patient you entered? This cannot be undone.')">Merge</button>
+        <button class="btn btn-primary" type="submit" data-confirm="Merge {{ patient.patient_id }} into the patient you entered? This cannot be undone.">Merge</button>
     </div>
 </form>
 {% endblock %}

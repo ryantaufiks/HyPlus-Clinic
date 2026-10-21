@@ -100,7 +100,7 @@
 {% block extra_js %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const DATA_URL = "{% url 'kiosk:dashboard-data' %}";
 const REFRESH_MS = 10000;
 const { COLORS, axes, renderTable, timeLine, update } = AivinCharts;

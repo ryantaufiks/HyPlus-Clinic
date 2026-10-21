@@ -44,7 +44,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const SIMULATION_ENABLED = {{ simulation_enabled|yesno:"true,false" }};
 const IDLE_RESET_MS = 90000; // back to Welcome after the ticket is shown
 
@@ -93,7 +93,7 @@ async function postJson(url, body) {
 
 /* ---------- voice ---------- */
 
-const Voice = {
+const Voice = window.Voice = {
     recognition: null,
     init() {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -493,25 +493,25 @@ const waiting = (text) => `
     </div>`;
 
 const simulateButton = (kind) => SIMULATION_ENABLED
-    ? `<button class="btn btn-light" onclick="simulate('${kind}')"><i class="bi bi-cpu"></i> Simulate (testing)</button>`
+    ? `<button class="btn btn-light" data-action="simulate" data-args='["${kind}"]'><i class="bi bi-cpu"></i> Simulate (testing)</button>`
     : "";
 
 const mic = (field, label) => Voice.available
-    ? `<button type="button" class="btn btn-light btn-mic" data-mic="${field}" onclick="Voice.listen('${field}')" aria-label="${label}"><i class="bi bi-mic-fill"></i></button>`
+    ? `<button type="button" class="btn btn-light btn-mic" data-mic="${field}" data-action="Voice.listen" data-args='["${field}"]' aria-label="${label}"><i class="bi bi-mic-fill"></i></button>`
     : "";
 
 const reasonField = () => `
     <div>
         <label for="input-reason">What brings you in today?</label>
         <div class="kiosk-input-row">
-            <textarea class="form-control form-control-xl" id="input-reason" rows="2" oninput="updateContinue()" required>${esc(state.reason)}</textarea>
+            <textarea class="form-control form-control-xl" id="input-reason" rows="2" data-input="updateContinue" required>${esc(state.reason)}</textarea>
             ${mic("reason", "Speak your reason for visiting")}
         </div>
     </div>`;
 
 const formActions = () => `
     <div class="kiosk-actions justify-content-between">
-        <button type="button" class="btn btn-light btn-xl" onclick="reset()">Cancel</button>
+        <button type="button" class="btn btn-light btn-xl" data-action="reset">Cancel</button>
         <button type="submit" class="btn btn-primary btn-xl btn-icon" id="continue-btn" disabled>Continue <i class="bi bi-arrow-right"></i></button>
     </div>`;
 
@@ -521,10 +521,10 @@ function returningView() {
         <span class="kiosk-icon"><i class="bi bi-person-badge"></i></span>
         <h2 class="kiosk-title">Welcome back</h2>
         <p class="kiosk-lead">Enter the 5-character Patient ID from your last visit.</p>
-        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="lookupPatient(event)" novalidate>
+        <form class="kiosk-field d-flex flex-column gap-3" data-submit="lookupPatient" novalidate>
             <input class="form-control form-control-xl text-center fw-bold" id="input-patient-id" aria-label="Patient ID" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" style="letter-spacing: 0.4em; font-size: 2rem; text-transform: uppercase" required />
             <div class="kiosk-actions justify-content-between">
-                <button type="button" class="btn btn-light btn-xl" onclick="reset()">Back</button>
+                <button type="button" class="btn btn-light btn-xl" data-action="reset">Back</button>
                 <button type="submit" class="btn btn-primary btn-xl btn-icon">Find <i class="bi bi-search"></i></button>
             </div>
         </form>
@@ -537,15 +537,15 @@ function returningView() {
         <div class="queue-display" style="font-size: 2.2rem; letter-spacing: 0.06em">${esc(state.maskedName)}</div>
         <p class="kiosk-lead">Patient ID ${esc(state.patientId)}</p>
         <div class="kiosk-actions">
-            <button class="btn btn-light btn-xl" onclick="confirmPatient(false)">No</button>
-            <button class="btn btn-primary btn-xl btn-icon" onclick="confirmPatient(true)">Yes, that's me <i class="bi bi-arrow-right"></i></button>
+            <button class="btn btn-light btn-xl" data-action="confirmPatient" data-args='[false]'>No</button>
+            <button class="btn btn-primary btn-xl btn-icon" data-action="confirmPatient" data-args='[true]'>Yes, that's me <i class="bi bi-arrow-right"></i></button>
         </div>`;
     }
     return `
         <span class="kiosk-icon"><i class="bi bi-chat-left-text"></i></span>
         <h2 class="kiosk-title">Welcome back</h2>
         <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answer."}</p>
-        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="startVisit(event)" novalidate>
+        <form class="kiosk-field d-flex flex-column gap-3" data-submit="startVisit" novalidate>
             ${reasonField()}
             ${formActions()}
         </form>`;
@@ -564,13 +564,13 @@ function doctorView() {
         <p class="kiosk-lead">Your number will be called to the doctor's room.</p>
         <div class="doctor-grid">
             ${state.doctors.map((d) => `
-            <button class="doctor-option" onclick="pickDoctor('${esc(d.id)}')" ${state.busy ? "disabled" : ""}>
+            <button class="doctor-option" data-action="pickDoctor" data-args='["${esc(d.id)}"]' ${state.busy ? "disabled" : ""}>
                 ${doctorFace(d)}
                 <span class="name">${esc(d.name)}</span>
                 <span class="room"><i class="bi bi-door-open"></i> ${esc(d.room)}</span>
                 <span class="wait">${waitingText(d.waiting)}</span>
             </button>`).join("")}
-            <button class="doctor-option any" onclick="pickDoctor('')" ${state.busy ? "disabled" : ""}>
+            <button class="doctor-option any" data-action="pickDoctor" data-args='[""]' ${state.busy ? "disabled" : ""}>
                 <span class="avatar avatar-initials" aria-hidden="true" style="--avatar-size: 88px"><i class="bi bi-lightning-charge-fill"></i></span>
                 <span class="name">First available doctor</span>
                 <span class="room">Any room</span>
@@ -578,7 +578,7 @@ function doctorView() {
             </button>
         </div>
         <div class="kiosk-actions justify-content-start w-100">
-            <button type="button" class="btn btn-light btn-xl" onclick="backToDetails()"><i class="bi bi-arrow-left"></i> Back</button>
+            <button type="button" class="btn btn-light btn-xl" data-action="backToDetails"><i class="bi bi-arrow-left"></i> Back</button>
         </div>`;
 }
 
@@ -587,7 +587,7 @@ function onlineView() {
         <span class="kiosk-icon"><i class="bi bi-ticket-perforated"></i></span>
         <h2 class="kiosk-title">Check in your online ticket</h2>
         <p class="kiosk-lead">Enter the queue number on your phone and the last 4 digits of your WhatsApp number.</p>
-        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="checkInOnline(event)" novalidate>
+        <form class="kiosk-field d-flex flex-column gap-3" data-submit="checkInOnline" novalidate>
             <div>
                 <label for="input-queue-number">Queue number</label>
                 <input class="form-control form-control-xl text-center fw-bold" id="input-queue-number" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="A012" style="letter-spacing: 0.2em; font-size: 2rem; text-transform: uppercase" required />
@@ -597,7 +597,7 @@ function onlineView() {
                 <input class="form-control form-control-xl text-center fw-bold" id="input-last4" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" style="letter-spacing: 0.4em; font-size: 2rem" required />
             </div>
             <div class="kiosk-actions justify-content-between">
-                <button type="button" class="btn btn-light btn-xl" onclick="reset()">Back</button>
+                <button type="button" class="btn btn-light btn-xl" data-action="reset">Back</button>
                 <button type="submit" class="btn btn-primary btn-xl btn-icon">Check in <i class="bi bi-arrow-right"></i></button>
             </div>
         </form>`;
@@ -609,21 +609,21 @@ const views = {
         <h1 class="kiosk-title">Welcome</h1>
         <p class="kiosk-lead">Let's check your weight and blood pressure before you see the doctor. It takes about 3 minutes.</p>
         <div class="kiosk-actions">
-            <button class="btn btn-primary btn-xl btn-icon" onclick="begin('new')"><i class="bi bi-person-plus"></i> First visit</button>
-            <button class="btn btn-outline-primary btn-xl btn-icon" onclick="begin('returning')"><i class="bi bi-person-badge"></i> I have a Patient ID</button>
+            <button class="btn btn-primary btn-xl btn-icon" data-action="begin" data-args='["new"]'><i class="bi bi-person-plus"></i> First visit</button>
+            <button class="btn btn-outline-primary btn-xl btn-icon" data-action="begin" data-args='["returning"]'><i class="bi bi-person-badge"></i> I have a Patient ID</button>
         </div>
-        <button class="btn btn-light btn-lg btn-icon" onclick="begin('online')"><i class="bi bi-ticket-perforated"></i> I took a queue number online</button>
+        <button class="btn btn-light btn-lg btn-icon" data-action="begin" data-args='["online"]'><i class="bi bi-ticket-perforated"></i> I took a queue number online</button>
         <p class="kiosk-hint mb-0"><i class="bi bi-shield-lock"></i> Your results are only shared with the clinic's nurses and doctors.</p>`,
 
     1: () => state.doctors ? doctorView() : state.mode === "online" ? onlineView() : state.mode === "returning" ? returningView() : `
         <span class="kiosk-icon"><i class="bi bi-person"></i></span>
         <h2 class="kiosk-title">About you</h2>
         <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answers."}</p>
-        <form class="kiosk-field d-flex flex-column gap-3" onsubmit="startVisit(event)" novalidate>
+        <form class="kiosk-field d-flex flex-column gap-3" data-submit="startVisit" novalidate>
             <div>
                 <label for="input-name">Full name</label>
                 <div class="kiosk-input-row">
-                    <input class="form-control form-control-xl" id="input-name" autocomplete="off" value="${esc(state.name)}" oninput="updateContinue()" required />
+                    <input class="form-control form-control-xl" id="input-name" autocomplete="off" value="${esc(state.name)}" data-input="updateContinue" required />
                     ${mic("name", "Speak your name")}
                 </div>
             </div>
@@ -636,10 +636,10 @@ const views = {
         <h2 class="kiosk-title">Weight</h2>
         ${state.weight
             ? `<div class="result-grid">${resultTile("Your weight", state.weight.kg, "kg", state.weight.at)}</div>
-               <div class="kiosk-actions"><button class="btn btn-primary btn-xl btn-icon" onclick="go(3)">Next: blood pressure <i class="bi bi-arrow-right"></i></button></div>`
+               <div class="kiosk-actions"><button class="btn btn-primary btn-xl btn-icon" data-action="go" data-args='[3]'>Next: blood pressure <i class="bi bi-arrow-right"></i></button></div>`
             : `<p class="kiosk-lead">Remove your shoes and heavy items, then step onto the scale and stand still until the number stops changing.</p>
                ${waiting("Waiting for the scale…")}
-               <div class="kiosk-actions">${simulateButton("weight")}<button class="btn btn-light" onclick="go(3)">Skip</button></div>`}`,
+               <div class="kiosk-actions">${simulateButton("weight")}<button class="btn btn-light" data-action="go" data-args='[3]'>Skip</button></div>`}`,
 
     3: () => `
         <span class="kiosk-icon ${state.bp ? "done" : ""}"><i class="bi ${state.bp ? "bi-check-lg" : "bi-heart-pulse"}"></i></span>
@@ -649,10 +649,10 @@ const views = {
                    ${resultTile("Blood pressure", `${state.bp.systolic}/${state.bp.diastolic}`, "mmHg", state.bp.at)}
                    ${state.bp.pulse ? resultTile("Pulse", state.bp.pulse, "bpm") : ""}
                </div>
-               <div class="kiosk-actions"><button class="btn btn-primary btn-xl btn-icon" onclick="go(4)">Finish <i class="bi bi-check-lg"></i></button></div>`
+               <div class="kiosk-actions"><button class="btn btn-primary btn-xl btn-icon" data-action="go" data-args='[4]'>Finish <i class="bi bi-check-lg"></i></button></div>`
             : `<p class="kiosk-lead">Sit comfortably with your feet flat. Wrap the cuff around your left wrist, hold it at heart level and press <strong>START</strong>. Stay still and quiet until it finishes.</p>
                ${waiting("Waiting for the blood pressure monitor…")}
-               <div class="kiosk-actions">${simulateButton("bp")}<button class="btn btn-light" onclick="go(4)">Skip</button></div>`}`,
+               <div class="kiosk-actions">${simulateButton("bp")}<button class="btn btn-light" data-action="go" data-args='[4]'>Skip</button></div>`}`,
 
     4: () => state.ticket
         ? `
@@ -667,8 +667,8 @@ const views = {
         <p class="kiosk-lead"><strong>Print or take a photo of this ticket.</strong> Scan the code at the consulting-room door when your number is called.${state.ticket.returning ? "" : " Scan it with your phone to see your place in the queue and complete your registration."}</p>
         <div class="print-only">${state.ticket.doctor ? `${esc(state.ticket.doctor)} · ${esc(state.ticket.room)}<br />` : "First available doctor<br />"}${esc(formatDateTime(new Date()))}<br />Scan at the consulting-room door when your number is called.<br />Scan with your phone to follow the queue.</div>
         <div class="kiosk-actions">
-            <button class="btn btn-light btn-xl btn-icon" onclick="window.print()"><i class="bi bi-printer"></i> Print ticket</button>
-            <button class="btn btn-primary btn-xl" onclick="reset()">Done</button>
+            <button class="btn btn-light btn-xl btn-icon" data-action="print"><i class="bi bi-printer"></i> Print ticket</button>
+            <button class="btn btn-primary btn-xl" data-action="reset">Done</button>
         </div>`
         : `<div class="spinner-border text-primary" role="status"></div><p class="kiosk-lead">Preparing your ticket…</p>`,
 };

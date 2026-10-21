@@ -19,7 +19,7 @@
         <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
         <link rel="stylesheet" href="{% static 'css/aivin.css' %}" />
 
-        <script>
+        <script nonce="{{ request.csp_nonce }}">
             // Times are always shown in the clinic's time zone (TIME_ZONE, WIB by
             // default), whatever zone the viewing device is set to.
             window.AIVIN_TIME_ZONE = "{{ app_time_zone|escapejs }}";
@@ -187,6 +187,7 @@
         </footer>
 
         <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+        <script src="{% static 'js/actions.js' %}"></script>
         {% block extra_js %}{% endblock %}
     </body>
 </html>

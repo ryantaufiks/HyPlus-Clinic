@@ -129,7 +129,7 @@
 
 {% block extra_js %}
 {% if user_can.cancel_visits %}{% include 'kiosk/_cancel_modal.html' %}{% endif %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
 // Keep the queue current, but never while the doctor is typing or a dialog is open.
 setInterval(() => {

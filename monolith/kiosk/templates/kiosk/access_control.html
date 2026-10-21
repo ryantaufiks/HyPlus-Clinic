@@ -53,7 +53,7 @@
 
 {% block extra_js %}
 <script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const resultEl = document.getElementById("result");
 let busy = false;

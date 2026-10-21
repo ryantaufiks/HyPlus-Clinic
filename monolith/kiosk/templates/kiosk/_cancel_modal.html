@@ -23,7 +23,7 @@
         </form>
     </div>
 </div>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
     const modalEl = document.getElementById("cancel-modal");
     const modal = new bootstrap.Modal(modalEl);

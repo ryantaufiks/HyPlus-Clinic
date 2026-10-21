@@ -250,7 +250,7 @@
 {% if user_can.cancel_visits and visit.is_open %}{% with next="visit" %}{% include 'kiosk/_cancel_modal.html' %}{% endwith %}{% endif %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.querySelectorAll("[data-ai-form]").forEach((form) => form.addEventListener("submit", () => {
     const button = form.querySelector("button");
     button.disabled = true;

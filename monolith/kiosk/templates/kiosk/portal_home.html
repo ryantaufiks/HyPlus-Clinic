@@ -128,7 +128,7 @@
 {% block extra_js %}
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 <script src="{% static 'js/aivin-charts.js' %}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const data = JSON.parse(document.getElementById("chart-data").textContent);
 const { COLORS, renderTable, timeLine } = AivinCharts;
 if (data.bp.length) {

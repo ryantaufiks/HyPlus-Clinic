@@ -110,7 +110,7 @@
 <div id="start" role="button" tabindex="0"><div><i class="bi bi-volume-up"></i>Tap to start the display<br /><small class="text-muted">This enables the call chime</small></div></div>
 <div class="offline" id="offline">Connection lost — retrying…</div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 const TZ = "{{ app_time_zone|escapejs }}";
 const DATA_URL = "{% url 'kiosk:display-data' %}";
 const MAX_WAITING = 10;

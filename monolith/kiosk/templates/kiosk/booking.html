@@ -75,7 +75,7 @@
 
 {% block extra_js %}
 {{ doctor_hours|json_script:"doctor-hours-data" }}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 // A clinic consultation for today is a queue number, not a booking request.
 (function () {
     const QUEUE_SERVICE = "{{ queue_service|default:'' }}";
