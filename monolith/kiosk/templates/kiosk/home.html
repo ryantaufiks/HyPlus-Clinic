@@ -113,9 +113,16 @@ const Voice = {
     },
 };
 
+// "My name is Andrew" -> "Andrew"
+const NAME_PREFIX = /^(?:(?:hi|hello)[,.\s]+)?(?:my name is|my name's|i am|i'm|this is|it's|name is|nama saya|saya)\s+/i;
+
 function onSpeech(text) {
     const field = state.listeningFor;
     if (!field || state.step !== 1) return;
+    if (field === "name") {
+        text = text.replace(NAME_PREFIX, "").replace(/[.!?]+$/, "").trim();
+        text = text.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+    }
     const input = document.getElementById(`input-${field}`);
     if (input) input.value = text;
     state[field] = text;
