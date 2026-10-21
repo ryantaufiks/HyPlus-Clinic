@@ -15,7 +15,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Consultations</h1>
-        <p class="page-subtitle">{% if is_doctor %}Your room: <strong>{{ room }}</strong>{% if not has_room %} <span class="text-danger">(not set: ask an administrator)</span>{% endif %} · {% endif %}{{ waiting|length }} waiting · updates automatically</p>
+        <p class="page-subtitle">{% if is_doctor %}Your room: <strong>{{ room }}</strong>{% if not has_room %} <span class="text-danger">(not set: ask an administrator)</span>{% endif %} · {% endif %}{% if is_doctor %}{{ my_line|length }} in your line · {% endif %}{{ waiting|length }} waiting in total · updates automatically</p>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-light btn-icon" href="{% url 'kiosk:display' %}" target="_blank"><i class="bi bi-tv"></i> TV display</a>
@@ -29,7 +29,7 @@
         {% endif %}
         {% if is_doctor %}
         <form method="post" action="{% url 'kiosk:call-next' %}">{% csrf_token %}
-            <button class="btn btn-primary btn-icon" {% if not waiting %}disabled{% endif %}><i class="bi bi-megaphone"></i> Call next</button>
+            <button class="btn btn-primary btn-icon" {% if not my_line %}disabled{% endif %}><i class="bi bi-megaphone"></i> Call next</button>
         </form>
         {% endif %}
     </div>
@@ -82,38 +82,14 @@
 </section>
 {% endwith %}{% endfor %}
 
-<section class="surface surface-flush mt-4">
-    <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi bi-hourglass-split"></i> Waiting <span class="text-muted fw-normal small">· called in this order (critical blood pressure first)</span></h2></div>
-    {% if waiting %}
-    <div class="table-responsive">
-        <table class="table table-aivin">
-            <thead><tr><th>Queue</th><th>Patient</th><th>Reason</th><th class="num">BP</th><th class="num">Weight</th><th></th></tr></thead>
-            <tbody>
-                {% for row in waiting %}{% with v=row.visit vit=row.vitals %}
-                <tr>
-                    <td><strong class="fs-5">{{ v.queue_number }}</strong></td>
-                    <td>
-                        <div class="with-avatar">{% avatar v.patient 36 %}<div>
-                        <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:visit-detail' v.pk %}">{{ v.patient.name }}</a>
-                        <div class="small text-muted">{{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}{% if v.patient.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
-                        </div></div>
-                    </td>
-                    <td class="text-truncate" style="max-width: 240px">{{ v.reason }}</td>
-                    <td class="num">{% if vit.bp %}{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}<div><span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% else %}–{% endif %}</td>
-                    <td class="num">{% if vit.weight %}{{ vit.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
-                    <td class="text-end text-nowrap">
-                        {% if is_doctor %}<form method="post" action="{% url 'kiosk:visit-call' v.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="queue" /><button class="btn btn-sm btn-outline-primary">Call</button></form>{% endif %}
-                        {% if user_can.cancel_visits %}<button class="btn btn-sm btn-light text-danger" title="Cancel" data-cancel-url="{% url 'kiosk:visit-cancel' v.pk %}" data-cancel-label="{{ v.queue_number }}"><i class="bi bi-x-circle"></i></button>{% endif %}
-                    </td>
-                </tr>
-                {% endwith %}{% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="empty-state"><i class="bi bi-cup-hot"></i>Nobody is waiting.</div>
-    {% endif %}
-</section>
+{% if is_doctor %}
+{% include 'kiosk/_waiting_table.html' with rows=my_line title="Your line" icon="bi-hourglass-split" note="patients who chose you or the first available doctor · critical blood pressure first" empty="Nobody is waiting for you." %}
+{% if other_lines %}
+{% include 'kiosk/_waiting_table.html' with rows=other_lines title="Waiting for other doctors" icon="bi-people" note="you can still call them, e.g. to help out" empty="" %}
+{% endif %}
+{% else %}
+{% include 'kiosk/_waiting_table.html' with rows=waiting title="Waiting" icon="bi-hourglass-split" note="critical blood pressure first" empty="Nobody is waiting." %}
+{% endif %}
 
 {% if others %}
 <section class="surface surface-flush mt-4">

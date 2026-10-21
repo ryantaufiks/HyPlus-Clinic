@@ -1,0 +1,34 @@
+{% load avatars %}<section class="surface surface-flush mt-4">
+    <div class="p-4 pb-2"><h2 class="section-title mb-0"><i class="bi {{ icon }}"></i> {{ title }} <span class="text-muted fw-normal small">· {{ note }}</span></h2></div>
+    {% if rows %}
+    <div class="table-responsive">
+        <table class="table table-aivin">
+            <thead><tr><th>Queue</th><th>Patient</th><th>Doctor</th><th>Reason</th><th class="num">BP</th><th class="num">Weight</th><th></th></tr></thead>
+            <tbody>
+                {% for row in rows %}{% with v=row.visit vit=row.vitals %}
+                <tr>
+                    <td><strong class="fs-5">{{ v.queue_number }}</strong></td>
+                    <td>
+                        <div class="with-avatar">{% avatar v.patient 36 %}<div>
+                        <a class="fw-semibold text-decoration-none" href="{% url 'kiosk:visit-detail' v.pk %}">{{ v.patient.name }}</a>
+                        <div class="small text-muted">{{ v.patient.patient_id }}{% if v.patient.age is not None %} · {{ v.patient.age }} y{% endif %}{% if v.patient.has_drug_allergy %} · <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle-fill"></i> Allergy</span>{% endif %}</div>
+                        </div></div>
+                    </td>
+                    <td>{% if row.line %}<span class="with-avatar small">{% avatar row.line 24 %}{{ row.line.get_full_name|default:row.line.get_username }}</span>{% else %}<span class="status status-neutral">Any doctor</span>{% endif %}</td>
+                    <td class="text-truncate" style="max-width: 240px">{{ v.reason }}</td>
+                    <td class="num">{% if vit.bp %}{{ vit.bp.systolic_bp }}/{{ vit.bp.diastolic_bp }}<div><span class="status status-{{ vit.bp_category.status }}"><i class="bi {{ vit.bp_category.icon }}"></i>{{ vit.bp_category.label }}</span></div>{% else %}–{% endif %}</td>
+                    <td class="num">{% if vit.weight %}{{ vit.weight.weight_kg|floatformat:1 }} kg{% else %}–{% endif %}</td>
+                    <td class="text-end text-nowrap">
+                        {% if is_doctor %}<form method="post" action="{% url 'kiosk:visit-call' v.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="queue" /><button class="btn btn-sm btn-outline-primary">Call</button></form>{% endif %}
+                        {% if user_can.cancel_visits %}<button class="btn btn-sm btn-light text-danger" title="Cancel" data-cancel-url="{% url 'kiosk:visit-cancel' v.pk %}" data-cancel-label="{{ v.queue_number }}"><i class="bi bi-x-circle"></i></button>{% endif %}
+                    </td>
+                </tr>
+                {% endwith %}{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="bi bi-cup-hot"></i>{{ empty }}</div>
+    {% endif %}
+</section>
+

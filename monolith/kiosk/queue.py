@@ -7,6 +7,7 @@ access-control tablet and the waiting-room TV always agree.
 import re
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import AuditEvent, StaffProfile, Visit
@@ -22,9 +23,20 @@ def todays_queue():
     return Visit.objects.filter(queue_date=timezone.localdate()).exclude(queue_number="")
 
 
-def waiting_in_order():
-    """Waiting visits in calling order: critical blood pressure first, then queue number."""
-    visits = list(todays_queue().filter(status=Visit.WAITING).prefetch_related("measurements"))
+def waiting_in_order(doctor=None):
+    """Waiting visits in calling order: critical blood pressure first, then queue number.
+
+    With `doctor`, only the visits in that doctor's line: patients who chose
+    them, patients who chose the first available doctor, and patients whose
+    chosen doctor is no longer on duty (so nobody is left stranded).
+    """
+    visits = todays_queue().filter(status=Visit.WAITING)
+    if doctor is not None:
+        on_duty = [d.pk for d, _ in doctors_on_duty()]
+        visits = visits.filter(
+            Q(requested_doctor=doctor) | Q(requested_doctor__isnull=True) | ~Q(requested_doctor__in=on_duty)
+        )
+    visits = list(visits.select_related("requested_doctor").prefetch_related("measurements"))
 
     def urgent(visit):
         bp = next((m for m in visit.measurements.all() if m.systolic_bp is not None and m.diastolic_bp is not None), None)
@@ -32,6 +44,15 @@ def waiting_in_order():
         return category is not None and category.status == "critical"
 
     return sorted(visits, key=lambda v: (not urgent(v), v.queue_number))
+
+
+def chosen_doctor(visit, on_duty=None):
+    """The doctor whose line this visit is in, or None for the first available doctor."""
+    if visit.requested_doctor_id is None:
+        return None
+    if on_duty is None:
+        on_duty = {d.pk for d, _ in doctors_on_duty()}
+    return visit.requested_doctor if visit.requested_doctor_id in on_duty else None
 
 
 def doctors_on_duty():
@@ -69,8 +90,8 @@ def call(visit, doctor):
 
 
 def call_next(doctor):
-    """Call the next waiting patient, or return None when nobody is waiting."""
-    for candidate in waiting_in_order():
+    """Call the next patient in this doctor's line, or return None when nobody is waiting."""
+    for candidate in waiting_in_order(doctor):
         try:
             return call(candidate, doctor)
         except QueueError:
@@ -127,8 +148,12 @@ def cancel(visit, actor, reason):
 
 
 def position(visit):
-    """How many waiting patients will be called before this one (None if not waiting)."""
+    """How many waiting patients will be called before this one (None if not waiting).
+
+    A patient who chose a doctor counts only that doctor's line.
+    """
     if visit.status != Visit.WAITING:
         return None
-    order = [v.pk for v in waiting_in_order()]
+    order = [v.pk for v in waiting_in_order(chosen_doctor(visit))]
     return order.index(visit.pk) if visit.pk in order else None
+

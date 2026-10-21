@@ -67,6 +67,10 @@
         /* Up to 10 numbers, always on one row. */
         .chips { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 1.2vh; align-items: center; }
         .chip { font-size: 3.6vh; font-weight: 800; font-variant-numeric: tabular-nums; padding: 0.7vh 0; text-align: center; border-radius: 1.4vh; background: var(--aivin-surface-2); border: 1px solid var(--aivin-border); color: var(--aivin-ink); white-space: nowrap; }
+        .chip small { display: block; font-size: 1.5vh; font-weight: 650; color: var(--aivin-muted); margin-top: 0.2vh; overflow: hidden; text-overflow: ellipsis; padding: 0 0.6vh; }
+        .room-line { font-size: 2vh; color: var(--aivin-muted); margin-top: 0.4vh; font-variant-numeric: tabular-nums; }
+        .room-line strong { color: var(--aivin-ink); }
+        .rooms.compact .room-line { font-size: 1.7vh; margin-top: 0.2vh; }
         .chip.next { background: var(--aivin-primary-soft); border-color: var(--aivin-primary); color: var(--aivin-primary-strong); }
         .chip-more { font-size: 2.6vh; font-weight: 650; color: var(--aivin-muted); white-space: nowrap; }
         .muted-line { font-size: 2.6vh; color: var(--aivin-muted); }
@@ -153,6 +157,12 @@ function announce() {
     panel.classList.add("flash");
 }
 
+// Patients who chose this doctor (patients for any doctor are shown in Next in line).
+function roomLine(r) {
+    if (!r.waiting) return "";
+    return `<div class="room-line"><strong>${r.waiting}</strong> waiting · next ${r.next.map(esc).join(", ")}${r.waiting > r.next.length ? "…" : ""}</div>`;
+}
+
 const TAGS = { in_progress: "In progress", called: "Called", available: "Available" };
 
 function render(data) {
@@ -169,7 +179,7 @@ function render(data) {
         ? data.rooms.map((r) => `
             <div class="room ${r.state}">
                 ${face(r.face, r.doctor)}
-                <div><div class="room-name">${esc(r.room)}</div><div class="room-doctor">${esc(r.doctor)}</div></div>
+                <div><div class="room-name">${esc(r.room)}</div><div class="room-doctor">${esc(r.doctor)}</div>${roomLine(r)}</div>
                 <div class="room-state">${r.queue_number ? `<span class="num">${esc(r.queue_number)}</span>` : ""}<span class="tag ${r.state}">${TAGS[r.state]}</span></div>
             </div>`).join("")
         : `<div class="muted-line">No doctors on duty.</div>`;
@@ -177,7 +187,7 @@ function render(data) {
     const shown = data.waiting.slice(0, MAX_WAITING);
     const more = data.waiting.length - shown.length;
     document.getElementById("waiting").innerHTML = shown.length
-        ? shown.map((n, i) => `<span class="chip ${i === 0 ? "next" : ""}">${esc(n)}</span>`).join("")
+        ? shown.map((w, i) => `<span class="chip ${i === 0 ? "next" : ""}">${esc(w.queue_number)}<small>${esc(w.room || "Any doctor")}</small></span>`).join("")
         : `<span class="muted-line" style="grid-column: 1 / -1">Nobody is waiting.</span>`;
     document.getElementById("waiting-more").textContent = more > 0 ? `+${more} more` : "";
 

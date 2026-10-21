@@ -8,6 +8,7 @@ urlpatterns = [
     # Kiosk
     path("", views.HomeView.as_view(), name="home"),
     path("api/kiosk/lookup/", kiosk_api.PatientLookupView.as_view(), name="api-patient-lookup"),
+    path("api/kiosk/doctors/", kiosk_api.DoctorChoiceView.as_view(), name="api-doctors"),
     path("api/kiosk/visits/", kiosk_api.VisitStartView.as_view(), name="api-visit-start"),
     path("api/kiosk/visits/<uuid:token>/finish/", kiosk_api.VisitFinishView.as_view(), name="api-visit-finish"),
     path(

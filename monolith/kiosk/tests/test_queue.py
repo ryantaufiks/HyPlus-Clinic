@@ -104,7 +104,7 @@ class QueueFlowTest(TestCase):
         data = response.json()
         self.assertEqual([c["queue_number"] for c in data["called"]], ["A001"])
         self.assertEqual([c["room"] for c in data["in_progress"]], ["Room 1"])
-        self.assertEqual(data["waiting"], ["A002"])
+        self.assertEqual(data["waiting"], [{"queue_number": "A002", "room": ""}])
         self.assertNotIn("Patient", response.content.decode())
         self.assertEqual(self.client.get(reverse("kiosk:display")).status_code, 200)
 

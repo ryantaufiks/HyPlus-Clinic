@@ -127,6 +127,10 @@ class Visit(models.Model):
     queue_number = models.CharField(max_length=10, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    # The doctor the patient chose at the kiosk; empty = first available doctor.
+    requested_doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     room = models.CharField(max_length=40, blank=True)
     called_at = models.DateTimeField(null=True, blank=True)
     # Incremented on every call and recall, so the TV knows to announce again.

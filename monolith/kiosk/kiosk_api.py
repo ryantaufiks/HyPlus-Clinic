@@ -20,7 +20,8 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django_ratelimit.decorators import ratelimit
 
-from .models import PATIENT_ID_ALPHABET, PATIENT_ID_LENGTH, Measurement, Patient, Visit
+from . import queue
+from .models import PATIENT_ID_ALPHABET, PATIENT_ID_LENGTH, Measurement, Patient, StaffProfile, Visit
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,8 @@ def _visit_json(visit):
         "patient_id": visit.patient.patient_id,
         "first_name": visit.patient.name.split()[0] if visit.patient.name else "",
         "returning": visit.patient.visits.count() > 1,
+        "doctor": visit.requested_doctor.get_full_name() or visit.requested_doctor.get_username() if visit.requested_doctor else "",
+        "room": StaffProfile.room_for(visit.requested_doctor) if visit.requested_doctor else "",
     }
 
 
@@ -63,6 +66,33 @@ class PatientLookupView(View):
         if patient is None:
             return JsonResponse({"error": "We could not find that Patient ID. Please check it or ask a nurse."}, status=404)
         return JsonResponse({"patient_id": patient.patient_id, "masked_name": patient.masked_name})
+
+
+class DoctorChoiceView(View):
+    """Doctors the patient can choose at the kiosk, with how many are waiting for each."""
+
+    def get(self, request):
+        from .queue_views import _doctor_face, _doctor_name
+
+        doctors = queue.doctors_on_duty()
+        on_duty = {d.pk for d, _ in doctors}
+        waiting = queue.waiting_in_order()
+        shared = sum(1 for v in waiting if queue.chosen_doctor(v, on_duty) is None)
+        return JsonResponse(
+            {
+                "doctors": [
+                    {
+                        "id": doctor.pk,
+                        "name": _doctor_name(doctor),
+                        "room": room,
+                        "face": _doctor_face(doctor),
+                        "waiting": sum(1 for v in waiting if v.requested_doctor_id == doctor.pk),
+                    }
+                    for doctor, room in doctors
+                ],
+                "any_waiting": shared,
+            }
+        )
 
 
 @kiosk_post_ratelimit
@@ -89,7 +119,13 @@ class VisitStartView(View):
                 return JsonResponse({"error": "Please enter your full name."}, status=400)
             patient = Patient.objects.create(name=name)
 
-        visit = Visit.objects.create(patient=patient, reason=reason[:2000])
+        doctor = None
+        if data.get("doctor_id"):
+            doctor = next((d for d, _ in queue.doctors_on_duty() if str(d.pk) == str(data["doctor_id"])), None)
+            if doctor is None:
+                return JsonResponse({"error": "That doctor is no longer available. Please choose again."}, status=409)
+
+        visit = Visit.objects.create(patient=patient, reason=reason[:2000], requested_doctor=doctor)
         return JsonResponse(_visit_json(visit), status=201)
 
 

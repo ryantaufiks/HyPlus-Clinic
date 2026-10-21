@@ -34,6 +34,7 @@
             <div><div class="text-muted small">Queue number</div><div class="queue-display" style="font-size: 3.2rem">{{ visit.queue_number|default:"—" }}</div></div>
             <div><div class="text-muted small">Patient ID</div><div class="queue-display" style="font-size: 3.2rem; color: var(--aivin-ink)">{{ visit.patient.patient_id }}</div></div>
         </div>
+        <div class="text-muted small"><i class="bi bi-person-vcard"></i> {% if visit.requested_doctor %}{{ visit.requested_doctor.get_full_name|default:visit.requested_doctor.get_username }}{% else %}First available doctor{% endif %}</div>
         <div id="live-status" class="status status-info fs-6 my-2" aria-live="polite">Checking your status…</div>
         <div><img src="{% url 'kiosk:visit-qr' visit.token %}" alt="Ticket QR code" width="200" height="200" class="qr-box p-2 mt-2" /></div>
         <p class="text-muted small mt-2 mb-2">Show this code at the consulting-room door when your number is called.</p>

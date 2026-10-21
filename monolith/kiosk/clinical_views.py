@@ -260,9 +260,18 @@ class DoctorQueueView(CapabilityRequiredMixin, TemplateView):
         context["mine_in_progress"] = rows(today.filter(status=Visit.IN_CONSULTATION, doctor=user))
         context["mine_called"] = rows(today.filter(status=Visit.CALLED, doctor=user))
         waiting = queue.waiting_in_order()
-        context["waiting"] = rows(today.filter(pk__in=[v.pk for v in waiting]))
+        on_duty = {d.pk for d, _ in queue.doctors_on_duty()}
+        waiting_rows = rows(today.filter(pk__in=[v.pk for v in waiting]).select_related("requested_doctor"))
         order = {v.pk: i for i, v in enumerate(waiting)}
-        context["waiting"].sort(key=lambda r: order[r["visit"].pk])
+        waiting_rows.sort(key=lambda r: order[r["visit"].pk])
+        for row in waiting_rows:
+            row["line"] = queue.chosen_doctor(row["visit"], on_duty)  # None: first available doctor
+        context["waiting"] = waiting_rows
+        if is_doctor(user):
+            # A doctor's line: patients who chose them or any doctor. They can
+            # still call someone else's patient by hand, e.g. to help out.
+            context["my_line"] = [r for r in waiting_rows if r["line"] is None or r["line"].pk == user.pk]
+            context["other_lines"] = [r for r in waiting_rows if r["line"] is not None and r["line"].pk != user.pk]
         context["others"] = rows(
             today.exclude(status=Visit.WAITING)
             .exclude(status__in=[Visit.CALLED, Visit.IN_CONSULTATION], doctor=user)

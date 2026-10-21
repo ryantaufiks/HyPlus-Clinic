@@ -6,6 +6,13 @@
 <style>
     body { touch-action: manipulation; }
     .print-only { display: none; }
+    .doctor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.9rem; width: 100%; }
+    .doctor-option { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; padding: 1.2rem 1rem; border-radius: 18px; border: 2px solid var(--aivin-border); background: var(--aivin-surface); color: var(--aivin-ink); text-align: center; transition: border-color 0.15s, background 0.15s; }
+    .doctor-option:hover, .doctor-option:focus-visible { border-color: var(--aivin-primary); background: var(--aivin-primary-soft); }
+    .doctor-option .name { font-weight: 700; font-size: 1.15rem; line-height: 1.2; }
+    .doctor-option .room { color: var(--aivin-ink-2); font-weight: 600; }
+    .doctor-option .wait { color: var(--aivin-muted); font-size: 0.9rem; }
+    .doctor-option.any .avatar-initials { --avatar-bg: var(--aivin-primary); font-size: 2rem; }
     /* Printed ticket: 80 mm receipt printer. */
     @media print {
         @page { size: 80mm auto; margin: 4mm; }
@@ -52,6 +59,10 @@ const state = {
     weight: null,           // { kg, at }
     bp: null,               // { systolic, diastolic, pulse, at }
     ticket: null,           // { queue_number, patient_id, qr_code_image }
+    doctors: null,          // on-duty doctors to choose from, while choosing
+    anyWaiting: 0,
+    doctorId: null,         // null: not chosen yet; "": first available doctor
+    doctorName: "",
     busy: false,
     listeningFor: null,     // "name" | "reason"
 };
@@ -75,7 +86,7 @@ async function postJson(url, body) {
         body: JSON.stringify(body),
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!response.ok) throw Object.assign(new Error(data.error || `HTTP ${response.status}`), { status: response.status });
     return data;
 }
 
@@ -337,13 +348,65 @@ async function startVisit(event) {
         toast("Please fill in both fields.", "warning");
         return;
     }
+    await chooseDoctor();
+}
+
+// Show the doctors on duty; with nobody to choose from, go on with the first available doctor.
+async function chooseDoctor() {
     state.busy = true;
     updateContinue();
     try {
+        const response = await fetch("{% url 'kiosk:api-doctors' %}", { cache: "no-store" });
+        const data = await response.json();
+        state.doctors = data.doctors;
+        state.anyWaiting = data.any_waiting;
+    } catch (e) {
+        state.doctors = [];
+    } finally {
+        state.busy = false;
+    }
+    if (!state.doctors.length) {
+        pickDoctor("");
+        return;
+    }
+    Voice.stop();
+    render();
+    Voice.say("Which doctor would you like to see?");
+}
+
+function pickDoctor(id) {
+    const doctor = (state.doctors || []).find((d) => String(d.id) === String(id));
+    state.doctorId = doctor ? String(doctor.id) : "";
+    state.doctorName = doctor ? doctor.name : "";
+    submitVisit();
+}
+
+function backToDetails() {
+    state.doctors = null;
+    state.doctorId = null;
+    render();
+}
+
+async function submitVisit() {
+    if (state.busy) return;
+    state.busy = true;
+    try {
         const body = state.mode === "new"
-            ? { name: state.name, reason: state.reason }
-            : { patient_id: state.patientId, reason: state.reason };
-        const visit = await postJson("/api/kiosk/visits/", body);
+            ? { name: state.name, reason: state.reason, doctor_id: state.doctorId }
+            : { patient_id: state.patientId, reason: state.reason, doctor_id: state.doctorId };
+        let visit;
+        try {
+            visit = await postJson("/api/kiosk/visits/", body);
+        } catch (error) {
+            if (error.status === 409) {  // the doctor went off duty meanwhile
+                state.busy = false;
+                toast(error.message, "warning");
+                await chooseDoctor();
+                return;
+            }
+            throw error;
+        }
+        state.doctors = null;
         state.visitToken = visit.token;
         state.patientId = visit.patient_id;
         if (!state.name) state.name = visit.first_name;
@@ -373,6 +436,7 @@ function reset() {
     Object.assign(state, {
         mode: "new", patientId: "", maskedName: "", confirmed: false, name: "", reason: "",
         visitToken: null, weight: null, bp: null, ticket: null, busy: false, listeningFor: null,
+        doctors: null, anyWaiting: 0, doctorId: null, doctorName: "",
     });
     go(0);
 }
@@ -381,7 +445,9 @@ function updateContinue() {
     const btn = document.getElementById("continue-btn");
     if (!btn) return;
     const name = document.getElementById("input-name");
-    const reason = document.getElementById("input-reason").value.trim();
+    const reasonInput = document.getElementById("input-reason");
+    if (!reasonInput) return;
+    const reason = reasonInput.value.trim();
     btn.disabled = state.busy || (name && name.value.trim().length < 2) || reason.length < 3;
 }
 
@@ -458,6 +524,37 @@ function returningView() {
         </form>`;
 }
 
+const doctorFace = (d) => d.face.photo
+    ? `<img class="avatar" src="${esc(d.face.photo)}" alt="" style="--avatar-size: 88px" />`
+    : `<span class="avatar avatar-initials" aria-hidden="true" style="--avatar-size: 88px; --avatar-bg: ${esc(d.face.color)}">${esc(d.face.initials)}</span>`;
+
+const waitingText = (n) => n === 0 ? "No one waiting" : `${n} waiting`;
+
+function doctorView() {
+    return `
+        <span class="kiosk-icon"><i class="bi bi-person-vcard"></i></span>
+        <h2 class="kiosk-title">Choose your doctor</h2>
+        <p class="kiosk-lead">Your number will be called to the doctor's room.</p>
+        <div class="doctor-grid">
+            ${state.doctors.map((d) => `
+            <button class="doctor-option" onclick="pickDoctor('${esc(d.id)}')" ${state.busy ? "disabled" : ""}>
+                ${doctorFace(d)}
+                <span class="name">${esc(d.name)}</span>
+                <span class="room"><i class="bi bi-door-open"></i> ${esc(d.room)}</span>
+                <span class="wait">${waitingText(d.waiting)}</span>
+            </button>`).join("")}
+            <button class="doctor-option any" onclick="pickDoctor('')" ${state.busy ? "disabled" : ""}>
+                <span class="avatar avatar-initials" aria-hidden="true" style="--avatar-size: 88px"><i class="bi bi-lightning-charge-fill"></i></span>
+                <span class="name">First available doctor</span>
+                <span class="room">Any room</span>
+                <span class="wait">Usually the shortest wait</span>
+            </button>
+        </div>
+        <div class="kiosk-actions justify-content-start w-100">
+            <button type="button" class="btn btn-light btn-xl" onclick="backToDetails()"><i class="bi bi-arrow-left"></i> Back</button>
+        </div>`;
+}
+
 const views = {
     0: () => `
         <span class="kiosk-icon"><i class="bi bi-heart-pulse-fill"></i></span>
@@ -469,7 +566,7 @@ const views = {
         </div>
         <p class="kiosk-hint mb-0"><i class="bi bi-shield-lock"></i> Your results are only shared with the clinic's nurses and doctors.</p>`,
 
-    1: () => state.mode === "returning" ? returningView() : `
+    1: () => state.doctors ? doctorView() : state.mode === "returning" ? returningView() : `
         <span class="kiosk-icon"><i class="bi bi-person"></i></span>
         <h2 class="kiosk-title">About you</h2>
         <p class="kiosk-lead">${Voice.available ? "Type, or tap the microphone and speak." : "Please type your answers."}</p>
@@ -514,11 +611,12 @@ const views = {
         <h2 class="kiosk-title">You're all set${state.name ? `, ${esc(state.name.split(" ")[0])}` : ""}</h2>
         <div class="result-grid">
             <div class="result-tile"><div class="result-label">Queue number</div><div class="result-value text-primary">${esc(state.ticket.queue_number)}</div></div>
+            ${state.ticket.doctor ? `<div class="result-tile"><div class="result-label">Your doctor</div><div class="result-value" style="font-size: 1.4rem">${esc(state.ticket.doctor)}</div><div class="result-time">${esc(state.ticket.room)}</div></div>` : ""}
             <div class="result-tile"><div class="result-label">Your Patient ID</div><div class="result-value" style="letter-spacing: 0.08em">${esc(state.ticket.patient_id)}</div><div class="result-time">Keep it for your next visit</div></div>
         </div>
         ${state.ticket.qr_code_image ? `<div class="qr-box"><img src="${esc(state.ticket.qr_code_image)}" alt="Ticket QR code" /></div>` : ""}
         <p class="kiosk-lead"><strong>Print or take a photo of this ticket.</strong> Scan the code at the consulting-room door when your number is called.${state.ticket.returning ? "" : " Scan it with your phone to see your place in the queue and complete your registration."}</p>
-        <div class="print-only">${esc(formatDateTime(new Date()))}<br />Scan at the consulting-room door when your number is called.<br />Scan with your phone to follow the queue.</div>
+        <div class="print-only">${state.ticket.doctor ? `${esc(state.ticket.doctor)} · ${esc(state.ticket.room)}<br />` : "First available doctor<br />"}${esc(formatDateTime(new Date()))}<br />Scan at the consulting-room door when your number is called.<br />Scan with your phone to follow the queue.</div>
         <div class="kiosk-actions">
             <button class="btn btn-light btn-xl btn-icon" onclick="window.print()"><i class="bi bi-printer"></i> Print ticket</button>
             <button class="btn btn-primary btn-xl" onclick="reset()">Done</button>

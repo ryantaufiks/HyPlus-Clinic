@@ -55,6 +55,13 @@ class DisplayDataView(View):
         today = queue.todays_queue().select_related("doctor")
         called = today.filter(status=Visit.CALLED).order_by("-called_at")
         in_progress = today.filter(status=Visit.IN_CONSULTATION).order_by("room")
+        doctors = queue.doctors_on_duty()
+        on_duty = {d.pk: room for d, room in doctors}
+        waiting = queue.waiting_in_order()
+        lines = {}  # doctor id -> queue numbers of the patients who chose them
+        for v in waiting:
+            if queue.chosen_doctor(v, on_duty) is not None:
+                lines.setdefault(v.requested_doctor_id, []).append(v.queue_number)
         return JsonResponse(
             {
                 "now": timezone.now().isoformat(),
@@ -72,21 +79,24 @@ class DisplayDataView(View):
                 "in_progress": [
                     {"queue_number": v.queue_number, "room": v.room, "doctor": _doctor_name(v.doctor)} for v in in_progress
                 ],
-                "rooms": _rooms(called, in_progress),
-                "waiting": [v.queue_number for v in queue.waiting_in_order()],
+                "rooms": _rooms(doctors, called, in_progress, lines),
+                # Room is empty for patients seen by the first available doctor.
+                "waiting": [
+                    {"queue_number": v.queue_number, "room": on_duty.get(v.requested_doctor_id, "")} for v in waiting
+                ],
             }
         )
 
 
-def _rooms(called, in_progress):
+def _rooms(doctors, called, in_progress, lines):
     """One row per on-duty doctor (even when free), plus any other room with a patient."""
     active = {}
     for visit in list(called) + list(in_progress):  # in progress wins over called
         active[visit.doctor_id] = visit
     rows, shown = [], set()
-    for doctor, room in queue.doctors_on_duty():
+    for doctor, room in doctors:
         visit = active.get(doctor.pk)
-        rows.append(_room_row(room, doctor, visit))
+        rows.append(_room_row(room, doctor, visit, lines.get(doctor.pk, [])))
         shown.add(doctor.pk)
     for doctor_id, visit in active.items():
         if doctor_id not in shown:
@@ -94,7 +104,7 @@ def _rooms(called, in_progress):
     return rows
 
 
-def _room_row(room, doctor, visit):
+def _room_row(room, doctor, visit, line=()):
     state = "available"
     if visit is not None:
         state = "in_progress" if visit.status == Visit.IN_CONSULTATION else "called"
@@ -104,6 +114,8 @@ def _room_row(room, doctor, visit):
         "face": _doctor_face(doctor),
         "state": state,
         "queue_number": visit.queue_number if visit else "",
+        "waiting": len(line),
+        "next": list(line[:3]),
     }
 
 
