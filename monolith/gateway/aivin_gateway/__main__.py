@@ -29,8 +29,13 @@ from bleak.backends.scanner import AdvertisementData
 from home_assistant_bluetooth import BluetoothServiceInfoBleak
 
 from omron_ble import OmronBluetoothDeviceData
-from omron_ble.devices import get_device_config
-from omron_ble.pairing import async_pair_and_sync_device
+from omron_ble.bluez import _bluez_is_paired, _bluez_remove_device
+from omron_ble.devices import (
+    get_device_config,
+    infer_model_id_from_local_name,
+    resolve_profile_model_id,
+)
+from omron_ble.pairing import async_fetch_device_model_number, async_pair_and_sync_device
 from omron_ble.session import OmronDeviceSession
 
 from . import readings, store
@@ -112,18 +117,62 @@ class CommandError(Exception):
     """A command failed for a reason worth showing to staff as-is."""
 
 
-async def pair_device(device: BLEDevice, model: str) -> store.PairedDevice:
-    """Run OMRON pairing (device must show -P-) and persist the result."""
-    kind = store.KIND_BY_MODEL.get(model)
-    if kind is None:
-        raise CommandError(f"Unsupported model {model}")
-    session = OmronDeviceSession(device, get_device_config(model), pairing_session=True)
+async def pair_device(
+    device: BLEDevice, model: str | None = None, advertised_services: list[str] | None = None
+) -> tuple[store.PairedDevice, str | None]:
+    """Run OMRON pairing (device must show -P-) and persist the result.
+
+    The model is read from the device itself (GATT Model Number) and wins over
+    the one `model` names: names like "BLESmart_0001…" do not reveal it, and
+    pairing with the wrong profile fails. Returns the paired device and the
+    model number the device reported.
+    """
+    # A device in -P- mode expects a fresh bond. One left on the host from an
+    # earlier (possibly failed) attempt makes the new pairing fail, so drop it
+    # and pick the device up again from its next advertisement.
+    if await _bluez_is_paired(device):
+        log.info("Removing old host bond for %s before pairing", device.address)
+        await _bluez_remove_device(device)
+        device = await BleakScanner.find_device_by_address(device.address, timeout=20)
+        if device is None:
+            raise CommandError("The device stopped advertising. Put it back in -P- mode and pair again.")
+
+    # Same order as hass-omron's setup: this short read is also where some
+    # models raise their bonding request, so its link is reused when possible.
+    reported, probe = await async_fetch_device_model_number(device, keep_session_open=True)
+    if probe is None:
+        raise CommandError("Could not connect to the device. Check that -P- is blinking and try again.")
+    session = None
     try:
-        await session.connect()
-        await async_pair_and_sync_device(session, model)
+        detected = infer_model_id_from_local_name(reported) if reported else None
+        final = resolve_profile_model_id(detected) if detected else model
+        if final is None:
+            raise CommandError(
+                f"Could not identify this device (it reported {reported!r}). Choose its model and pair again."
+            )
+        kind = store.kind_for_model(final)
+        if kind is None:
+            raise CommandError(f"This device ({final}) is not a supported blood pressure monitor or scale.")
+        config = get_device_config(final)
+        if advertised_services and not config.is_advertisement_compatible(advertised_services):
+            raise CommandError(f"This device does not look like a {final}. Choose the right model and try again.")
+
+        if probe.is_connected and not config.pair_on_connect:
+            session = OmronDeviceSession.adopt(probe.release_client(), config, pairing_session=True)
+            session.reclaim_ownership()
+        else:
+            # This profile bonds at connect time, which the probe's link can no longer do.
+            await probe.aclose()
+            session = OmronDeviceSession(device, config, pairing_session=True)
+            await session.connect()
+        await async_pair_and_sync_device(session, final)
         credential = session.new_credential
     finally:
-        await session.aclose()
+        if session is not None:
+            await session.aclose()
+        else:
+            await probe.aclose()
+    model = final
     paired = store.PairedDevice(
         address=device.address.upper(),
         model=model,
@@ -133,7 +182,7 @@ async def pair_device(device: BLEDevice, model: str) -> store.PairedDevice:
     devices = store.load()
     devices[paired.address] = paired
     store.save(devices)
-    return paired
+    return paired, reported
 
 
 class Gateway:
@@ -145,8 +194,9 @@ class Gateway:
         self.last_poll: dict[str, float] = {}
         self.waiting: set[str] = set()
         self.ble_lock = asyncio.Lock()
-        # Recently advertising OMRON devices, paired or not: address -> (device, rssi, name, pairing_mode, time).
-        self.nearby: dict[str, tuple[BLEDevice, int, str, bool, float]] = {}
+        # Recently advertising OMRON devices, paired or not:
+        # address -> (device, rssi, name, pairing_mode, time, advertised service UUIDs).
+        self.nearby: dict[str, tuple[BLEDevice, int, str, bool, float, list[str]]] = {}
         self.running_commands: set[int] = set()
         for paired in list(self.devices.values()):
             self.register(paired)
@@ -179,6 +229,7 @@ class Gateway:
             name,
             bool(getattr(probe, "pairing_mode", False)),
             time.time(),
+            list(adv.service_uuids),
         )
 
     def nearby_device(self, address: str, max_age: float = NEARBY_SECONDS):
@@ -279,7 +330,7 @@ class Gateway:
     async def cmd_scan(self, params: dict) -> dict:
         await asyncio.sleep(float(params.get("seconds", 10)))
         found = []
-        for address, (_, rssi, name, pairing_mode, seen) in sorted(self.nearby.items()):
+        for address, (_, rssi, name, pairing_mode, seen, _services) in sorted(self.nearby.items()):
             if time.time() - seen <= NEARBY_SECONDS + float(params.get("seconds", 10)):
                 found.append(
                     {
@@ -293,7 +344,7 @@ class Gateway:
         return {"devices": found}
 
     async def cmd_pair(self, params: dict) -> dict:
-        address, model = params["address"], params["model"]
+        address, model = params["address"], params.get("model") or None
         entry = self.nearby_device(address, max_age=30)
         if entry is None:
             raise CommandError(
@@ -302,11 +353,11 @@ class Gateway:
         async with self.ble_lock:
             try:
                 async with asyncio.timeout(POLL_TIMEOUT_SECONDS):
-                    paired = await pair_device(entry[0], model)
+                    paired, reported = await pair_device(entry[0], model, entry[5])
             except TimeoutError:
                 raise CommandError("Pairing timed out. Put the device back in -P- mode and try again.") from None
         self.register(paired)
-        return {"address": paired.address, "model": paired.model}
+        return {"address": paired.address, "model": paired.model, "reported_model": reported}
 
     async def cmd_test(self, params: dict) -> dict:
         address = params["address"]
@@ -340,6 +391,9 @@ class Gateway:
             self.devices.pop(address)
             self.data.pop(address, None)
             store.save(self.devices)
+            entry = self.nearby.get(address)
+            if entry is not None:
+                await _bluez_remove_device(entry[0])
         return {"address": address}
 
     async def run(self) -> None:
@@ -365,12 +419,15 @@ async def cmd_scan(seconds: float) -> None:
             print(f"{device.address}  rssi={adv.rssi:>4}  {name}")
 
 
-async def cmd_pair(address: str, model: str) -> None:
+async def cmd_pair(address: str, model: str | None) -> None:
     device = await BleakScanner.find_device_by_address(address.upper(), timeout=30)
     if device is None:
         sys.exit(f"{address} not found. Is the device in pairing mode (-P- blinking)?")
-    paired = await pair_device(device, model)
-    print(f"Paired {paired.model} {paired.address}.")
+    try:
+        paired, reported = await pair_device(device, model)
+    except CommandError as exc:
+        sys.exit(str(exc))
+    print(f"Paired {paired.model} {paired.address} (device reports {reported!r}).")
 
 
 def cmd_list() -> None:
@@ -392,7 +449,7 @@ def main() -> None:
     scan.add_argument("--seconds", type=float, default=20)
     pair = sub.add_parser("pair")
     pair.add_argument("--address", required=True)
-    pair.add_argument("--model", required=True, choices=sorted(store.KIND_BY_MODEL))
+    pair.add_argument("--model", choices=sorted(store.KIND_BY_MODEL), help="only needed if auto-detection fails")
     sub.add_parser("list")
     args = parser.parse_args()
 

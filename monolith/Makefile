@@ -53,10 +53,10 @@ restart-gateway:
 devices-scan:    ## List nearby OMRON devices (put the device in pairing mode first)
 	$(COMPOSE) run --rm gateway scan
 
-devices-pair:    ## Pair a device: make devices-pair ADDRESS=AA:BB:CC:DD:EE:FF MODEL=HEM-6232T
-	@test -n "$(ADDRESS)" -a -n "$(MODEL)" || (echo "usage: make devices-pair ADDRESS=... MODEL=HEM-6232T|HN-300T2" && exit 1)
+devices-pair:    ## Pair a device: make devices-pair ADDRESS=AA:BB:CC:DD:EE:FF [MODEL=HEM-6232T]
+	@test -n "$(ADDRESS)" || (echo "usage: make devices-pair ADDRESS=... [MODEL=HEM-6232T|HN-300T2]" && exit 1)
 	$(COMPOSE) stop gateway
-	$(COMPOSE) run --rm gateway pair --address $(ADDRESS) --model $(MODEL)
+	$(COMPOSE) run --rm gateway pair --address $(ADDRESS) $(if $(MODEL),--model $(MODEL))
 	$(COMPOSE) start gateway
 
 devices-list:

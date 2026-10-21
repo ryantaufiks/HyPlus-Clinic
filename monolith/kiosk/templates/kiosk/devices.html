@@ -63,7 +63,7 @@
         <ol class="pair-steps">
             <li>If the device was used with the <strong>OMRON connect</strong> app, remove it there and in the phone's Bluetooth settings first. A device can only talk to one host.</li>
             <li>Hold the device's <strong>Bluetooth button</strong> until <code>-P-</code> blinks on its display.</li>
-            <li>Click <strong>Scan</strong>, choose the model, and click <strong>Pair</strong> while <code>-P-</code> is still blinking. The device shows <code>OK</code> when pairing worked.</li>
+            <li>Click <strong>Scan</strong>, then <strong>Pair</strong> while <code>-P-</code> is still blinking. The model is detected from the device automatically. The device shows <code>OK</code> when pairing worked.</li>
         </ol>
         <button class="btn btn-primary" id="scan-button" onclick="scanDevices()">
             <i class="bi bi-search"></i> Scan (10 s)
@@ -175,10 +175,11 @@ function scanDevices() {
         const body = table.querySelector("tbody");
         body.innerHTML = "";
         devices.forEach((d) => {
-            const guess = Object.keys(SUPPORTED_MODELS).find((m) => (d.name || "").toUpperCase().includes(m)) || "";
-            const options = Object.entries(SUPPORTED_MODELS)
-                .map(([model, label]) => `<option value="${esc(model)}" ${model === guess ? "selected" : ""}>${esc(model)} – ${esc(label)}</option>`)
-                .join("");
+            const options =
+                `<option value="" selected>Auto-detect</option>` +
+                Object.entries(SUPPORTED_MODELS)
+                    .map(([model, label]) => `<option value="${esc(model)}">${esc(model)} – ${esc(label)}</option>`)
+                    .join("");
             const row = document.createElement("tr");
             row.innerHTML = `
                 <td>${esc(d.name || "Unknown")}</td>
@@ -189,8 +190,9 @@ function scanDevices() {
                 <td><button class="btn btn-sm btn-primary" data-action-button>Pair</button></td>`;
             row.querySelector("button").addEventListener("click", () => {
                 const model = row.querySelector("select").value;
-                runCommand("pair", { address: d.address, model }, () => {
-                    showResult(`<strong>Paired ${esc(model)}</strong> (${esc(d.address)}). Use <em>Test connection</em> to check it.`, "success");
+                runCommand("pair", { address: d.address, model }, (result) => {
+                    const reported = result.reported_model ? ` (device reports “${esc(result.reported_model)}”)` : "";
+                    showResult(`<strong>Paired ${esc(result.model)}</strong>${reported}, ${esc(d.address)}. Use <em>Test connection</em> to check it.`, "success");
                     body.innerHTML = "";
                     table.classList.add("d-none");
                 });
@@ -268,7 +270,7 @@ async function refreshStatus() {
             const detail = c.status === "failed" ? `<div class="muted">${esc(c.error)}</div>` : "";
             return `<tr>
                 <td>${esc(new Date(c.created_at).toLocaleString())}</td>
-                <td>${esc(ACTION_LABELS[c.action])}${c.params.model ? ` ${esc(c.params.model)}` : ""}</td>
+                <td>${esc(ACTION_LABELS[c.action])}${c.action === "pair" ? ` ${esc((c.result && c.result.model) || c.params.model || "(auto)")}` : ""}</td>
                 <td><code>${esc(c.params.address || "")}</code></td>
                 <td>${esc(c.requested_by || "")}</td>
                 <td><span class="badge bg-${badge}">${esc(c.status)}</span>${detail}</td>

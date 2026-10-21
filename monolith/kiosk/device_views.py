@@ -331,9 +331,11 @@ class DeviceCommandCreateView(StaffJsonMixin, View):
                 return JsonResponse({"error": "Invalid device address"}, status=400)
             params["address"] = address
             if action == GatewayCommand.PAIR:
-                if data.get("model") not in SUPPORTED_MODELS:
+                # Empty means auto-detect: the gateway reads the model from the device.
+                model = data.get("model") or ""
+                if model and model not in SUPPORTED_MODELS:
                     return JsonResponse({"error": "Choose a supported model"}, status=400)
-                params["model"] = data["model"]
+                params["model"] = model
         else:
             return JsonResponse({"error": "Unknown action"}, status=400)
 

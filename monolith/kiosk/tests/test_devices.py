@@ -164,6 +164,9 @@ class DeviceCommandTest(TestCase):
         self.assertEqual(self.create(action="explode").status_code, 400)
         self.assertEqual(self.create(action="pair", address="nope", model="HEM-6232T").status_code, 400)
         self.assertEqual(self.create(action="pair", address="AA:BB:CC:DD:EE:FF", model="X").status_code, 400)
+        auto = self.create(action="pair", address="AA:BB:CC:DD:EE:FF")
+        self.assertEqual(auto.status_code, 201)
+        self.assertEqual(auto.json()["params"]["model"], "")  # gateway detects it
 
     def test_full_round_trip_through_gateway(self):
         self.client.force_login(self.staff)
