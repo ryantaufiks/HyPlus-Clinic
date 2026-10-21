@@ -1,0 +1,53 @@
+{
+  "appId": "com.ainurse.healthkiosk",
+  "appName": "AI Nurse Health Kiosk",
+  "webDir": "monolith/static",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "http://127.0.0.1:8001",
+    "cleartext": true,
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "",
+      "keystorePassword": "",
+      "keystoreAlias": "",
+      "keystoreAliasPassword": "",
+      "releaseType": "APK"
+    },
+    "backgroundColor": "#121212",
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#00BCD4",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "androidSpinnerStyle": "large",
+      "spinnerColor": "#FFFFFF"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark",
+      "resizeOnFullScreen": true
+    },
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#00BCD4"
+    },
+    "Permissions": {
+      "bluetooth": true,
+      "camera": true,
+      "microphone": true,
+      "location": false
+    }
+  },
+  "cordova": {},
+  "linuxAndroidStudioPath": "/usr/local/android-studio/bin/studio.sh"
+}

@@ -1,0 +1,575 @@
+/* ================================================================
+   AI Nurse Health Kiosk - Mobile Responsive Fixes
+   Add this CSS to fix mobile display issues
+   ================================================================ */
+
+/* ================================================================
+   1. MOBILE RESPONSIVE LAYOUT
+   ================================================================ */
+
+@media (max-width: 768px) {
+    /* Container adjustments */
+    .kiosk-container {
+        padding: 0.5rem;
+        min-height: auto;
+    }
+
+    .step-container {
+        max-width: 100%;
+        padding: 0;
+    }
+
+    /* Step indicator */
+    .step-indicator {
+        padding: 0 0.5rem;
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+    }
+
+    .step-indicator::-webkit-scrollbar {
+        display: none; /* Chrome, Safari */
+    }
+
+    .step-circle {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+        min-width: 35px;
+    }
+
+    .step-label {
+        font-size: 0.7rem;
+        white-space: nowrap;
+    }
+
+    .step-line {
+        min-width: 20px;
+    }
+
+    /* Typography */
+    .icon-large {
+        font-size: 3.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    h2 {
+        font-size: 1.4rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .lead {
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
+    }
+
+    p {
+        font-size: 0.9rem;
+    }
+
+    /* Buttons */
+    .btn-lg {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.95rem;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .btn {
+        min-height: 48px; /* Better touch target */
+    }
+
+    .control-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .control-buttons .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    /* Measurements */
+    .measurement-result {
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+
+    .measurement-value {
+        font-size: 2rem !important;
+    }
+
+    .measurement-label {
+        font-size: 1rem !important;
+    }
+
+    .measurement-timestamp {
+        font-size: 0.75rem !important;
+    }
+
+    /* Queue number */
+    .queue-number {
+        font-size: 2.5rem !important;
+        margin: 1rem 0;
+    }
+
+    /* QR Code */
+    .qr-code-container {
+        padding: 1rem;
+        max-width: 280px;
+        margin: 1.5rem auto;
+    }
+
+    .qr-code-image {
+        max-width: 220px;
+    }
+
+    /* Voice input */
+    .voice-input-display {
+        padding: 1rem;
+        font-size: 1rem;
+        min-height: 60px;
+    }
+
+    /* Content area */
+    #content-area {
+        padding: 1rem;
+    }
+
+    /* Error and success messages */
+    .error-message,
+    .success-message {
+        font-size: 0.9rem;
+        padding: 0.75rem;
+        margin: 0.75rem 0;
+    }
+}
+
+/* ================================================================
+   2. EXTRA SMALL DEVICES (< 576px)
+   ================================================================ */
+
+@media (max-width: 576px) {
+    /* Hide step indicator on very small screens */
+    .step-indicator {
+        display: none;
+    }
+
+    /* Adjust sizes */
+    .icon-large {
+        font-size: 3rem !important;
+    }
+
+    h2 {
+        font-size: 1.2rem !important;
+    }
+
+    .lead {
+        font-size: 0.85rem !important;
+    }
+
+    .measurement-value {
+        font-size: 1.75rem !important;
+    }
+
+    .queue-number {
+        font-size: 2rem !important;
+    }
+
+    .btn-lg {
+        font-size: 0.9rem;
+        padding: 0.7rem 1rem;
+    }
+
+    .qr-code-container {
+        padding: 0.75rem;
+        max-width: 260px;
+    }
+
+    .qr-code-image {
+        max-width: 200px;
+    }
+}
+
+/* ================================================================
+   3. LANDSCAPE MOBILE
+   ================================================================ */
+
+@media (max-height: 600px) and (orientation: landscape) {
+    .kiosk-container {
+        padding: 0.25rem;
+    }
+
+    .icon-large {
+        font-size: 2.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    h2 {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .step-indicator {
+        display: none;
+    }
+
+    .lead {
+        font-size: 0.8rem !important;
+    }
+
+    .measurement-result {
+        padding: 0.75rem;
+        margin: 0.5rem 0;
+    }
+
+    .control-buttons {
+        gap: 0.5rem;
+    }
+}
+
+/* ================================================================
+   4. DEBUG PANEL - MOBILE OPTIMIZATIONS
+   ================================================================ */
+
+.debug-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 1rem;
+    min-width: 250px;
+    max-width: 350px;
+    z-index: 1000;
+    font-size: 0.9rem;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Hide debug panel on mobile by default */
+@media (max-width: 768px) {
+    .debug-panel {
+        transform: translateX(calc(100% + 40px));
+        opacity: 0;
+        pointer-events: none;
+        right: -20px;
+        top: 60px;
+        min-width: auto;
+        max-width: calc(100% - 20px);
+        width: calc(100% - 20px);
+        font-size: 0.8rem;
+        padding: 0.75rem;
+    }
+
+    .debug-panel.show-mobile {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: all;
+        right: 10px;
+    }
+
+    .debug-panel h4 {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.25rem;
+    }
+
+    .debug-item {
+        margin: 0.35rem 0;
+        font-size: 0.75rem;
+    }
+
+    .debug-timestamp {
+        font-size: 0.7rem;
+    }
+}
+
+/* Debug toggle button for mobile */
+.debug-toggle {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    width: 45px;
+    height: 45px;
+    background: var(--primary-color);
+    border: none;
+    border-radius: 50%;
+    z-index: 1001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.debug-toggle:active {
+    transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+    .debug-toggle {
+        display: flex;
+    }
+}
+
+/* ================================================================
+   5. BETTER TOUCH INTERACTIONS
+   ================================================================ */
+
+/* Minimum touch target size */
+button,
+.btn,
+a.btn,
+input[type="button"],
+input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* Remove tap highlight on mobile */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+/* Prevent text selection on buttons */
+button,
+.btn {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Better input fields for mobile */
+input,
+textarea,
+select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    max-width: 100%;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+textarea {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* ================================================================
+   6. SMOOTH SCROLLING & ANIMATIONS
+   ================================================================ */
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ================================================================
+   7. NAVBAR MOBILE FIXES
+   ================================================================ */
+
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .navbar-toggler {
+        padding: 0.25rem 0.5rem;
+        font-size: 1rem;
+    }
+}
+
+/* ================================================================
+   8. FOOTER MOBILE FIXES
+   ================================================================ */
+
+@media (max-width: 768px) {
+    footer {
+        padding: 1rem 0;
+        font-size: 0.85rem;
+    }
+
+    footer p {
+        margin-bottom: 0.25rem;
+    }
+
+    footer small {
+        font-size: 0.75rem;
+    }
+}
+
+/* ================================================================
+   9. MODAL / POPUP FIXES
+   ================================================================ */
+
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+
+    .modal-content {
+        border-radius: 12px;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1rem;
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* ================================================================
+   10. LOADING / PROCESSING OVERLAY
+   ================================================================ */
+
+@media (max-width: 768px) {
+    .spinner-overlay {
+        padding: 1rem;
+    }
+
+    .spinner-border {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}
+
+/* ================================================================
+   11. SAFE AREA INSETS (iPhone Notch Support)
+   ================================================================ */
+
+@supports (padding: max(0px)) {
+    body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+    }
+
+    .navbar {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }
+
+    .kiosk-container {
+        padding-left: max(0.5rem, env(safe-area-inset-left));
+        padding-right: max(0.5rem, env(safe-area-inset-right));
+    }
+
+    .debug-toggle {
+        right: max(10px, env(safe-area-inset-right));
+    }
+}
+
+/* ================================================================
+   12. PREVENT OVERSCROLL (Rubber Band Effect)
+   ================================================================ */
+
+body {
+    overscroll-behavior-y: contain;
+}
+
+/* ================================================================
+   13. OPTIMIZE FOR PWA STANDALONE MODE
+   ================================================================ */
+
+/* When running as installed PWA */
+@media (display-mode: standalone) {
+    /* Add extra padding at top for status bar */
+    .navbar {
+        padding-top: calc(0.5rem + env(safe-area-inset-top));
+    }
+
+    body {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    /* Hide browser-specific UI elements */
+    .install-prompt {
+        display: none !important;
+    }
+}
+
+/* ================================================================
+   14. PRINT OPTIMIZATION (for Queue Tickets)
+   ================================================================ */
+
+@media print {
+    .navbar,
+    footer,
+    .debug-panel,
+    .debug-toggle,
+    .control-buttons,
+    .step-indicator {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+        color: black;
+    }
+
+    .glass-container {
+        background: white;
+        border: 1px solid #ddd;
+    }
+
+    .qr-code-container {
+        background: white;
+        border: 2px solid #000;
+    }
+}
+
+/* ================================================================
+   15. ACCESSIBILITY IMPROVEMENTS
+   ================================================================ */
+
+/* Focus visible for keyboard navigation */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .glass-container {
+        border-width: 2px;
+    }
+
+    .btn {
+        border-width: 2px;
+    }
+}
+
+/* ================================================================
+   END OF MOBILE RESPONSIVE FIXES
+   ================================================================ */

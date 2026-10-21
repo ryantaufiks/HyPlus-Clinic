@@ -1,0 +1,34 @@
+# Secrets
+.env
+*.env
+!.env.example
+*.keystore
+*.jks
+
+# Patient data / local database (never commit health records)
+*.sqlite3
+*.sqlite3-journal
+monolith/media/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+monolith/staticfiles/
+
+# Logs
+logs/
+*.log
+
+# Node / Capacitor / Android build output
+node_modules/
+android/
+*.apk
+*.aab
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

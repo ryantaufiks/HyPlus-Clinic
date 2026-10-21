@@ -1,0 +1,59 @@
+{
+  "name": "ai-nurse-health-kiosk",
+  "version": "1.0.0",
+  "description": "AI-powered health check kiosk with voice guidance and Bluetooth device integration",
+  "author": "AI Nurse Team",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "install-capacitor": "npm install @capacitor/core @capacitor/cli @capacitor/android",
+    "init": "cap init",
+    "add-android": "cap add android",
+    "sync": "cap sync android",
+    "open-android": "cap open android",
+    "build-android": "cap sync android && cd android && ./gradlew assembleDebug",
+    "build-release": "cap sync android && cd android && ./gradlew assembleRelease",
+    "serve": "python monolith/manage.py runserver 0.0.0.0:8001",
+    "generate-icons": "python generate_icons.py",
+    "setup": "npm run generate-icons && npm run install-capacitor && npm run init && npm run add-android",
+    "update": "cap sync android",
+    "clean": "cd android && ./gradlew clean",
+    "copy": "cap copy android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^5.5.1",
+    "@capacitor/core": "^5.5.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.5.1"
+  },
+  "capacitor": {
+    "appId": "com.ainurse.healthkiosk",
+    "appName": "AI Nurse Health Kiosk",
+    "webDir": "monolith/static",
+    "plugins": {
+      "SplashScreen": {
+        "launchShowDuration": 2000
+      }
+    }
+  },
+  "keywords": [
+    "health",
+    "medical",
+    "kiosk",
+    "bluetooth",
+    "ai",
+    "voice",
+    "pwa",
+    "capacitor",
+    "android"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ai-nurse"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}

@@ -1,0 +1,155 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║           🏥 AI NURSE - HEALTH KIOSK SYSTEM 🏥                ║
+║                                                                ║
+║                    QUICK START GUIDE                           ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+⚠️  FIRST TIME SETUP (IMPORTANT!):
+═══════════════════════════════════════════════════════════════
+
+  Before starting the server for the first time:
+
+  👉 STEP 1: INSTALL PACKAGES
+  ──────────────────────────────────────
+  Double-click: install_packages.bat
+
+  This will:
+  ✓ Create virtual environment
+  ✓ Install Django
+  ✓ Install QR code generator
+  ✓ Install image processing library
+
+  (This only needs to be done once!)
+
+
+  👉 STEP 2: CREATE ADMIN USER
+  ──────────────────────────────────────
+  Double-click: create_admin.bat
+
+  Enter your admin username and password
+  (You'll use this to login to admin panel)
+
+
+═══════════════════════════════════════════════════════════════
+
+📌 HOW TO START THE SERVER (DAILY USE):
+═══════════════════════════════════════════════════════════════
+
+  👉 METHOD 1: FASTEST WAY (Recommended)
+  ──────────────────────────────────────
+  Double-click: quick_start.bat
+
+  ✓ Server starts on port 8001
+  ✓ Browser opens automatically
+  ✓ Ready to use!
+
+
+  👉 METHOD 2: WITH AUTO-MIGRATION
+  ──────────────────────────────────────
+  Double-click: autorun.bat
+
+  ✓ Checks and runs database migrations
+  ✓ Shows detailed progress
+  ✓ Opens browser automatically
+
+
+  👉 METHOD 3: ADVANCED OPTIONS
+  ──────────────────────────────────────
+  Double-click: autorun_advanced.bat
+
+  ✓ Full menu with 9 options
+  ✓ Create admin users
+  ✓ Custom port selection
+  ✓ System diagnostics
+
+
+═══════════════════════════════════════════════════════════════
+
+🌐 AFTER SERVER STARTS, ACCESS:
+═══════════════════════════════════════════════════════════════
+
+  • Kiosk Interface:  http://127.0.0.1:8001
+  • Dashboard:        http://127.0.0.1:8001/dashboard
+  • Patient List:     http://127.0.0.1:8001/patients
+  • QR Scanner:       http://127.0.0.1:8001/qr-scanner
+  • Admin Panel:      http://127.0.0.1:8001/admin
+
+
+═══════════════════════════════════════════════════════════════
+
+⚠️ TROUBLESHOOTING:
+═══════════════════════════════════════════════════════════════
+
+  Problem: "Virtual environment not found"
+  Solution: Run install_packages.bat
+
+  Problem: "Module not found" or "Import error"
+  Solution: Run install_packages.bat to install packages
+
+  Problem: "Port 8001 already in use"
+  Solution: Double-click stop_server.bat then try again
+
+  Problem: QR code not appearing
+  Solution: Make sure you ran install_packages.bat first
+
+  Problem: Need to restart server
+  Solution: Double-click restart_server.bat
+
+
+═══════════════════════════════════════════════════════════════
+
+📚 MORE INFORMATION:
+═══════════════════════════════════════════════════════════════
+
+  • Installation guide: INSTALLATION.md
+  • QR code fix:        FIX_QR_CODE_SUMMARY.md
+  • Detailed guide:     AUTORUN_GUIDE.md
+  • Batch files ref:    BATCH_FILES_README.md
+  • Setup manual:       monolith/README.md
+  • Latest updates:     monolith/UPDATES.md
+  • Device testing:     monolith/DEVICE_TESTING_GUIDE.md
+
+
+═══════════════════════════════════════════════════════════════
+
+💡 QUICK TIPS:
+═══════════════════════════════════════════════════════════════
+
+  ✓ To STOP server: Press Ctrl+C or run stop_server.bat
+  ✓ To RESTART: Run restart_server.bat
+  ✓ First time? Use autorun.bat for setup
+  ✓ Daily use? Use quick_start.bat
+
+
+═══════════════════════════════════════════════════════════════
+
+🎯 RECOMMENDED WORKFLOW:
+═══════════════════════════════════════════════════════════════
+
+  1. First time setup:
+     → Run install_packages.bat (install Python packages)
+     → Run create_admin.bat (create admin account)
+     → Run quick_start.bat (start the server)
+     → Access http://127.0.0.1:8001
+
+  2. Daily usage:
+     → Just double-click quick_start.bat
+     → Server runs on port 8001
+     → Use the kiosk!
+
+  3. After updates:
+     → Run autorun.bat
+     → Migrations run automatically
+
+  4. If QR code doesn't work:
+     → Run install_packages.bat
+     → Restart server
+
+
+═══════════════════════════════════════════════════════════════
+
+Need help? Check AUTORUN_GUIDE.md for detailed instructions!
+
+Last Updated: December 2024

@@ -1,0 +1,478 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Patient Details - {{ patient.name }}{% endblock %}
+
+{% block extra_css %}
+<!-- Three.js Animation CSS -->
+<link rel="stylesheet" href="/static/css/threejs-animations.css" />
+
+<style>
+    .patient-detail-container {
+        min-height: 80vh;
+        padding: 2rem;
+    }
+
+    .patient-header {
+        background: var(--glass-bg);
+        backdrop-filter:</style> blur(10px);
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        padding: 2rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .patient-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--dark-bg);
+        font-size: 2rem;
+        font-weight: bold;
+        margin-right: 1.5rem;
+    }
+
+    .patient-info h2 {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .patient-info .patient-meta {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .measurements-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .measurement-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        padding: 1.5rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        transition: transform 0.3s, box-shadow 0.3s;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .measurement-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0, 188, 212, 0.3);
+    }
+
+    .measurement-card h3 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        font-size: 1.3rem;
+    }
+
+    .measurement-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+        color: #ffffff;
+    }
+
+    .measurement-unit {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+    }
+
+    .measurement-timestamp {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+
+    .status-normal {
+        background-color: #2ecc71;
+    }
+
+    .status-warning {
+        background-color: #f39c12;
+    }
+
+    .status-danger {
+        background-color: #e74c3c;
+    }
+
+    .visualization-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        padding: 1.5rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        margin-bottom: 2rem;
+    }
+
+    .visualization-card h3 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .history-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        padding: 1.5rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    .history-card h3 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .history-item {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        transition: background-color 0.2s;
+    }
+
+    .history-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .action-buttons {
+        margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
+    }
+
+    .action-buttons .btn {
+        min-width: 150px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .patient-detail-container {
+            padding: 1rem;
+        }
+
+        .patient-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .patient-avatar {
+            margin-right: 0;
+            margin-bottom: 1rem;
+        }
+
+        .measurements-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="patient-detail-container">
+    <!-- Patient Header -->
+    <div class="patient-header">
+        <div class="patient-avatar">{{ patient.name|first|upper }}</div>
+        <div class="patient-info">
+            <h2>{{ patient.name }}</h2>
+            <div class="patient-meta">
+                <i class="bi bi-calendar3"></i> Registered: {{ patient.created_at|date:"M d, Y" }}<br>
+                <i class="bi bi-clock-history"></i> Last visit: {{ last_visit|date:"M d, Y"|default:"No previous visits" }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Measurements Grid -->
+    <div class="measurements-grid">
+        <!-- Heart Rate -->
+        <div class="measurement-card">
+            <h3><i class="bi bi-heart-pulse"></i> Heart Rate</h3>
+            <div class="measurement-value">{{ latest_measurement.heart_rate_bpm|default:"--" }}</div>
+            <div class="measurement-unit">bpm</div>
+            <div class="measurement-timestamp">
+                {% if latest_measurement.heart_rate_bpm %}
+                    Measured: {{ latest_measurement.measured_at|date:"H:i, M d" }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Blood Pressure -->
+        <div class="measurement-card">
+            <h3><i class="bi bi-activity"></i> Blood Pressure</h3>
+            <div class="measurement-value">
+                {{ latest_measurement.systolic_bp|default:"--" }}/{{ latest_measurement.diastolic_bp|default:"--" }}
+            </div>
+            <div class="measurement-unit">mmHg</div>
+            <div class="measurement-timestamp">
+                {% if latest_measurement.systolic_bp %}
+                    Measured: {{ latest_measurement.measured_at|date:"H:i, M d" }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Weight -->
+        <div class="measurement-card">
+            <h3><i class="bi bi-speedometer"></i> Weight</h3>
+            <div class="measurement-value">
+                {% if latest_measurement.weight_kg %}
+                    {{ latest_measurement.weight_kg|floatformat:1 }}
+                {% else %}
+                    --
+                {% endif %}
+            </div>
+            <div class="measurement-unit">kg</div>
+            <div class="measurement-timestamp">
+                {% if latest_measurement.weight_kg %}
+                    Measured: {{ latest_measurement.measured_at|date:"H:i, M d" }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Visualizations -->
+    <div class="measurements-grid">
+        <!-- Heart Rate Visualization -->
+        <div class="visualization-card">
+            <h3><i class="bi bi-heart-pulse-fill"></i> Heart Rate Visualization</h3>
+            <div id="heart-rate-3d" class="threejs-visualization"></div>
+        </div>
+
+        <!-- Blood Pressure Visualization -->
+        <div class="visualization-card">
+            <h3><i class="bi bi-activity"></i> Blood Pressure Visualization</h3>
+            <div id="blood-pressure-3d" class="threejs-visualization"></div>
+        </div>
+    </div>
+
+    <!-- Measurement History -->
+    <div class="history-card">
+        <h3><i class="bi bi-clock-history"></i> Measurement History</h3>
+        <div class="history-list">
+            {% for measurement in measurements %}
+                <div class="history-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="measurement-date">
+                                <strong>{{ measurement.measured_at|date:"M d, Y" }}</strong> at {{ measurement.measured_at|time:"H:i" }}
+                            </div>
+                            <div class="measurement-details">
+                                {% if measurement.systolic_bp %}
+                                    <span class="badge bg-secondary me-2">BP: {{ measurement.systolic_bp }}/{{ measurement.di</div>astolic_bp }}</span>
+                                {% endif %}
+                                {% if measurement.heart_rate_bpm %}
+                                    <span class="badge bg-secondary me-2">HR: {{ measurement.heart_rate_bpm }} bpm</span>
+                                {% endif %}
+                                {% if measurement.weight_kg %}
+                                    <span class="badge bg-secondary">Weight: {{ measurement.weight_kg|floatformat:1 }} kg</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <a href="#" class="btn btn-sm btn-outline-primary view-details-btn"
+                           data-measurement-id="{{ measurement.id }}">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </div>
+            {% empty %}
+                <p>No measurement history available</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="{% url 'kiosk:dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+        <a href="{% url 'kiosk:home' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Checkup
+        </a>
+    </div>
+</div>
+
+<!-- Metric Detail Popup (Hidden by default) -->
+<div id="metric-popup" class="metric-detail-popup">
+    <button class="close-btn" onclick="closeMetricPopup()">&times;</button>
+    <h3 id="metric-name">Metric Name</h3>
+    <div class="metric-value">
+        <span id="metric-value">0</span>
+        <span id="metric-unit" class="metric-unit">unit</span>
+    </div>
+    <div id="metric-status" class="metric-status">Status</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize Three.js visualizations when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get health</script> data from template or use defaults
+        const healthData = {
+            heartRate: {{ latest_measurement.heart_rate_bpm|default:"72" }},
+            systolic: {{ latest_measurement.systolic_bp|default:"120" }},
+            diastolic: {{ latest_measurement.diastolic_bp|default:"80" }},
+            weight: {{ latest_measurement.weight_kg|default:"70" }},
+            temperature: {{ latest_measurement.temperature|default:"36.6" }},
+            oxygenSaturation: {{ latest_measurement.oxygen_saturation|default:"98" }}
+        };
+
+        // Initialize health visualizations
+        setTimeout(() => {
+            // Create heart rate visualization if container exists
+            const heartRateContainer = document.getElementById('heart-rate-3d');
+            if (heartRateContainer && window.HealthVisualization) {
+                window.HealthVisualization.createHeartRateVisualization('heart-rate-3d', healthData);
+            }
+
+            // Create blood pressure visualization if container exists
+            const bpContainer = document.getElementById('blood-pressure-3d');
+            if (bpContainer && window.HealthVisualization) {
+                window.HealthVisualization.createBloodPressureVisualization('blood-pressure-3d', healthData);
+            }
+        }, 1000);
+
+        // Add event listeners for view details buttons
+        const viewDetailsBtns = document.querySelectorAll('.view-details-btn');
+        viewDetailsBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const measurementId = this.getAttribute('data-measurement-id');
+                fetchMeasurementDetails(measurementId);
+            });
+        });
+    });
+
+    // Fetch measurement details
+    function fetchMeasurementDetails(measurementId) {
+        fetch(`/api/measurements/${measurementId}/`)
+            .then(response => response.json())
+            .then(data => {
+                // Update visualizations with new data
+                if (window.HealthVisualization) {
+                    // Dispose existing visualizations
+                    window.HealthVisualization.disposeVisualization('heart-rate-3d');
+                    window.HealthVisualization.disposeVisualization('blood-pressure-3d');
+
+                    // Create new visualizations with new data
+                    window.HealthVisualization.createHeartRateVisualization('heart-rate-3d', data);
+                    window.HealthVisualization.createBloodPressureVisualization('blood-pressure-3d', data);
+                }
+
+                // Show success message
+                showNotification('Measurement details loaded', 'success');
+            })
+            .catch(error => {
+                console.error('Error fetching measurement details:', error);
+                showNotification('Failed to load measurement details', 'error');
+            });
+    }
+
+    // Show notification
+    function showNotification(message, type) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.zIndex = '9999';
+        notification.style.minWidth = '300px';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        // Add to body
+        document.body.appendChild(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 5000);
+    }
+
+    // Show metric detail popup
+    function showMetricDetail(name, value, unit) {
+        const popup = document.getElementById('metric-popup');
+        const nameEl = document.getElementById('metric-name');
+        const valueEl = document.getElementById('metric-value');
+        const unitEl = document.getElementById('metric-unit');
+        const statusEl = document.getElementById('metric-status');
+
+        nameEl.textContent = name;
+        valueEl.textContent = value;
+        unitEl.textContent = unit;
+        statusEl.textContent = getMetricStatus(name, value);
+
+        popup.classList.add('show');
+    }
+
+    // Close metric detail popup
+    function closeMetricPopup() {
+        const popup = document.getElementById('metric-popup');
+        popup.classList.remove('show');
+    }
+
+    // Get metric status based on value
+    function getMetricStatus(name, value) {
+        const numValue = parseFloat(value);
+
+        switch (name) {
+            case 'Heart Rate':
+                if (numValue < 60) return 'Low heart rate (Bradycardia)';
+                else if (numValue < 100) return 'Normal heart rate';
+                else return 'High heart rate (Tachycardia)';
+
+            case 'Blood Pressure':
+                const [systolic, diastolic] = value.split('/').map(v => parseFloat(v));
+                if (systolic < 120 && diastolic < 80) return 'Normal blood pressure';
+                else if (systolic < 140 && diastolic < 90) return 'Elevated blood pressure';
+                else return 'High blood pressure (Hypertension)';
+
+            case 'Weight':
+                return 'Weight recorded successfully';
+
+            case 'Temperature':
+                if (numValue < 36.1) return 'Low temperature (Hypothermia)';
+                else if (numValue < 37.2) return 'Normal temperature';
+                else return 'High temperature (Fever)';
+
+            case 'Oxygen Saturation':
+                if (numValue >= 95) return 'Normal oxygen saturation';
+                else if (numValue >= 91) return 'Mild hypoxemia';
+                else return 'Significant hypoxemia';
+
+            default:
+                return 'Value recorded';
+        }
+    }
+</script>
+{% endblock %}

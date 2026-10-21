@@ -1,0 +1,228 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                    🏥 AI NURSE HEALTH KIOSK 🏥                              ║
+║                         QUICK REFERENCE CARD                                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🚀 STARTING THE SERVER                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ⚡ FASTEST METHOD (Daily Use)
+  ════════════════════════════════════
+  Double-click → quick_start.bat
+
+  ✓ Starts on port 8001
+  ✓ Opens browser automatically
+  ✓ No questions asked!
+
+
+  🎯 STANDARD METHOD (After Updates)
+  ════════════════════════════════════
+  Double-click → autorun.bat
+
+  ✓ Runs database migrations
+  ✓ Shows detailed progress
+  ✓ Opens browser automatically
+
+
+  🛠️ ADVANCED METHOD (Full Control)
+  ════════════════════════════════════
+  Double-click → autorun_advanced.bat
+
+  ✓ Menu with 9 options
+  ✓ Custom port selection
+  ✓ System diagnostics
+  ✓ Management tools
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🌐 ACCESS URLS                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Main Kiosk:          http://127.0.0.1:8001
+  Dashboard:           http://127.0.0.1:8001/dashboard
+  Patient List:        http://127.0.0.1:8001/patients
+  QR Scanner:          http://127.0.0.1:8001/qr-scanner
+  Admin Panel:         http://127.0.0.1:8001/admin
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🛑 STOPPING & RESTARTING                                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Stop Server:         Double-click → stop_server.bat
+                       OR press Ctrl+C in console window
+
+  Restart Server:      Double-click → restart_server.bat
+
+  Force Kill:          netstat -ano | findstr :8001
+                       taskkill /PID <PID> /F
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 ADMIN MANAGEMENT                                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Create Admin:        Double-click → create_admin.bat
+
+  You'll need:
+    • Username (e.g., admin)
+    • Email (optional)
+    • Password (hidden while typing)
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ⚠️ TROUBLESHOOTING                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  "Virtual environment not found"
+  ════════════════════════════════════
+  → Run: autorun_advanced.bat
+  → Select: [7] Install/Update Requirements
+
+
+  "Port 8001 already in use"
+  ════════════════════════════════════
+  → Run: stop_server.bat
+  → Then: quick_start.bat
+
+
+  "Module not found" / Import errors
+  ════════════════════════════════════
+  → Run: autorun_advanced.bat
+  → Select: [7] Install/Update Requirements
+
+
+  Server hangs or not responding
+  ════════════════════════════════════
+  → Run: restart_server.bat
+
+
+  Need database reset
+  ════════════════════════════════════
+  → Run: autorun_advanced.bat
+  → Select: [4] Run Migrations Only
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📋 FIRST TIME SETUP (Step by Step)                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  1. Install Requirements
+     → Double-click: autorun_advanced.bat
+     → Select: [7] Install/Update Requirements
+     → Wait for completion
+
+  2. Create Admin User
+     → Double-click: create_admin.bat
+     → Enter username, email, password
+     → Confirm when done
+
+  3. Start Server
+     → Double-click: quick_start.bat
+     → Browser opens automatically
+     → Login at /admin with your credentials
+
+  4. You're Ready!
+     → Kiosk is now operational
+     → Access via: http://127.0.0.1:8001
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 💡 PRO TIPS                                                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Create desktop shortcut of quick_start.bat for one-click access
+  ✓ Bookmark http://127.0.0.1:8001 in your browser
+  ✓ Use Chrome or Edge for best Bluetooth device support
+  ✓ Allow microphone access for voice features
+  ✓ Run as Administrator if you get permission errors
+  ✓ Press F12 in browser to open Developer Console for debugging
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📚 DOCUMENTATION FILES                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  START_HERE.txt              → Quick start guide
+  AUTORUN_GUIDE.md            → Detailed autorun instructions
+  BATCH_FILES_README.md       → Complete batch files reference
+  README.md                   → Project overview
+  monolith/README.md          → Technical setup manual
+  monolith/UPDATES.md         → Latest changes and fixes
+  monolith/DEVICE_TESTING_GUIDE.md → Bluetooth device guide
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 COMMON WORKFLOWS                                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  DAILY USAGE
+  ════════════════════════════════════
+  1. Double-click: quick_start.bat
+  2. Use the kiosk
+  3. Press Ctrl+C when done
+
+
+  AFTER CODE UPDATE
+  ════════════════════════════════════
+  1. Double-click: autorun.bat
+  2. Migrations run automatically
+  3. Server starts
+
+
+  DEVELOPMENT / TESTING
+  ════════════════════════════════════
+  1. Use: autorun_advanced.bat
+  2. Select option as needed
+  3. Option [8] for diagnostics
+
+
+  MULTIPLE PORTS / INSTANCES
+  ════════════════════════════════════
+  1. Run: autorun_advanced.bat
+  2. Select: [3] Start Server (Custom Port)
+  3. Enter desired port number
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🔑 KEYBOARD SHORTCUTS                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Ctrl+C               Stop server (in console window)
+  F12                  Open browser Developer Console
+  Ctrl+Shift+R         Hard refresh browser (clear cache)
+  Ctrl+R               Soft refresh browser
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ✅ SYSTEM REQUIREMENTS                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Windows 10/11
+  ✓ Python 3.8 or higher
+  ✓ Modern browser (Chrome/Edge recommended)
+  ✓ Bluetooth adapter (for real device testing)
+  ✓ 4GB RAM minimum
+  ✓ 500MB free disk space
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📞 NEED HELP?                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  1. Check console output for error messages
+  2. Run: autorun_advanced.bat → [8] Check System Status
+  3. Review documentation files listed above
+  4. Check browser Developer Console (F12) for frontend errors
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║  💙 THANK YOU FOR USING AI NURSE HEALTH KIOSK! 💙                          ║
+║                                                                              ║
+║                    Last Updated: December 2024                               ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝

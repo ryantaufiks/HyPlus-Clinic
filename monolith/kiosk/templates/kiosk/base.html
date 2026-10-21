@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+            name="apple-mobile-web-app-status-bar-style"
+            content="black-translucent"
+        />
+        <meta name="apple-mobile-web-app-title" content="AI Nurse" />
+        <meta name="theme-color" content="#00BCD4" />
+        <meta
+            name="description"
+            content="AI-powered health check kiosk with voice guidance and Bluetooth device integration"
+        />
+
+        <title>{% block title %}Health Check Kiosk{% endblock %}</title>
+
+        <!-- PWA Manifest -->
+        <link rel="manifest" href="/static/manifest.json" />
+
+        <!-- App Icons -->
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="192x192"
+            href="/static/icons/icon-192x192.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="512x512"
+            href="/static/icons/icon-512x512.png"
+        />
+        <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png" />
+        <link
+            rel="apple-touch-icon"
+            sizes="152x152"
+            href="/static/icons/icon-152x152.png"
+        />
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/static/icons/icon-192x192.png"
+        />
+        <link
+            rel="apple-touch-icon"
+            sizes="167x167"
+            href="/static/icons/icon-192x192.png"
+        />
+
+        <!-- Bootstrap CSS -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+
+        <!-- Bootstrap Icons -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+        />
+
+        <!-- Three.js -->
+        <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+
+        <!-- Custom CSS -->
+        <style>
+            :root {
+                --primary-color: #00bcd4;
+                --dark-bg: #121212;
+                --card-bg: #1e1e1e;
+                --text-light: #ffffff;
+                --text-muted: #b0b0b0;
+                --glass-bg: rgba(255, 255, 255, 0.1);
+                --glass-border: rgba(255, 255, 255, 0.2);
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(
+                    135deg,
+                    var(--dark-bg) 0%,
+                    #1a1a2e 100%
+                );
+                color: var(--text-light);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            /* Glass morphism effect */
+            .glass-container {
+                background: var(--glass-bg);
+                backdrop-filter: blur(10px);
+                border-radius: 16px;
+                border: 1px solid var(--glass-border);
+                padding: 2rem;
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            }
+
+            /* Navbar */
+            .navbar {
+                background: var(--card-bg) !important;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            }
+
+            .navbar-brand {
+                color: var(--primary-color) !important;
+                font-weight: bold;
+                font-size: 1.5rem;
+            }
+
+            .nav-link {
+                color: var(--text-light) !important;
+                transition: color 0.3s;
+            }
+
+            .nav-link:hover {
+                color: var(--primary-color) !important;
+            }
+
+            /* Buttons */
+            .btn-primary {
+                background-color: var(--primary-color);
+                border-color: var(--primary-color);
+                color: #000;
+                font-weight: 600;
+                padding: 0.75rem 2rem;
+                border-radius: 8px;
+                transition: all 0.3s;
+            }
+
+            .btn-primary:hover {
+                background-color: #00acc1;
+                border-color: #00acc1;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
+            }
+
+            .btn-secondary {
+                background-color: var(--card-bg);
+                border-color: var(--glass-border);
+                color: var(--text-light);
+            }
+
+            .btn-secondary:hover {
+                background-color: #2a2a2a;
+                border-color: var(--primary-color);
+                color: var(--primary-color);
+            }
+
+            /* Cards */
+            .card {
+                background: var(--glass-bg);
+                backdrop-filter: blur(10px);
+                border: 1px solid var(--glass-border);
+                border-radius: 16px;
+                color: var(--text-light);
+                transition:
+                    transform 0.3s,
+                    box-shadow 0.3s;
+            }
+
+            .card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 24px rgba(0, 188, 212, 0.3);
+            }
+
+            .card-header {
+                background: rgba(0, 188, 212, 0.2);
+                border-bottom: 1px solid var(--glass-border);
+                font-weight: 600;
+            }
+
+            /* Forms */
+            .form-control,
+            .form-select {
+                background-color: rgba(255, 255, 255, 0.05);
+                border: 1px solid var(--glass-border);
+                color: var(--text-light);
+                border-radius: 8px;
+            }
+
+            .form-control:focus,
+            .form-select:focus {
+                background-color: rgba(255, 255, 255, 0.08);
+                border-color: var(--primary-color);
+                color: var(--text-light);
+                box-shadow: 0 0 0 0.25rem rgba(0, 188, 212, 0.25);
+            }
+
+            .form-label {
+                color: var(--text-light);
+                font-weight: 500;
+            }
+
+            /* Alerts */
+            .alert {
+                border-radius: 12px;
+                border: none;
+                backdrop-filter: blur(10px);
+            }
+
+            .alert-success {
+                background-color: rgba(76, 175, 80, 0.2);
+                color: #81c784;
+            }
+
+            .alert-danger {
+                background-color: rgba(244, 67, 54, 0.2);
+                color: #e57373;
+            }
+
+            .alert-info {
+                background-color: rgba(0, 188, 212, 0.2);
+                color: var(--primary-color);
+            }
+
+            /* Loading spinner */
+            .spinner-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+            }
+
+            .spinner-border {
+                color: var(--primary-color);
+            }
+
+            /* Footer */
+            footer {
+                background: var(--card-bg);
+                color: var(--text-muted);
+                padding: 1.5rem 0;
+                margin-top: auto;
+            }
+
+            /* Animations */
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .fade-in {
+                animation: fadeIn 0.5s ease-out;
+            }
+
+            /* Responsive */
+            @media (max-width: 768px) {
+                .glass-container {
+                    padding: 1rem;
+                }
+
+                .btn-primary {
+                    padding: 0.5rem 1rem;
+                }
+            }
+
+            /* Custom scrollbar */
+            ::-webkit-scrollbar {
+                width: 10px;
+            }
+
+            ::-webkit-scrollbar-track {
+                background: var(--dark-bg);
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: var(--primary-color);
+                border-radius: 5px;
+            }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #00acc1;
+            }
+
+            /* Three.js container */
+            #threejs-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                pointer-events: none;
+            }
+
+            /* Three.js visualization containers */
+            .threejs-visualization {
+                width: 100%;
+                height: 300px;
+                position: relative;
+                margin: 1rem 0;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+
+            /* Metric detail popup */
+            .metric-detail-popup {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: var(--glass-bg);
+                backdrop-filter: blur(10px);
+                border: 1px solid var(--glass-border);
+                border-radius: 16px;
+                padding: 2rem;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+                z-index: 1000;
+                display: none;
+                color: var(--text-light);
+                text-align: center;
+                min-width: 300px;
+            }
+
+            .metric-detail-popup h3 {
+                margin-bottom: 1rem;
+                color: var(--primary-color);
+            }
+
+            .metric-detail-popup .metric-value {
+                font-size: 3rem;
+                font-weight: bold;
+                margin: 1rem 0;
+            }
+
+            .metric-detail-popup .close-btn {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                background: none;
+                border: none;
+                color: var(--text-muted);
+                font-size: 1.5rem;
+                cursor: pointer;
+            }
+
+            .metric-detail-popup .close-btn:hover {
+                color: var(--primary-color);
+            }
+        </style>
+
+        {% block extra_css %}{% endblock %}
+    </head>
+    <body>
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="{% url 'kiosk:home' %}">
+                    <i class="bi bi-heart-pulse-fill"></i> Health Kiosk
+                </a>
+                <button
+                    class="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav"
+                >
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'kiosk:home' %}">
+                                <i class="bi bi-house"></i> Kiosk
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a
+                                class="nav-link"
+                                href="{% url 'kiosk:dashboard' %}"
+                            >
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a
+                                class="nav-link"
+                                href="{% url 'kiosk:patient-list' %}"
+                            >
+                                <i class="bi bi-people"></i> Patients
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a
+                                class="nav-link"
+                                href="{% url 'kiosk:qr-scanner' %}"
+                            >
+                                <i class="bi bi-qr-code-scan"></i> QR Scanner
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin/">
+                                <i class="bi bi-gear"></i> Admin
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Messages -->
+        {% if messages %}
+        <div class="container mb-4">
+            {% for message in messages %}
+            <div
+                class="alert alert-{{ message.tags }} alert-dismissible fade show fade-in"
+                role="alert"
+            >
+                {{ message }}
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                ></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <main class="container-fluid py-4">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-5">
+            <div class="container text-center">
+                <p class="mb-0">
+                    <i class="bi bi-heart-pulse"></i> Health Check Kiosk &copy;
+                    2024
+                </p>
+                <small>Powered by AI & Modern Web Technologies</small>
+            </div>
+        </footer>
+
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- jQuery (for easier AJAX) -->
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+        <!-- Three.js and animations -->
+        <script src="/static/js/threejs/threejs-init.js"></script>
+        <script src="/static/js/threejs/animated-background.js"></script>
+        <script src="/static/js/threejs/health-visualization.js"></script>
+        <script src="/static/js/threejs/dashboard-3d.js"></script>
+
+        <!-- PWA Service Worker Registration -->
+        <script>
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker
+                        .register("/static/service-worker.js")
+                        .then((registration) => {
+                            console.log(
+                                "Service Worker registered successfully:",
+                                registration.scope,
+                            );
+
+                            // Check for updates periodically
+                            setInterval(() => {
+                                registration.update();
+                            }, 60000); // Check every minute
+
+                            // Handle updates
+                            registration.addEventListener("updatefound", () => {
+                                const newWorker = registration.installing;
+                                newWorker.addEventListener(
+                                    "statechange",
+                                    () => {
+                                        if (
+                                            newWorker.state === "installed" &&
+                                            navigator.serviceWorker.controller
+                                        ) {
+                                            // New service worker available, prompt user to reload
+                                            if (
+                                                confirm(
+                                                    "New version available! Reload to update?",
+                                                )
+                                            ) {
+                                                window.location.reload();
+                                            }
+                                        }
+                                    },
+                                );
+                            });
+                        })
+                        .catch((error) => {
+                            console.error(
+                                "Service Worker registration failed:",
+                                error,
+                            );
+                        });
+                });
+            }
+
+            // Handle app installation prompt
+            let deferredPrompt;
+            window.addEventListener("beforeinstallprompt", (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                console.log("App can be installed");
+
+                // Show install button or banner (optional)
+                // You can create a custom install button here
+            });
+
+            // Handle app installed event
+            window.addEventListener("appinstalled", () => {
+                console.log("App installed successfully");
+                deferredPrompt = null;
+            });
+
+            // Detect if running as PWA
+            if (
+                window.matchMedia("(display-mode: standalone)").matches ||
+                window.navigator.standalone === true
+            ) {
+                console.log("Running as PWA");
+                document.body.classList.add("pwa-mode");
+            }
+
+            // Initialize Three.js animations when DOM is ready
+            document.addEventListener("DOMContentLoaded", function () {
+                // Initialize health visualizations if on the dashboard or measurement pages
+                if (
+                    window.location.pathname.includes("dashboard") ||
+                    window.location.pathname.includes("patient_detail")
+                ) {
+                    // Example health data (in a real app, this would come from the backend)
+                    const healthData = {
+                        heartRate: 72,
+                        systolic: 120,
+                        diastolic: 80,
+                        weight: 70,
+                        temperature: 36.6,
+                        oxygenSaturation: 98,
+                    };
+
+                    // Create visualizations when measurement elements are available
+                    setTimeout(() => {
+                        // Create heart rate visualization if container exists
+                        const heartRateContainer =
+                            document.getElementById("heart-rate-3d");
+                        if (heartRateContainer && window.HealthVisualization) {
+                            window.HealthVisualization.createHeartRateVisualization(
+                                "heart-rate-3d",
+                                healthData,
+                            );
+                        }
+
+                        // Create blood pressure visualization if container exists
+                        const bpContainer =
+                            document.getElementById("blood-pressure-3d");
+                        if (bpContainer && window.HealthVisualization) {
+                            window.HealthVisualization.createBloodPressureVisualization(
+                                "blood-pressure-3d",
+                                healthData,
+                            );
+                        }
+
+                        // Create 3D dashboard if container exists
+                        const dashboardContainer =
+                            document.getElementById("dashboard-3d");
+                        if (dashboardContainer && window.Dashboard3D) {
+                            window.Dashboard3D.init("dashboard-3d", healthData);
+
+                            // Add event listener for metric selection
+                            dashboardContainer.addEventListener(
+                                "metricSelected",
+                                function (event) {
+                                    showMetricDetail(
+                                        event.detail.name,
+                                        event.detail.value,
+                                        event.detail.unit,
+                                    );
+                                },
+                            );
+                        }
+                    }, 1000);
+                }
+            });
+
+            // Function to show metric detail popup
+            function showMetricDetail(name, value, unit) {
+                // Remove existing popup if any
+                const existingPopup = document.querySelector(
+                    ".metric-detail-popup",
+                );
+                if (existingPopup) {
+                    document.body.removeChild(existingPopup);
+                }
+
+                // Create popup
+                const popup = document.createElement("div");
+                popup.className = "metric-detail-popup";
+                popup.innerHTML = `
+                <button class="close-btn">&times;</button>
+                <h3>${name}</h3>
+                <div class="metric-value">${value} <span class="metric-unit">${unit}</span></div>
+                <div class="metric-status">${getMetricStatus(name, value)}</div>
+            `;
+
+                // Add to body
+                document.body.appendChild(popup);
+
+                // Show popup with animation
+                setTimeout(() => {
+                    popup.style.display = "block";
+                }, 10);
+
+                // Add close functionality
+                const closeBtn = popup.querySelector(".close-btn");
+                closeBtn.addEventListener("click", function () {
+                    document.body.removeChild(popup);
+                });
+
+                // Close when clicking outside
+                popup.addEventListener("click", function (event) {
+                    if (event.target === popup) {
+                        document.body.removeChild(popup);
+                    }
+                });
+            }
+
+            // Function to get metric status based on value
+            function getMetricStatus(name, value) {
+                const numValue = parseFloat(value);
+
+                switch (name) {
+                    case "Heart Rate":
+                        if (numValue < 60)
+                            return "Low heart rate (Bradycardia)";
+                        else if (numValue < 100) return "Normal heart rate";
+                        else return "High heart rate (Tachycardia)";
+
+                    case "Blood Pressure":
+                        const [systolic, diastolic] = value
+                            .split("/")
+                            .map((v) => parseFloat(v));
+                        if (systolic < 120 && diastolic < 80)
+                            return "Normal blood pressure";
+                        else if (systolic < 140 && diastolic < 90)
+                            return "Elevated blood pressure";
+                        else return "High blood pressure (Hypertension)";
+
+                    case "Weight":
+                        return "Weight recorded successfully";
+
+                    case "Temperature":
+                        if (numValue < 36.1)
+                            return "Low temperature (Hypothermia)";
+                        else if (numValue < 37.2) return "Normal temperature";
+                        else return "High temperature (Fever)";
+
+                    case "Oxygen Saturation":
+                        if (numValue >= 95) return "Normal oxygen saturation";
+                        else if (numValue >= 91) return "Mild hypoxemia";
+                        else return "Significant hypoxemia";
+
+                    default:
+                        return "Value recorded";
+                }
+            }
+        </script>
+
+        {% block extra_js %}{% endblock %}
+    </body>
+</html>
