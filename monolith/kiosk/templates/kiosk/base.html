@@ -5,13 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="AIVIN" />
+        <meta name="apple-mobile-web-app-title" content="Hy+ Clinic" />
         <meta name="theme-color" content="#0b7a83" />
-        <meta name="description" content="AIVIN (AI-Vital Intake): AI-assisted pre-consultation vital signs kiosk that reduces nurse workload" />
-        <title>{% block title %}AIVIN — AI-Vital Intake{% endblock %}</title>
+        <meta name="description" content="Hy+ Clinic: a smart, AI-powered clinic. Book or queue online, vitals measured at check-in, records and prescriptions in one place." />
+        <title>{% block title %}Hy+ Clinic — Smart AI clinic{% endblock %}</title>
 
         <link rel="manifest" href="{% static 'manifest.json' %}" />
-        <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
+        <link rel="icon" type="image/svg+xml" href="{% static 'img/hyplus-mark.svg' %}" />
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
         <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}" />
 
         <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" />
@@ -66,11 +67,7 @@
             <nav class="navbar navbar-expand-lg">
                 <div class="container">
                     <a class="brand" href="{% if current == 'home' %}{% url 'kiosk:home' %}{% elif user_can.staff_area %}{% url 'kiosk:dashboard' %}{% else %}{% url 'kiosk:landing' %}{% endif %}">
-                        <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-                        <span>
-                            <span class="brand-name">AIVIN</span>
-                            <span class="brand-tag">AI-Vital Intake</span>
-                        </span>
+                        {% if current == 'home' %}{% include 'kiosk/_brand.html' with tag='AIVIN Vital Intake' %}{% else %}{% include 'kiosk/_brand.html' with tag='Smart AI clinic' %}{% endif %}
                     </a>
                     <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#app-nav" aria-controls="app-nav" aria-expanded="false" aria-label="Menu">
                         <i class="bi bi-list fs-3"></i>
@@ -182,7 +179,7 @@
 
         <footer class="app-footer no-print">
             <div class="container d-flex flex-wrap justify-content-between gap-2">
-                <span><strong>AIVIN</strong> · AI-Vital Intake</span>
+                <span><strong>Hy+ Clinic</strong> · Smart AI clinic</span>
                 <span>Pre-consultation vital signs, recorded for the doctor.</span>
             </div>
         </footer>

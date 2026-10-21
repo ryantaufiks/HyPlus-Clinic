@@ -1,17 +1,21 @@
 {
-  "name": "AIVIN — AI-Vital Intake",
-  "short_name": "AIVIN",
-  "description": "AI-assisted pre-consultation kiosk that measures vital signs, records them automatically and prepares a summary for the doctor, reducing nurse workload",
+  "name": "Hy+ Clinic",
+  "short_name": "Hy+ Clinic",
+  "description": "Hy+ Clinic: a smart, AI-powered clinic. Book or queue online, vitals measured at check-in, records and prescriptions in one place.",
   "version": "1.0.0",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#00BCD4",
-  "background_color": "#121212",
+  "theme_color": "#0b7a83",
+  "background_color": "#ffffff",
   "scope": "/",
   "lang": "en-US",
   "dir": "ltr",
-  "categories": ["health", "medical", "productivity"],
+  "categories": [
+    "health",
+    "medical",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/static/icons/icon-72x72.png",

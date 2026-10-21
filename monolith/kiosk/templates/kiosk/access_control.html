@@ -1,7 +1,7 @@
 {% extends 'kiosk/base.html' %}
 {% load static %}
 
-{% block title %}Access control - AIVIN{% endblock %}
+{% block title %}Access control - Hy+ Clinic{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -73,7 +73,7 @@ async function check(text) {
     busy = true;
     const match = String(text).match(UUID_RE);
     if (!match) {
-        show(false, `<i class="bi bi-x-octagon"></i><div class="msg mt-3">This is not an AIVIN ticket.</div>`, 3000);
+        show(false, `<i class="bi bi-x-octagon"></i><div class="msg mt-3">This is not a Hy+ Clinic ticket.</div>`, 3000);
         return;
     }
     try {

@@ -136,7 +136,7 @@ def admit(token, actor):
     with transaction.atomic():
         visit = Visit.objects.select_for_update().select_related("patient").filter(token=token).first()
         if visit is None:
-            raise QueueError("This is not an AIVIN ticket.")
+            raise QueueError("This is not a Hy+ Clinic ticket.")
         if visit.queue_date != timezone.localdate():
             raise QueueError("This ticket is not for today.")
         visit.just_checked_in = False

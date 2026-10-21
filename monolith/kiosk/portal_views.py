@@ -71,7 +71,7 @@ def render_invite(request, patient, *, approved=False):
     link = portal_setup_link(request, user)
     days = settings.PASSWORD_RESET_TIMEOUT // 86400
     text = (
-        f"Hello {patient.name.split()[0]}, your AIVIN patient account is ready. "
+        f"Hello {patient.name.split()[0]}, your Hy+ Clinic patient account is ready. "
         f"Open this link within {days} days to set your password and see your health records: {link}"
     )
     number = whatsapp_number(patient.phone)

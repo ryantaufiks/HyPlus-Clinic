@@ -1,13 +1,12 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Complete your registration - AIVIN{% endblock %}
+{% block title %}Complete your registration - Hy+ Clinic{% endblock %}
 
 {% block header %}
 <header class="app-header">
     <div class="container py-2">
         <span class="brand">
-            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-            <span><span class="brand-name">AIVIN</span><span class="brand-tag">AI-Vital Intake</span></span>
+            {% include 'kiosk/_brand.html' with tag='Smart AI clinic' %}
         </span>
     </div>
 </header>

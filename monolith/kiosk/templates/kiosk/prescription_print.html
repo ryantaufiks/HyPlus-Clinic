@@ -1,6 +1,6 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Prescription · {{ patient.name }} - AIVIN{% endblock %}
+{% block title %}Prescription · {{ patient.name }} - Hy+ Clinic{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -20,8 +20,7 @@
     <section class="surface">
         <div class="rx-head">
             <div class="brand">
-                <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-                <span><span class="brand-name">AIVIN</span><span class="brand-tag">Prescription</span></span>
+                {% include 'kiosk/_brand.html' with tag='Prescription' %}
             </div>
             <div class="text-end small">
                 <div><strong>Date:</strong> {{ visit.diagnosed_at|default:visit.created_at|date:"j M Y" }}</div>

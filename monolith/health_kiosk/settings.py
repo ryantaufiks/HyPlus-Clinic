@@ -1,5 +1,5 @@
 """
-Django settings for AIVIN (AI-Vital Intake).
+Django settings for Hy+ Clinic (its kiosk is AIVIN, AI-Vital Intake).
 
 All environment-specific values come from environment variables. For local
 runs they are read from monolith/.env (never committed); in Docker they are

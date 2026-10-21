@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b7a83" />
     <meta name="description" content="Book a consultation, get your vital signs checked in minutes, and keep your records and prescriptions in one place." />
-    <title>AIVIN — See a doctor, without the wait</title>
+    <title>Hy+ Clinic — See a doctor, without the wait</title>
     <link rel="manifest" href="{% static 'manifest.json' %}" />
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/hyplus-mark.svg' %}" />
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
     <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}" />
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" />
@@ -19,8 +20,7 @@
 <header class="site-header">
     <div class="container d-flex align-items-center gap-3">
         <a class="brand me-auto" href="{% url 'kiosk:landing' %}">
-            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-            <span><span class="brand-name">AIVIN</span><span class="brand-tag">AI-Vital Intake</span></span>
+            {% include 'kiosk/_brand.html' with tag='Smart AI clinic' %}
         </a>
         <nav class="site-nav d-none d-lg-flex" aria-label="Sections">
             <a href="#services">Services</a>
@@ -91,7 +91,7 @@
     <section class="section">
         <div class="container">
             <div class="section-head">
-                <h2>Why patients choose AIVIN</h2>
+                <h2>Why patients choose Hy+ Clinic</h2>
                 <p>A clinic visit that respects your time, with the doctor fully prepared when you walk in.</p>
             </div>
             <div class="row g-3">
@@ -232,13 +232,13 @@
 
 <footer class="site-footer">
     <div class="container d-flex flex-wrap justify-content-between gap-3">
-        <span><strong>AIVIN</strong> · AI-Vital Intake</span>
+        <span><strong>Hy+ Clinic</strong> · Smart AI clinic</span>
         <nav class="d-flex flex-wrap gap-3">
             <a href="{% url 'kiosk:book' %}">Book</a>
             <a href="{% url 'portal-login' %}">Patient sign in</a>
             <a href="{% url 'login' %}">Staff login</a>
         </nav>
-        <span>© {% now "Y" %} AIVIN</span>
+        <span>© {% now "Y" %} Hy+ Clinic</span>
     </div>
 </footer>
 <script src="{% static 'js/landing.js' %}" defer></script>

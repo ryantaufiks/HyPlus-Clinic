@@ -18,9 +18,9 @@ from .models import (
     Visit,
 )
 
-admin.site.site_header = "AIVIN administration"
-admin.site.site_title = "AIVIN admin"
-admin.site.index_title = "AIVIN — AI-Vital Intake"
+admin.site.site_header = "Hy+ Clinic administration"
+admin.site.site_title = "Hy+ Clinic admin"
+admin.site.index_title = "Hy+ Clinic — smart AI clinic operations"
 
 
 @admin.register(Patient)

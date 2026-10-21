@@ -1,6 +1,6 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}{% if creating %}Add staff member{% else %}{{ member.get_full_name|default:member.username }}{% endif %} - AIVIN{% endblock %}
+{% block title %}{% if creating %}Add staff member{% else %}{{ member.get_full_name|default:member.username }}{% endif %} - Hy+ Clinic{% endblock %}
 
 {% block content %}
 <nav class="mb-2"><a href="{% url 'kiosk:staff-list' %}" class="text-decoration-none small"><i class="bi bi-chevron-left"></i> Staff accounts</a></nav>

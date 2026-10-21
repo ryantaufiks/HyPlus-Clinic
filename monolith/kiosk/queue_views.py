@@ -237,7 +237,7 @@ class AdmitView(CapabilityRequiredMixin, View):
         except queue.QueueError as exc:
             return JsonResponse({"ok": False, "message": str(exc)}, status=400)
         except (json.JSONDecodeError, ValidationError, ValueError):
-            return JsonResponse({"ok": False, "message": "This is not an AIVIN ticket."}, status=400)
+            return JsonResponse({"ok": False, "message": "This is not a Hy+ Clinic ticket."}, status=400)
         if visit.just_checked_in:
             return JsonResponse({"ok": True, "checked_in": True, "queue_number": visit.queue_number})
         return JsonResponse(

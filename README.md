@@ -1,6 +1,6 @@
-# AIVIN — AI-Vital Intake
+# Hy+ Clinic
 
-**Kiosk pemeriksaan tanda vital mandiri untuk tahap pra-konsultasi.**
+**Platform klinik pintar berbasis AI: booking dan antrean online, kiosk tanda vital AIVIN (AI-Vital Intake), konsultasi dokter, resep dan portal pasien.**
 
 Before a patient sees the doctor, a nurse usually measures their vital signs, writes them down, and passes the notes on to the doctor. AIVIN takes over this intake step: an AI voice assistant guides the patient, Bluetooth medical devices take the measurements, everything is recorded automatically, and the doctor receives the results ready for further examination. The goal is to **reduce nurse workload**, not to replace nurses.
 

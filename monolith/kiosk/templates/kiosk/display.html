@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Queue - AIVIN</title>
+    <title>Queue - Hy+ Clinic</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/hyplus-mark.svg' %}" />
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
     <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
     <link rel="stylesheet" href="{% static 'css/aivin.css' %}" />
@@ -85,8 +86,7 @@
 <div class="tv">
     <header class="tv-head">
         <span class="brand">
-            <span class="brand-mark"><i class="bi bi-heart-pulse-fill"></i></span>
-            <span><span class="brand-name">AIVIN</span><span class="brand-tag">Please wait for your number to be called</span></span>
+            {% include 'kiosk/_brand.html' with tag='Please wait for your number to be called' %}
         </span>
         <div><div class="tv-clock" id="clock">--:--</div><div class="tv-date" id="date"></div></div>
     </header>
