@@ -84,6 +84,43 @@
         flow.addEventListener("transitionend", drawMerge);  // after the scroll-reveal slide-in
     }
 
+    /* ---- Screen gallery: a tab per screen, thumbnails switch the large picture ---- */
+    const gallery = document.querySelector(".gallery");
+    if (gallery) {
+        const tabs = [...gallery.querySelectorAll("[role=tab]")];
+        const show = (tab, focus) => {
+            tabs.forEach((t) => {
+                const on = t === tab;
+                t.classList.toggle("active", on);
+                t.setAttribute("aria-selected", on);
+                t.tabIndex = on ? 0 : -1;
+                document.getElementById(t.getAttribute("aria-controls")).classList.toggle("active", on);
+            });
+            if (focus) tab.focus();
+        };
+        tabs.forEach((tab, i) => {
+            tab.addEventListener("click", () => show(tab));
+            tab.addEventListener("keydown", (event) => {
+                const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+                if (step) show(tabs[(i + step + tabs.length) % tabs.length], true);
+            });
+        });
+        gallery.querySelectorAll(".shot-thumb").forEach((thumb) => thumb.addEventListener("click", () => {
+            const panel = thumb.closest(".gallery-panel");
+            const img = panel.querySelector(".shot-main img");
+            img.src = thumb.dataset.shot;
+            img.alt = thumb.dataset.caption;
+            img.width = Number(thumb.dataset.w);
+            img.height = Number(thumb.dataset.h);
+            panel.querySelector(".browser-url").textContent = "your-clinic.com" + thumb.dataset.url;
+            panel.querySelector(".shot-main figcaption").textContent = thumb.dataset.caption;
+            panel.querySelectorAll(".shot-thumb").forEach((t) => t.classList.toggle("active", t === thumb));
+        }));
+        gallery.classList.add("js-gallery");
+        gallery.querySelector("[role=tablist]").hidden = false;
+        show(tabs[0]);
+    }
+
     /* ---- Spotlight on cards ----------------------------------------------- */
     document.querySelectorAll(".spotlight").forEach((card) => {
         card.addEventListener("pointermove", (event) => {

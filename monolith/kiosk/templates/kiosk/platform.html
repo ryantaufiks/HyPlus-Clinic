@@ -161,6 +161,59 @@
                 <h2>See it working</h2>
                 <p>A demo clinic runs on the platform. Try it as a patient, or ask us for a guided tour of the staff screens.</p>
             </div>
+            <div class="gallery" data-reveal>
+                <div class="feature-tabs gallery-tabs" role="tablist" aria-label="Screens" hidden>
+                    <button type="button" role="tab" id="shotstab-kiosk" aria-controls="shots-kiosk" aria-selected="true" class="active"><i class="bi bi-display"></i> Kiosk</button>
+                    <button type="button" role="tab" id="shotstab-tv" aria-controls="shots-tv" aria-selected="false" class=""><i class="bi bi-tv"></i> Waiting-room TV</button>
+                    <button type="button" role="tab" id="shotstab-doctor" aria-controls="shots-doctor" aria-selected="false" class=""><i class="bi bi-clipboard2-pulse"></i> Doctor</button>
+                    <button type="button" role="tab" id="shotstab-clinic" aria-controls="shots-clinic" aria-selected="false" class=""><i class="bi bi-graph-up"></i> Clinic dashboard</button>
+                    <button type="button" role="tab" id="shotstab-phone" aria-controls="shots-phone" aria-selected="false" class=""><i class="bi bi-phone"></i> Patient's phone</button>
+                </div>
+                <div class="gallery-panel" role="tabpanel" id="shots-kiosk" aria-labelledby="shotstab-kiosk">
+                    <figure class="shot-main">
+                        <div class="browser-frame"><div class="browser-bar"><span></span><span></span><span></span><div class="browser-url">your-clinic.com/kiosk/</div></div>
+                            <img src="{% static 'img/preview/kiosk-welcome.webp' %}" alt="Welcome: first visit, returning patient or online ticket" width="1440" height="900" loading="lazy" decoding="async" />
+                        </div>
+                        <figcaption>Welcome: first visit, returning patient or online ticket</figcaption>
+                    </figure>
+                    <div class="shot-thumbs"><button type="button" class="shot-thumb active" data-shot="{% static 'img/preview/kiosk-welcome.webp' %}" data-url="/kiosk/" data-caption="Welcome: first visit, returning patient or online ticket" data-w="1440" data-h="900" aria-label="Welcome: first visit, returning patient or online ticket"><img src="{% static 'img/preview/kiosk-welcome-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button><button type="button" class="shot-thumb" data-shot="{% static 'img/preview/kiosk-doctor.webp' %}" data-url="/kiosk/" data-caption="Patients choose their doctor and see each doctor's line" data-w="1440" data-h="900" aria-label="Patients choose their doctor and see each doctor's line"><img src="{% static 'img/preview/kiosk-doctor-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button><button type="button" class="shot-thumb" data-shot="{% static 'img/preview/kiosk-bp.webp' %}" data-url="/kiosk/" data-caption="The blood pressure monitor sends its result over Bluetooth" data-w="1440" data-h="900" aria-label="The blood pressure monitor sends its result over Bluetooth"><img src="{% static 'img/preview/kiosk-bp-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button><button type="button" class="shot-thumb" data-shot="{% static 'img/preview/kiosk-ticket.webp' %}" data-url="/kiosk/" data-caption="Ticket with queue number, doctor and QR code" data-w="1440" data-h="900" aria-label="Ticket with queue number, doctor and QR code"><img src="{% static 'img/preview/kiosk-ticket-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button></div>
+                </div>
+                <div class="gallery-panel" role="tabpanel" id="shots-tv" aria-labelledby="shotstab-tv">
+                    <figure class="shot-main">
+                        <div class="browser-frame"><div class="browser-bar"><span></span><span></span><span></span><div class="browser-url">your-clinic.com/display/</div></div>
+                            <img src="{% static 'img/preview/tv.webp' %}" alt="Numbers called with a chime; every room and its line at a glance" width="1440" height="810" loading="lazy" decoding="async" />
+                        </div>
+                        <figcaption>Numbers called with a chime; every room and its line at a glance</figcaption>
+                    </figure>
+                    
+                </div>
+                <div class="gallery-panel" role="tabpanel" id="shots-doctor" aria-labelledby="shotstab-doctor">
+                    <figure class="shot-main">
+                        <div class="browser-frame"><div class="browser-bar"><span></span><span></span><span></span><div class="browser-url">your-clinic.com/doctor/</div></div>
+                            <img src="{% static 'img/preview/doctor-queue.webp' %}" alt="The doctor's own line, critical blood pressure first, one tap to call" width="1440" height="900" loading="lazy" decoding="async" />
+                        </div>
+                        <figcaption>The doctor's own line, critical blood pressure first, one tap to call</figcaption>
+                    </figure>
+                    <div class="shot-thumbs"><button type="button" class="shot-thumb active" data-shot="{% static 'img/preview/doctor-queue.webp' %}" data-url="/doctor/" data-caption="The doctor's own line, critical blood pressure first, one tap to call" data-w="1440" data-h="900" aria-label="The doctor's own line, critical blood pressure first, one tap to call"><img src="{% static 'img/preview/doctor-queue-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button><button type="button" class="shot-thumb" data-shot="{% static 'img/preview/doctor-visit.webp' %}" data-url="/visits/" data-caption="AI pre-consultation summary, vitals and trends beside the prescription" data-w="1440" data-h="1250" aria-label="AI pre-consultation summary, vitals and trends beside the prescription"><img src="{% static 'img/preview/doctor-visit-thumb.webp' %}" alt="" width="360" height="312" loading="lazy" /></button></div>
+                </div>
+                <div class="gallery-panel" role="tabpanel" id="shots-clinic" aria-labelledby="shotstab-clinic">
+                    <figure class="shot-main">
+                        <div class="browser-frame"><div class="browser-bar"><span></span><span></span><span></span><div class="browser-url">your-clinic.com/dashboard/</div></div>
+                            <img src="{% static 'img/preview/dashboard.webp' %}" alt="Live check-ins, waiting patients, blood pressure and device status" width="1440" height="900" loading="lazy" decoding="async" />
+                        </div>
+                        <figcaption>Live check-ins, waiting patients, blood pressure and device status</figcaption>
+                    </figure>
+                    <div class="shot-thumbs"><button type="button" class="shot-thumb active" data-shot="{% static 'img/preview/dashboard.webp' %}" data-url="/dashboard/" data-caption="Live check-ins, waiting patients, blood pressure and device status" data-w="1440" data-h="900" aria-label="Live check-ins, waiting patients, blood pressure and device status"><img src="{% static 'img/preview/dashboard-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button><button type="button" class="shot-thumb" data-shot="{% static 'img/preview/schedules.webp' %}" data-url="/schedules/" data-caption="Every doctor's weekly hours and days off" data-w="1440" data-h="900" aria-label="Every doctor's weekly hours and days off"><img src="{% static 'img/preview/schedules-thumb.webp' %}" alt="" width="360" height="225" loading="lazy" /></button></div>
+                </div>
+                <div class="gallery-panel" role="tabpanel" id="shots-phone" aria-labelledby="shotstab-phone">
+                    <div class="phone-row">
+                        <figure class="phone-shot"><div class="phone-frame"><img src="{% static 'img/preview/phone-booking.webp' %}" alt="Smart booking: a queue number for today" width="600" height="1298" loading="lazy" decoding="async" /></div><figcaption>Smart booking: a queue number for today</figcaption></figure>
+                        <figure class="phone-shot"><div class="phone-frame"><img src="{% static 'img/preview/phone-ticket.webp' %}" alt="Live place in the queue" width="600" height="1298" loading="lazy" decoding="async" /></div><figcaption>Live place in the queue</figcaption></figure>
+                        <figure class="phone-shot"><div class="phone-frame"><img src="{% static 'img/preview/phone-portal.webp' %}" alt="Patient portal: visits, vitals and prescriptions" width="600" height="1298" loading="lazy" decoding="async" /></div><figcaption>Patient portal: visits, vitals and prescriptions</figcaption></figure>
+                    </div>
+                </div>
+            </div>
+            <p class="small text-muted text-center mt-3 mb-4"><i class="bi bi-info-circle"></i> Real screens of the platform, shown with fictional demo data.</p>
             <div class="row g-3">
                 <div class="col-md-6 col-lg-3"><a class="demo-link" href="{% url 'kiosk:landing' %}" data-reveal><i class="bi bi-globe2"></i><h3>Clinic website</h3><p>Services, prices and smart booking under the clinic's brand.</p><span>Open <i class="bi bi-arrow-right"></i></span></a></div>
                 <div class="col-md-6 col-lg-3"><a class="demo-link" href="{% url 'kiosk:book' %}?service=clinic-consultation" data-reveal style="--i: 1"><i class="bi bi-ticket-perforated"></i><h3>Smart booking</h3><p>Take a queue number for today, or book another day.</p><span>Open <i class="bi bi-arrow-right"></i></span></a></div>
