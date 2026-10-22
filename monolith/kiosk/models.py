@@ -602,3 +602,44 @@ class KioskDevice(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# --- Platform website: enquiries from clinics and partners -------------------------------------
+
+
+class PartnerInquiry(models.Model):
+    """A message from the platform's Contact us form (clinics, brands, startups)."""
+
+    PLATFORM = "platform"
+    WHITE_LABEL = "white_label"
+    CTO = "cto"
+    DEMO = "demo"
+    OTHER = "other"
+    INTEREST_CHOICES = [
+        (PLATFORM, "Use Hy+ Clinic in my clinic"),
+        (WHITE_LABEL, "White-label it under my brand"),
+        (CTO, "Hire a CTO / founding engineer"),
+        (DEMO, "A guided demo"),
+        (OTHER, "Something else"),
+    ]
+    NEW = "new"
+    CONTACTED = "contacted"
+    CLOSED = "closed"
+    STATUS_CHOICES = [(NEW, "New"), (CONTACTED, "Contacted"), (CLOSED, "Closed")]
+
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    phone = models.CharField("WhatsApp number", max_length=30, blank=True)
+    organisation = models.CharField("Clinic or company", max_length=120, blank=True)
+    interest = models.CharField(max_length=20, choices=INTEREST_CHOICES, default=PLATFORM)
+    message = models.TextField(max_length=2000)
+    consent_at = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=NEW, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "partner inquiries"
+
+    def __str__(self):
+        return f"{self.name} · {self.get_interest_display()}"

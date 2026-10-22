@@ -1,0 +1,299 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b7a83" />
+    <meta name="description" content="Hy+ Clinic is a smart, white-label clinic platform connected to health-check devices: self check-in kiosk, live queues, the doctor's workspace, a patient portal and AI pre-consultation summaries." />
+    <title>Hy+ Clinic — Smart clinic platform with connected health devices</title>
+    <link rel="manifest" href="{% static 'manifest.json' %}" />
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-32x32.png' %}" />
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/aivin.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}" />
+</head>
+<body class="landing platform">
+
+<header class="site-header">
+    <div class="container d-flex align-items-center gap-3">
+        <a class="brand me-auto" href="{% url 'kiosk:platform' %}">{% include 'kiosk/_brand.html' %}</a>
+        <nav class="site-nav d-none d-lg-flex" aria-label="Sections">
+            <a href="#devices">Devices</a>
+            <a href="#platform">Platform</a>
+            <a href="#white-label">White label</a>
+            <a href="#demo">Live demo</a>
+            <a href="#engage">Work with us</a>
+        </nav>
+        <a class="btn btn-light btn-icon d-none d-sm-inline-flex" href="{% url 'kiosk:landing' %}"><i class="bi bi-eye"></i> Live demo</a>
+        <a class="btn btn-primary btn-icon" href="#contact"><i class="bi bi-chat-dots"></i> Contact us</a>
+    </div>
+</header>
+
+<main>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg" aria-hidden="true">
+            <span class="blob blob-1" data-depth="0.25"></span>
+            <span class="blob blob-2" data-depth="0.45"></span>
+            <span class="grid-fade"></span>
+        </div>
+        <div class="container position-relative">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-7">
+                    <span class="eyebrow" data-rise><i class="bi bi-stars"></i> Smart clinic platform · White label</span>
+                    <h1 class="hero-title" data-rise style="--i: 1">The smart clinic platform,<br /><span>connected to your health devices.</span></h1>
+                    <p class="hero-lead" data-rise style="--i: 2">Hy+ Clinic connects blood pressure monitors, scales, oximeters, thermometers and blood glucose, cholesterol and uric acid meters to a self check-in kiosk, live queues and the doctor's workspace. Under your own brand.</p>
+                    <div class="d-flex flex-wrap gap-2 mt-4" data-rise style="--i: 3">
+                        <a class="btn btn-primary btn-lg btn-icon btn-glow" href="#contact"><i class="bi bi-chat-dots"></i> Contact us</a>
+                        <a class="btn btn-light btn-lg btn-icon" href="{% url 'kiosk:landing' %}"><i class="bi bi-eye"></i> See the live demo</a>
+                    </div>
+                    <p class="hero-price" data-rise style="--i: 4">Integrated today: <strong>OMRON</strong> blood pressure monitor and scale · more devices on the way</p>
+                </div>
+                <div class="col-lg-5 hero-visual">
+                    <canvas id="orb" class="orb" aria-hidden="true"></canvas>
+                    <div class="today-card glass glow-border device-card" data-rise style="--i: 2">
+                        <div class="today-head">
+                            <span><i class="bi bi-bluetooth"></i> Connected devices</span>
+                            <span class="live"><span class="dot"></span>Live</span>
+                        </div>
+                        <svg class="ekg" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true"><path class="base" d="M0 22 H70 L80 22 L88 8 L96 34 L104 4 L112 30 L118 22 H190 L198 22 L204 14 L210 26 L216 22 H300" /><path class="pulse" pathLength="100" d="M0 22 H70 L80 22 L88 8 L96 34 L104 4 L112 30 L118 22 H190 L198 22 L204 14 L210 26 L216 22 H300" /></svg>
+                        <ul class="device-list">
+                            {% for d in devices %}
+                            <li><i class="bi {{ d.icon }}"></i><span>{{ d.name }}</span>{% if d.live %}<span class="status status-good"><i class="bi bi-circle-fill"></i>Live</span>{% else %}<span class="soon">Soon</span>{% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem -->
+    <section class="section">
+        <div class="container">
+            <div class="section-head">
+                <h2>Built to take the routine off your nurses</h2>
+                <p>Before every consultation, someone measures the patient's vital signs, writes them down and passes them to the doctor. Hy+ Clinic does that part for them.</p>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4"><div class="value-tile" data-reveal><i class="bi bi-clipboard-x"></i><h3>No more copying numbers</h3><p>Devices send readings straight to the patient's record: no handwriting, no typing, no transcription mistakes.</p></div></div>
+                <div class="col-md-4"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-people"></i><h3>Calmer waiting rooms</h3><p>Online queue numbers, live position on the patient's phone and a TV that calls numbers with a chime.</p></div></div>
+                <div class="col-md-4"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-clipboard2-pulse"></i><h3>Doctors fully prepared</h3><p>Vitals, history, allergies and an AI pre-consultation summary are ready before the patient walks in.</p></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Devices -->
+    <section class="section section-alt" id="devices">
+        <div class="container">
+            <div class="section-head">
+                <h2>Connected health-check devices</h2>
+                <p>Bluetooth devices are read by a small gateway at the clinic: the patient measures, the result appears in their record. Need another model? We integrate it.</p>
+            </div>
+            <div class="device-grid">
+                {% for d in devices %}
+                <article class="device-tile{% if not d.live %} device-soon{% endif %}" data-reveal style="--i: {{ forloop.counter0 }}">
+                    <span class="device-icon"><i class="bi {{ d.icon }}"></i></span>
+                    <h3>{{ d.name }}</h3>
+                    <p>{{ d.detail }}</p>
+                    {% if d.live %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Integrated · {{ d.model }}</span>{% else %}<span class="soon">Coming soon</span>{% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform features -->
+    <section class="section" id="platform">
+        <div class="container">
+            <div class="section-head">
+                <h2>Everything in one platform</h2>
+                <p>From the first booking to the last prescription: one system for patients, the kiosk, doctors and the front desk.</p>
+            </div>
+            {% include 'kiosk/_platform_features.html' %}
+        </div>
+    </section>
+
+    <!-- White label -->
+    <section class="section section-alt" id="white-label">
+        <div class="container">
+            <div class="row g-5 align-items-center">
+                <div class="col-lg-5">
+                    <div class="section-head mb-3">
+                        <h2>Your brand, our platform</h2>
+                        <p>Patients see your clinic, not ours. Each clinic runs on its own isolated installation.</p>
+                    </div>
+                    <ul class="check-list">
+                        <li><i class="bi bi-check-circle-fill"></i> Your name, logo and colours on every screen, ticket and prescription</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Your own domain for the website and patient portal</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Your services, prices, doctors and schedules</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Your data in its own database, never shared with other clinics</li>
+                    </ul>
+                </div>
+                <div class="col-lg-7">
+                    <div class="theme-previews" aria-label="Examples of the same platform under different brands">
+                        <div class="theme-preview" style="--brand: #0b7a83" data-reveal>
+                            <div class="tp-bar"><span class="tp-logo">Hy<b>+</b></span><span class="tp-name">Hy+ Clinic</span></div>
+                            <div class="tp-body"><div class="tp-number">A012</div><div class="tp-line"></div><div class="tp-line short"></div><span class="tp-button">Book</span></div>
+                        </div>
+                        <div class="theme-preview" style="--brand: #2a62b8; --i: 1" data-reveal>
+                            <div class="tp-bar"><span class="tp-logo"><i class="bi bi-heart-pulse-fill"></i></span><span class="tp-name">Sehat Medika</span></div>
+                            <div class="tp-body"><div class="tp-number">B031</div><div class="tp-line"></div><div class="tp-line short"></div><span class="tp-button">Book</span></div>
+                        </div>
+                        <div class="theme-preview" style="--brand: #2f7d32; --i: 2" data-reveal>
+                            <div class="tp-bar"><span class="tp-logo"><i class="bi bi-flower1"></i></span><span class="tp-name">Klinik Pratama</span></div>
+                            <div class="tp-body"><div class="tp-number">C007</div><div class="tp-line"></div><div class="tp-line short"></div><span class="tp-button">Book</span></div>
+                        </div>
+                    </div>
+                    <p class="small text-muted text-center mt-2 mb-0">Illustration: one platform, three brands.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live demo -->
+    <section class="section" id="demo">
+        <div class="container">
+            <div class="section-head">
+                <h2>See it working</h2>
+                <p>A demo clinic runs on the platform. Try it as a patient, or ask us for a guided tour of the staff screens.</p>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6 col-lg-3"><a class="demo-link" href="{% url 'kiosk:landing' %}" data-reveal><i class="bi bi-globe2"></i><h3>Clinic website</h3><p>Services, prices and smart booking under the clinic's brand.</p><span>Open <i class="bi bi-arrow-right"></i></span></a></div>
+                <div class="col-md-6 col-lg-3"><a class="demo-link" href="{% url 'kiosk:book' %}?service=clinic-consultation" data-reveal style="--i: 1"><i class="bi bi-ticket-perforated"></i><h3>Smart booking</h3><p>Take a queue number for today, or book another day.</p><span>Open <i class="bi bi-arrow-right"></i></span></a></div>
+                <div class="col-md-6 col-lg-3"><a class="demo-link" href="{% url 'kiosk:display' %}" target="_blank" rel="noopener" data-reveal style="--i: 2"><i class="bi bi-tv"></i><h3>Waiting-room TV</h3><p>Numbers called with a chime, each doctor's room and line.</p><span>Open <i class="bi bi-box-arrow-up-right"></i></span></a></div>
+                <div class="col-md-6 col-lg-3"><a class="demo-link" href="?interest=demo#contact" data-reveal style="--i: 3"><i class="bi bi-person-video3"></i><h3>Guided tour</h3><p>Kiosk, doctor's workspace, dashboard and devices, shown live.</p><span>Request <i class="bi bi-arrow-right"></i></span></a></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Implementation -->
+    <section class="section section-alt" id="implementation">
+        <div class="container">
+            <div class="section-head">
+                <h2>From first call to go-live</h2>
+                <p>We set it up with you, step by step.</p>
+            </div>
+            <ol class="impl-steps">
+                <li data-reveal><span>1</span><h3>Discovery</h3><p>We learn how your clinic runs today and agree on the scope and timeline.</p></li>
+                <li data-reveal style="--i: 1"><span>2</span><h3>Your brand</h3><p>Name, logo, colours, domain, services, prices, doctors and staff accounts.</p></li>
+                <li data-reveal style="--i: 2"><span>3</span><h3>Devices &amp; screens</h3><p>Pairing the health-check devices, the kiosk tablet and the waiting-room TV.</p></li>
+                <li data-reveal style="--i: 3"><span>4</span><h3>Go live &amp; support</h3><p>Training for your team, monitoring, daily backups and updates.</p></li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- Security -->
+    <section class="section">
+        <div class="container">
+            <div class="section-head">
+                <h2>Health data, handled with care</h2>
+                <p>Security is built in, not added later.</p>
+            </div>
+            <div class="row g-3">
+                <div class="col-sm-6 col-lg-4"><div class="value-tile" data-reveal><i class="bi bi-hdd-network"></i><h3>Isolated per clinic</h3><p>Each clinic has its own installation and database.</p></div></div>
+                <div class="col-sm-6 col-lg-4"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-lock"></i><h3>Encrypted connections</h3><p>HTTPS everywhere, strict browser security policies, encrypted secrets.</p></div></div>
+                <div class="col-sm-6 col-lg-4"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-person-lock"></i><h3>Role-based access</h3><p>Doctors, nurses and front desk each see only what their work needs.</p></div></div>
+                <div class="col-sm-6 col-lg-4"><div class="value-tile" data-reveal><i class="bi bi-journal-check"></i><h3>Audit trail</h3><p>Every change to medical and registration data is recorded.</p></div></div>
+                <div class="col-sm-6 col-lg-4"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-incognito"></i><h3>Private by design</h3><p>Only the last 4 digits of ID documents are stored; AI only receives de-identified data.</p></div></div>
+                <div class="col-sm-6 col-lg-4"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-shield-check"></i><h3>Monitored &amp; backed up</h3><p>Health checks, alerts and automatic daily backups.</p></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Work with us -->
+    <section class="section section-alt" id="engage">
+        <div class="container">
+            <div class="section-head">
+                <h2>Work with us</h2>
+                <p>Every clinic and partnership is different, so pricing is agreed with you. Contact us for a proposal.</p>
+            </div>
+            <div class="row g-3">
+                <div class="col-lg-4"><article class="engage-card" data-reveal><span class="engage-icon"><i class="bi bi-hospital"></i></span><h3>For your clinic</h3><p>Run Hy+ Clinic in your clinic: kiosk, devices, queues, doctors and the patient portal, set up and supported.</p><div class="engage-price">Contact us</div><a class="btn btn-outline-primary w-100" href="?interest=platform#contact">Ask for a proposal</a></article></div>
+                <div class="col-lg-4"><article class="engage-card engage-featured" data-reveal style="--i: 1"><span class="engage-icon"><i class="bi bi-palette"></i></span><h3>White label</h3><p>Offer the platform under your own brand to your clinic network, insurer or health business.</p><div class="engage-price">Contact us</div><a class="btn btn-primary w-100" href="?interest=white_label#contact">Talk about white label</a></article></div>
+                <div class="col-lg-4"><article class="engage-card" data-reveal style="--i: 2"><span class="engage-icon"><i class="bi bi-cpu"></i></span><h3>CTO / Founding engineer</h3><p>Building a health-tech product? Partner with the engineer behind Hy+ Clinic, on contract or as a founding engineer.</p><div class="engage-price">Contact us</div><a class="btn btn-outline-primary w-100" href="?interest=cto#contact">Start a conversation</a></article></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+        <div class="container faq">
+            <div class="section-head">
+                <h2>Questions</h2>
+            </div>
+            <details data-reveal><summary>Which devices work with Hy+ Clinic?</summary><p>Today the OMRON HEM-6232T blood pressure monitor and the OMRON HN-300T2 scale are integrated. Pulse oximeters, thermometers and blood glucose, cholesterol and uric acid meters are next. If your clinic already uses a Bluetooth device, we can look at integrating it.</p></details>
+            <details data-reveal><summary>Can it run under our own brand and domain?</summary><p>Yes. The name, logo, colours, domain, services and prices are yours, and each clinic gets its own installation and database.</p></details>
+            <details data-reveal><summary>What hardware does a clinic need?</summary><p>A tablet or touch screen for the kiosk, a TV for the waiting room, the health-check devices and a small computer at the clinic that reads the devices over Bluetooth.</p></details>
+            <details data-reveal><summary>Is patient data sent to the AI?</summary><p>Only de-identified data: no names, IDs, phone numbers or addresses. The doctor always reviews the summary; it does not diagnose.</p></details>
+            <details data-reveal><summary>How much does it cost?</summary><p>Pricing depends on the number of sites, devices and the support you need. Contact us and we will send a proposal.</p></details>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="section section-alt" id="contact">
+        <div class="container">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-5">
+                    <div class="section-head">
+                        <h2>Contact us</h2>
+                        <p>Tell us about your clinic or project. We usually reply within one working day.</p>
+                    </div>
+                    <ul class="check-list">
+                        <li><i class="bi bi-check-circle-fill"></i> A guided demo of every screen</li>
+                        <li><i class="bi bi-check-circle-fill"></i> A proposal for your clinic or brand</li>
+                        <li><i class="bi bi-check-circle-fill"></i> CTO / founding engineer partnerships</li>
+                    </ul>
+                </div>
+                <div class="col-lg-7">
+                    {% if sent %}
+                    <div class="surface text-center py-5" role="status">
+                        <span class="kiosk-icon done mx-auto"><i class="bi bi-check-lg"></i></span>
+                        <h3 class="h4 mt-3">Thank you, we'll be in touch</h3>
+                        <p class="text-muted mb-0">Your message has been sent. We usually reply within one working day.</p>
+                    </div>
+                    {% else %}
+                    <form method="post" action="{% url 'kiosk:platform' %}#contact" class="surface" novalidate>
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.name %}</div>
+                            <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.email %}</div>
+                            <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.phone %}</div>
+                            <div class="col-md-6">{% include 'kiosk/_field.html' with field=form.organisation %}</div>
+                            <div class="col-12">{% include 'kiosk/_field.html' with field=form.interest %}</div>
+                            <div class="col-12">{% include 'kiosk/_field.html' with field=form.message %}</div>
+                            <div class="d-none" aria-hidden="true">{{ form.website }}</div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    {{ form.consent }}
+                                    <label class="form-check-label" for="{{ form.consent.id_for_label }}">{{ form.consent.label }}</label>
+                                    {% for error in form.consent.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-lg btn-icon mt-4"><i class="bi bi-send"></i> Send message</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container d-flex flex-wrap justify-content-between gap-3">
+        <span><strong>Hy+ Clinic</strong> · Smart clinic platform</span>
+        <nav class="d-flex flex-wrap gap-3">
+            <a href="{% url 'kiosk:landing' %}">Live demo</a>
+            <a href="#contact">Contact us</a>
+            <a href="{% url 'login' %}">Staff login</a>
+        </nav>
+        <span>© {% now "Y" %} Hy+ Clinic</span>
+    </div>
+</footer>
+<script src="{% static 'js/landing.js' %}" defer></script>
+</body>
+</html>

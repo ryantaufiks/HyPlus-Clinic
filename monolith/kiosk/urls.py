@@ -6,7 +6,8 @@ app_name = "kiosk"
 
 urlpatterns = [
     # Public website
-    path("", website_views.LandingView.as_view(), name="landing"),
+    path("", website_views.PlatformView.as_view(), name="platform"),
+    path("demo/", website_views.LandingView.as_view(), name="landing"),
     path("book/", website_views.BookingView.as_view(), name="book"),
     path("services/<int:pk>/image/", website_views.service_image, name="service-image"),
     path("queue/", website_views.queue_ticket_redirect, name="queue-ticket"),

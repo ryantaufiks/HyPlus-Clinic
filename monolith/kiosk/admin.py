@@ -10,6 +10,7 @@ from .models import (
     DeviceReading,
     Measurement,
     Patient,
+    PartnerInquiry,
     PatientSubmission,
     PrescriptionItem,
     Review,
@@ -238,3 +239,15 @@ class ReviewAdmin(admin.ModelAdmin):
     list_display = ["patient", "rating", "status", "created_at"]
     list_filter = ["status", "rating"]
     readonly_fields = ["visit", "patient", "created_at", "moderated_by", "moderated_at"]
+
+
+@admin.register(PartnerInquiry)
+class PartnerInquiryAdmin(admin.ModelAdmin):
+    list_display = ["name", "organisation", "interest", "email", "phone", "status", "created_at"]
+    list_filter = ["status", "interest"]
+    list_editable = ["status"]
+    search_fields = ["name", "organisation", "email", "message"]
+    readonly_fields = ["name", "email", "phone", "organisation", "interest", "message", "consent_at", "created_at"]
+
+    def has_add_permission(self, request):
+        return False

@@ -1,6 +1,6 @@
 from django.conf import settings
 
-from .models import BookingRequest, PatientSubmission, Review
+from .models import BookingRequest, PartnerInquiry, PatientSubmission, Review
 from .queue import CANCEL_REASONS
 from .roles import CAPABILITIES, ROLE_LABELS, can, is_doctor, role_of
 
@@ -34,5 +34,8 @@ def app_settings(request):
             Review.objects.filter(status=Review.PENDING).count() if signed_in and can(user, "moderate_reviews") else 0
         ),
     }
+    context["new_inquiries"] = (
+        PartnerInquiry.objects.filter(status=PartnerInquiry.NEW).count() if signed_in and can(user, "manage_staff") else 0
+    )
     context["front_desk_badge"] = context["pending_submissions"] + context["new_bookings"] + context["pending_reviews"]
     return context

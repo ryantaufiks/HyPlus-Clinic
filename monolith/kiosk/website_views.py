@@ -24,7 +24,7 @@ from django_ratelimit.decorators import ratelimit
 from . import queue, schedule
 from .forms import BootstrapMixin
 from .kiosk_api import assign_queue_number
-from .models import AuditEvent, BookingRequest, Patient, Review, Service, Visit
+from .models import AuditEvent, BookingRequest, PartnerInquiry, Patient, Review, Service, Visit
 from .portal_views import whatsapp_number
 from .queue_views import _doctor_face, _doctor_name
 from .roles import DOCTOR_GROUP, CapabilityRequiredMixin, PatientPortalMixin, can, patient_of
@@ -90,7 +90,67 @@ def review_summary(ratings):
     }
 
 
-# --- Home page --------------------------------------------------------------------------------
+# --- Platform page (/): Hy+ Clinic for clinics, brands and partners ---------------------------
+
+# Connected health-check devices: "live" ones are integrated today (see the BLE gateway).
+DEVICES = [
+    {"name": "Blood pressure monitor", "icon": "bi-heart-pulse", "detail": "Blood pressure and pulse", "live": True, "model": "OMRON HEM-6232T"},
+    {"name": "Body weight scale", "icon": "bi-speedometer2", "detail": "Weight, with BMI from height", "live": True, "model": "OMRON HN-300T2"},
+    {"name": "Pulse oximeter", "icon": "bi-activity", "detail": "Oxygen saturation (SpO₂) and pulse", "live": False},
+    {"name": "Body thermometer", "icon": "bi-thermometer-half", "detail": "Body temperature", "live": False},
+    {"name": "Blood glucose meter", "icon": "bi-droplet-half", "detail": "Blood sugar", "live": False},
+    {"name": "Cholesterol meter", "icon": "bi-droplet", "detail": "Total cholesterol", "live": False},
+    {"name": "Uric acid meter", "icon": "bi-eyedropper", "detail": "Uric acid", "live": False},
+]
+
+
+class PartnerInquiryForm(BootstrapMixin, forms.ModelForm):
+    consent = forms.BooleanField(label="I agree that Hy+ Clinic stores these details to reply to me.")
+    website = forms.CharField(required=False, widget=forms.TextInput(attrs={"tabindex": "-1", "autocomplete": "off"}))
+
+    class Meta:
+        model = PartnerInquiry
+        fields = ["name", "email", "phone", "organisation", "interest", "message"]
+        widgets = {
+            "name": forms.TextInput(attrs={"autocomplete": "name"}),
+            "email": forms.EmailInput(attrs={"autocomplete": "email"}),
+            "phone": forms.TextInput(attrs={"autocomplete": "tel", "inputmode": "tel", "placeholder": "Optional"}),
+            "organisation": forms.TextInput(attrs={"autocomplete": "organization", "placeholder": "Optional"}),
+            "message": forms.Textarea(attrs={"rows": 4, "placeholder": "Tell us about your clinic or project"}),
+        }
+        labels = {"name": "Your name", "interest": "I'm interested in"}
+
+    def clean_message(self):
+        value = self.cleaned_data["message"].strip()
+        if len(value) < 10:
+            raise forms.ValidationError("Please tell us a little more.")
+        return value
+
+
+@method_decorator(ratelimit(key="ip", rate="5/h", method="POST", block=True), name="post")
+class PlatformView(View):
+    template_name = "kiosk/platform.html"
+
+    def _render(self, request, form, sent=False):
+        return render(request, self.template_name, {"form": form, "sent": sent, "devices": DEVICES})
+
+    def get(self, request):
+        interest = request.GET.get("interest")
+        initial = {"interest": interest} if interest in dict(PartnerInquiry.INTEREST_CHOICES) else {}
+        return self._render(request, PartnerInquiryForm(initial=initial))
+
+    def post(self, request):
+        form = PartnerInquiryForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, form)
+        if not form.cleaned_data.get("website"):  # bots fill in the hidden field
+            inquiry = form.save(commit=False)
+            inquiry.consent_at = timezone.now()
+            inquiry.save()
+        return self._render(request, PartnerInquiryForm(), sent=True)
+
+
+# --- Demo clinic (/demo/) ---------------------------------------------------------------------
 
 
 def service_image(request, pk):

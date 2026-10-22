@@ -42,7 +42,7 @@ class ServiceImageTest(TestCase):
         stored = Image.open(self.service.image.path)
         self.assertEqual((stored.format, stored.size, len(stored.getexif())), ("JPEG", (960, 600), 0))
 
-        home = self.client.get("/").content.decode()
+        home = self.client.get(reverse("kiosk:landing")).content.decode()
         image_url = reverse("kiosk:service-image", args=[self.service.pk])
         self.assertIn(f'src="{image_url}?v=', home)
         self.client.logout()
