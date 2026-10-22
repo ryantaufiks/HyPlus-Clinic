@@ -114,23 +114,20 @@
             <div class="row g-3">
                 {% for s in services %}
                 <div class="col-md-6 col-lg-4 col-xl">
-                    <article class="service-card spotlight{% if s.image %} has-photo{% endif %}" data-reveal style="--i: {{ forloop.counter0 }}">
+                    <article class="service-card spotlight" data-reveal style="--i: {{ forloop.counter0 }}">
                         {% if s.image %}
-                        <img class="service-photo" src="{% url 'kiosk:service-image' s.pk %}?v={{ s.image.name|slice:'-16:' }}" alt="" width="960" height="600" loading="lazy" decoding="async" />
-                        <span class="service-fade" aria-hidden="true"></span>
+                        <img class="service-image" src="{% url 'kiosk:service-image' s.pk %}?v={{ s.image.name|slice:'-16:' }}" alt="{{ s.name }}" width="960" height="600" loading="lazy" decoding="async" />
                         {% else %}
                         <span class="service-icon"><i class="bi {{ s.icon }}"></i></span>
                         {% endif %}
-                        <div class="service-body">
-                            <h3>{{ s.name }}</h3>
-                            <p>{{ s.summary }}</p>
-                            <div class="service-price">
-                                <span class="amount">SGD {{ s.price_sgd|floatformat:"-2" }}</span>
-                                <span class="unit">{{ s.price_unit }}</span>
-                                {% if not s.price_confirmed %}<span class="status status-neutral mt-1">Example price</span>{% endif %}
-                            </div>
-                            {% if s.is_bookable %}<a class="btn btn-outline-primary w-100" href="{% url 'kiosk:book' %}?service={{ s.slug }}">Book</a>{% endif %}
+                        <h3>{{ s.name }}</h3>
+                        <p>{{ s.summary }}</p>
+                        <div class="service-price">
+                            <span class="amount">SGD {{ s.price_sgd|floatformat:"-2" }}</span>
+                            <span class="unit">{{ s.price_unit }}</span>
+                            {% if not s.price_confirmed %}<span class="status status-neutral mt-1">Example price</span>{% endif %}
                         </div>
+                        {% if s.is_bookable %}<a class="btn btn-outline-primary w-100" href="{% url 'kiosk:book' %}?service={{ s.slug }}">Book</a>{% endif %}
                     </article>
                 </div>
                 {% empty %}

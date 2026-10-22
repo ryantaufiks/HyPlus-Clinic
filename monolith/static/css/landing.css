@@ -339,42 +339,5 @@
 .flow-canvas .flow-entry { min-height: 4.6rem; }
 @media (max-width: 991.98px) { .flow-canvas .flow-start { gap: 0; justify-content: space-around; } .flow-canvas .flow-start .flow-entry { flex: 0 1 46%; } }
 
-/* ---- Service cards ------------------------------------------------------------------------
- * Text and button live in .service-body, pushed to the bottom so prices and buttons line up.
- * With a photo, the photo fills the whole card and a white gradient rises behind the text,
- * fading to transparent towards the top, so the text sits on white without a hard edge.
- */
-.service-card { min-height: 26rem; }
-.service-body { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
-.service-body p { flex: 1; }
-.service-card.has-photo { padding: 0; isolation: isolate; border-color: rgba(15, 29, 43, 0.08); background: var(--aivin-primary-soft); }
-.service-card.has-photo > .service-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.service-card.has-photo:hover > .service-photo { transform: scale(1.04); }
-.service-card.has-photo > .service-fade {
-    /* A light wash over the lower half so the photo and the white text area blend. */
-    position: absolute; inset: 0; z-index: -1; pointer-events: none;
-    background: linear-gradient(to top, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 55%);
-}
-.service-card.has-photo > .service-body {
-    flex: 0 0 auto; margin-top: auto; padding: 9rem 1.5rem 1.5rem;
-    /* White behind the text, fading to transparent over the 9rem above the title. */
-    background: linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0) 0,
-        rgba(255, 255, 255, 0.35) 3rem,
-        rgba(255, 255, 255, 0.75) 6rem,
-        rgba(255, 255, 255, 0.94) 8rem,
-        rgba(255, 255, 255, 0.97) 9.5rem,
-        rgba(255, 255, 255, 0.98) 100%
-    );
-}
-.service-card.has-photo > .service-body p { flex: 0 0 auto; }
-.service-card.has-photo .service-price { border-top-color: rgba(15, 29, 43, 0.14); }
-/* The spotlight glow stays behind the text */
-.service-card.has-photo::before { z-index: -1; }
-@media (max-width: 767.98px) {
-    .service-card { min-height: 0; }
-    .service-card.has-photo { min-height: 24rem; }
-    .service-card.has-photo > .service-body { padding-top: 8rem; }
-}
-@media (prefers-reduced-motion: reduce) { .service-card.has-photo:hover > .service-photo { transform: none; } }
+/* Service picture (uploaded in the admin), edge to edge at the top of the card */
+.service-image { display: block; width: calc(100% + 3rem); max-width: none; height: auto; aspect-ratio: 16 / 10; object-fit: cover; margin: -1.5rem -1.5rem 0.4rem; border-radius: 20px 20px 0 0; background: var(--aivin-primary-soft); }
