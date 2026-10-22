@@ -162,10 +162,11 @@ class PlatformPageTest(TestCase):
 
     def test_platform_page_sells_the_platform_and_links_the_demo(self):
         page = self.client.get("/")
-        for text in ["The smart clinic platform", "Pulse oximeter", "Uric acid meter", "OMRON HEM-6232T", "White label",
+        for text in ["The smart clinic platform", "Pulse oximeter", "Uric acid meter", "White label",
                      "CTO / Founding engineer", "Contact us", reverse("kiosk:landing")]:
             self.assertContains(page, text)
         self.assertNotContains(page, "SGD")  # no clinic prices on the platform page
+        self.assertNotContains(page, "OMRON")  # no device brands on the platform page
         demo = self.client.get(reverse("kiosk:landing"))
         self.assertContains(demo, "Demo clinic")
         self.assertContains(demo, "SGD 49")

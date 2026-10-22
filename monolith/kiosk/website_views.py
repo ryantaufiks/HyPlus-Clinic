@@ -94,8 +94,8 @@ def review_summary(ratings):
 
 # Connected health-check devices: "live" ones are integrated today (see the BLE gateway).
 DEVICES = [
-    {"name": "Blood pressure monitor", "icon": "bi-heart-pulse", "detail": "Blood pressure and pulse", "live": True, "model": "OMRON HEM-6232T"},
-    {"name": "Body weight scale", "icon": "bi-speedometer2", "detail": "Weight, with BMI from height", "live": True, "model": "OMRON HN-300T2"},
+    {"name": "Blood pressure monitor", "icon": "bi-heart-pulse", "detail": "Blood pressure and pulse", "live": True},
+    {"name": "Body weight scale", "icon": "bi-speedometer2", "detail": "Weight, with BMI from height", "live": True},
     {"name": "Pulse oximeter", "icon": "bi-activity", "detail": "Oxygen saturation (SpO₂) and pulse", "live": False},
     {"name": "Body thermometer", "icon": "bi-thermometer-half", "detail": "Body temperature", "live": False},
     {"name": "Blood glucose meter", "icon": "bi-droplet-half", "detail": "Blood sugar", "live": False},

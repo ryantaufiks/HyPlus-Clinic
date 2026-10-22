@@ -45,12 +45,12 @@
                 <div class="col-lg-7">
                     <span class="eyebrow" data-rise><i class="bi bi-stars"></i> Smart clinic platform · White label</span>
                     <h1 class="hero-title" data-rise style="--i: 1">The smart clinic platform,<br /><span>connected to your health devices.</span></h1>
-                    <p class="hero-lead" data-rise style="--i: 2">Hy+ Clinic connects blood pressure monitors, scales, oximeters, thermometers and blood glucose, cholesterol and uric acid meters to a self check-in kiosk, live queues and the doctor's workspace. Under your own brand.</p>
+                    <p class="hero-lead" data-rise style="--i: 2">Hy+ Clinic connects your health-check devices to a self check-in kiosk, live queues and the doctor's workspace. Under your own brand.</p>
                     <div class="d-flex flex-wrap gap-2 mt-4" data-rise style="--i: 3">
                         <a class="btn btn-primary btn-lg btn-icon btn-glow" href="#contact"><i class="bi bi-chat-dots"></i> Contact us</a>
                         <a class="btn btn-light btn-lg btn-icon" href="{% url 'kiosk:landing' %}"><i class="bi bi-eye"></i> See the live demo</a>
                     </div>
-                    <p class="hero-price" data-rise style="--i: 4">Integrated today: <strong>OMRON</strong> blood pressure monitor and scale · more devices on the way</p>
+                    <p class="hero-price" data-rise style="--i: 4">Connected devices · Self check-in · Live queues · AI summaries</p>
                 </div>
                 <div class="col-lg-5 hero-visual">
                     <canvas id="orb" class="orb" aria-hidden="true"></canvas>
@@ -99,7 +99,7 @@
                     <span class="device-icon"><i class="bi {{ d.icon }}"></i></span>
                     <h3>{{ d.name }}</h3>
                     <p>{{ d.detail }}</p>
-                    {% if d.live %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Integrated · {{ d.model }}</span>{% else %}<span class="soon">Coming soon</span>{% endif %}
+                    {% if d.live %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Integrated</span>{% else %}<span class="soon">Coming soon</span>{% endif %}
                 </article>
                 {% endfor %}
             </div>
@@ -278,7 +278,7 @@
             <div class="section-head">
                 <h2>Questions</h2>
             </div>
-            <details data-reveal><summary>Which devices work with Hy+ Clinic?</summary><p>Today the OMRON HEM-6232T blood pressure monitor and the OMRON HN-300T2 scale are integrated. Pulse oximeters, thermometers and blood glucose, cholesterol and uric acid meters are next. If your clinic already uses a Bluetooth device, we can look at integrating it.</p></details>
+            <details data-reveal><summary>Which devices work with Hy+ Clinic?</summary><p>Blood pressure monitors and body weight scales are integrated today. Pulse oximeters, thermometers and blood glucose, cholesterol and uric acid meters are next. If your clinic already uses a Bluetooth device, we can look at integrating it.</p></details>
             <details data-reveal><summary>Can it run under our own brand and domain?</summary><p>Yes. The name, logo, colours, domain, services and prices are yours, and each clinic gets its own installation and database.</p></details>
             <details data-reveal><summary>What hardware does a clinic need?</summary><p>A tablet or touch screen for the kiosk, a TV for the waiting room, the health-check devices and a small computer at the clinic that reads the devices over Bluetooth.</p></details>
             <details data-reveal><summary>Is patient data sent to the AI?</summary><p>Only de-identified data: no names, IDs, phone numbers or addresses. The doctor always reviews the summary; it does not diagnose.</p></details>
