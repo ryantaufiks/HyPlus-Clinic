@@ -343,3 +343,6 @@ code { color: var(--aivin-primary-strong); }
 @media (max-width: 575.98px) { .brand-logo { height: 40px; } .brand-tag-side { display: none; } }
 .form-check-input:checked { background-color: var(--aivin-primary); border-color: var(--aivin-primary); }
 .form-check-input:focus { border-color: var(--aivin-primary); box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color); }
+
+/* Queue number and Patient ID on the patient's phone ticket: as large as fits */
+.ticket-big { font-size: clamp(2rem, 11vw, 3.2rem); line-height: 1.1; }

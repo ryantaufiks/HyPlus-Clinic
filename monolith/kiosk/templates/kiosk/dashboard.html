@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-    .bp-cat { display: grid; grid-template-columns: minmax(150px, 1.2fr) 2fr auto; gap: 0.75rem; align-items: center; padding: 0.55rem 0; }
+    .bp-cat { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; padding: 0.55rem 0; }
     .bp-cat + .bp-cat { border-top: 1px solid var(--aivin-border); }
     .bp-track { height: 10px; border-radius: 999px; background: var(--aivin-surface-2); overflow: hidden; }
     .bp-fill { height: 100%; border-radius: 999px; min-width: 0; transition: width 0.3s ease; }
