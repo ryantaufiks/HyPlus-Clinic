@@ -402,3 +402,53 @@ a.module-card:hover .module-stat.is-warn { color: var(--aivin-warning-ink); }
     .module-sort { flex: 1 1 100%; }
     .module-sort .form-select { width: 100%; }
 }
+
+/* ---- Dashboard: Today / Analytics ------------------------------------------------- */
+
+.view-tabs { display: inline-flex; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1rem; border-radius: 99px; background: var(--aivin-surface); border: 1px solid var(--aivin-border); }
+.view-tabs a { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 1rem; border-radius: 99px; font-weight: 600; font-size: 0.9rem; color: var(--aivin-ink-2); text-decoration: none; }
+.view-tabs a:hover { color: var(--aivin-primary); }
+.view-tabs a.active { color: #fff; background: var(--aivin-primary); }
+.stat-tile.is-urgent { border-color: var(--aivin-critical); background: var(--aivin-critical-soft); }
+.stat-value small { font-size: 0.55em; font-weight: 600; color: var(--aivin-muted); margin-left: 0.15rem; }
+.side-list { list-style: none; margin: 0; padding: 0; }
+.side-list li + li { border-top: 1px solid var(--aivin-border); }
+.side-list a, .side-list .side-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0; color: var(--aivin-ink); text-decoration: none; }
+.side-list a:hover { color: var(--aivin-primary); }
+.side-list .side-main { flex: 1; min-width: 0; }
+.side-list .side-sub { display: block; font-size: 0.82rem; color: var(--aivin-muted); }
+.side-icon { width: 2.2rem; height: 2.2rem; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--aivin-primary); background: var(--aivin-primary-soft); font-weight: 700; font-size: 0.85rem; }
+.count-pill { min-width: 2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; padding: 0.15rem 0.55rem; border-radius: 99px; background: var(--aivin-surface-2); color: var(--aivin-ink-2); }
+.count-pill.has-items { background: var(--aivin-critical-soft); color: var(--aivin-critical-ink); }
+.wait-cell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wait-cell.is-long { color: var(--aivin-serious-ink); font-weight: 700; }
+tr.is-urgent td:first-child { box-shadow: inset 4px 0 0 var(--aivin-critical); }
+.queue-group td { background: var(--aivin-surface-2); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--aivin-muted); padding-top: 0.45rem; padding-bottom: 0.45rem; }
+.period-tabs { display: inline-flex; gap: 0.25rem; }
+.heatmap { border-collapse: separate; border-spacing: 3px; width: 100%; font-size: 0.75rem; }
+.heatmap th { font-weight: 600; color: var(--aivin-muted); text-align: center; padding: 0 0.15rem; white-space: nowrap; }
+.heatmap th[scope=row] { text-align: left; padding-right: 0.5rem; }
+.heatmap td { height: 26px; min-width: 22px; border-radius: 5px; text-align: center; font-variant-numeric: tabular-nums; color: var(--aivin-ink); background: var(--aivin-surface-2); }
+.heat-legend { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--aivin-muted); }
+.heat-legend span { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
+.bar-list .bar-row { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; padding: 0.5rem 0; }
+.bar-list .bar-row + .bar-row { border-top: 1px solid var(--aivin-border); }
+.bar-track { height: 10px; border-radius: 999px; background: var(--aivin-surface-2); overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; }
+.bar-count { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.heat-0 { background: var(--aivin-surface-2) !important; }
+.heat-1 { background: #d3ecee !important; }
+.heat-2 { background: #8fcdd2 !important; }
+.heat-3 { background: #3a9ba3 !important; color: #fff !important; }
+.heat-4 { background: #075e66 !important; color: #fff !important; }
+.dash-side > .surface { margin-top: 0; }
+.queue-table td, .queue-table th { white-space: nowrap; }
+.queue-table .queue-group td { white-space: normal; }
+.cell-sub { display: block; font-size: 0.8rem; color: var(--aivin-muted); }
+@media (max-width: 575.98px) {
+    .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+    .stat-grid .stat-tile { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 0.9rem; }
+    .stat-grid .stat-icon { width: 2.2rem; height: 2.2rem; }
+    .stat-grid .stat-value { font-size: 1.5rem; }
+    .stat-grid .stat-sub { font-size: 0.75rem; }
+}

@@ -117,6 +117,7 @@ urlpatterns = [
     # Dashboard and QR scanner
     path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     path("dashboard/data/", views.DashboardDataView.as_view(), name="dashboard-data"),
+    path("analytics/", views.AnalyticsView.as_view(), name="analytics"),
     # Access control at the consulting-room door
     path("scanner/", queue_views.AccessControlView.as_view(), name="qr-scanner"),
     path("api/access/admit/", queue_views.AdmitView.as_view(), name="api-access-admit"),

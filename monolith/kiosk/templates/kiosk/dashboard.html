@@ -3,21 +3,12 @@
 
 {% block title %}Dashboard - Hy+ Clinic{% endblock %}
 
-{% block extra_css %}
-<style>
-    .bp-cat { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; padding: 0.55rem 0; }
-    .bp-cat + .bp-cat { border-top: 1px solid var(--aivin-border); }
-    .bp-track { height: 10px; border-radius: 999px; background: var(--aivin-surface-2); overflow: hidden; }
-    .bp-fill { height: 100%; border-radius: 999px; min-width: 0; transition: width 0.3s ease; }
-    .bp-count { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
-</style>
-{% endblock %}
-
 {% block content %}
+{% include 'kiosk/_dashboard_tabs.html' %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Today</h1>
-        <p class="page-subtitle"><span id="today-date"></span> · <span class="live-dot" id="live-status">Connecting…</span></p>
+        <p class="page-subtitle"><span id="today-date"></span> · <span class="live-dot" id="live-status">Connecting…</span> · <span id="devices-status">Devices…</span></p>
     </div>
     {% if user_can.scan_tickets %}<a class="btn btn-outline-primary btn-icon" href="{% url 'kiosk:qr-scanner' %}"><i class="bi bi-qr-code-scan"></i> Scan ticket</a>
     {% elif user_can.consultations %}<a class="btn btn-outline-primary btn-icon" href="{% url 'kiosk:doctor-queue' %}"><i class="bi bi-clipboard2-pulse"></i> Consultations</a>{% endif %}
@@ -25,162 +16,149 @@
 
 <div class="stat-grid">
     <div class="stat-tile">
-        <span class="stat-icon"><i class="bi bi-person-check"></i></span>
-        <div><div class="stat-label">Check-ins</div><div class="stat-value" id="kpi-checkins">–</div><div class="stat-sub">today</div></div>
+        <span class="stat-icon"><i class="bi bi-people"></i></span>
+        <div><div class="stat-label">Waiting now</div><div class="stat-value" id="kpi-waiting">–</div><div class="stat-sub" id="kpi-waiting-sub">checked in, not called yet</div></div>
     </div>
     <div class="stat-tile">
         <span class="stat-icon"><i class="bi bi-hourglass-split"></i></span>
-        <div><div class="stat-label">Waiting for doctor</div><div class="stat-value" id="kpi-waiting">–</div><div class="stat-sub">active tickets</div></div>
+        <div><div class="stat-label">Longest wait</div><div class="stat-value" id="kpi-longest">–</div><div class="stat-sub" id="kpi-longest-sub">&nbsp;</div></div>
     </div>
     <div class="stat-tile">
+        <span class="stat-icon"><i class="bi bi-stopwatch"></i></span>
+        <div><div class="stat-label">Average wait today</div><div class="stat-value" id="kpi-avg">–</div><div class="stat-sub">check-in to call</div></div>
+    </div>
+    <div class="stat-tile" id="tile-urgent">
         <span class="stat-icon" style="background: var(--aivin-critical-soft); color: var(--aivin-critical-ink)"><i class="bi bi-exclamation-octagon"></i></span>
-        <div><div class="stat-label">Needs attention</div><div class="stat-value" id="kpi-attention">–</div><div class="stat-sub">BP stage 2 or crisis</div></div>
-    </div>
-    <div class="stat-tile">
-        <span class="stat-icon"><i class="bi bi-bluetooth"></i></span>
-        <div><div class="stat-label">Devices</div><div class="stat-value fs-5 mt-1" id="kpi-devices">–</div><div class="stat-sub" id="kpi-devices-sub">&nbsp;</div></div>
+        <div><div class="stat-label">Urgent, waiting</div><div class="stat-value" id="kpi-urgent">–</div><div class="stat-sub">very high blood pressure, called first</div></div>
     </div>
 </div>
 
 <div class="row g-4">
-    <div class="col-lg-7">
-        <section class="surface h-100">
-            <div class="chart-head">
-                <h2 class="chart-title">Check-ins by hour</h2>
-                <p class="chart-note">Patients who started a check-in at the kiosk</p>
-            </div>
-            <div class="chart-box"><canvas id="chart-checkins" aria-label="Check-ins by hour" role="img"></canvas></div>
-            <details class="chart-table" id="table-checkins"></details>
-        </section>
-    </div>
-    <div class="col-lg-5">
-        <section class="surface h-100">
-            <div class="chart-head">
-                <h2 class="chart-title">Blood pressure today</h2>
-                <p class="chart-note">Latest reading per patient (ACC/AHA)</p>
-            </div>
-            <div id="bp-categories"></div>
-        </section>
-    </div>
-    <div class="col-12">
-        <section class="surface">
-            <div class="chart-head">
-                <div>
-                    <h2 class="chart-title">Latest blood pressure readings</h2>
-                    <p class="chart-note">Last 20 readings from the monitor</p>
-                </div>
-                <ul class="chart-legend">
-                    <li><span class="swatch" style="background: var(--chart-series-1)"></span>Systolic</li>
-                    <li><span class="swatch" style="background: var(--chart-series-2)"></span>Diastolic</li>
-                </ul>
-            </div>
-            <div class="chart-box"><canvas id="chart-bp" aria-label="Latest blood pressure readings" role="img"></canvas></div>
-            <details class="chart-table" id="table-bp"></details>
-        </section>
-    </div>
-    <div class="col-12">
+    <div class="col-xl-8">
         <section class="surface surface-flush">
-            <div class="p-4 pb-2 d-flex justify-content-between align-items-center">
-                <h2 class="section-title mb-0"><i class="bi bi-list-ol"></i> Waiting patients</h2>
-                <span class="text-muted small">Open a row for the doctor's summary</span>
+            <div class="p-4 pb-2 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                <h2 class="section-title mb-0"><i class="bi bi-list-ol"></i> Queue</h2>
+                <span class="text-muted small" id="queue-note">Open a row for the patient's visit</span>
             </div>
             <div class="table-responsive">
-                <table class="table table-aivin">
+                <table class="table table-aivin queue-table mb-0">
                     <thead>
-                        <tr><th>Queue</th><th>Patient</th><th>Checked in</th><th class="num">Weight</th><th class="num">Blood pressure</th><th class="num">Pulse</th><th>Status</th></tr>
+                        <tr><th>Queue</th><th>Patient</th><th>Doctor</th><th>Waiting</th><th class="num">Blood pressure</th><th>Status</th></tr>
                     </thead>
                     <tbody id="queue-body"></tbody>
                 </table>
             </div>
         </section>
     </div>
+    <div class="col-xl-4 d-flex flex-column gap-4 dash-side">
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-door-open"></i> Doctors on duty</h2>
+            <ul class="side-list" id="doctors"></ul>
+        </section>
+        <section class="surface" id="todo-section" hidden>
+            <h2 class="section-title"><i class="bi bi-check2-square"></i> To do</h2>
+            <ul class="side-list" id="todo"></ul>
+        </section>
+        <section class="surface">
+            <h2 class="section-title"><i class="bi bi-calendar-day"></i> Today so far</h2>
+            <ul class="side-list" id="today-totals"></ul>
+            {% if user_can.manage_staff %}<a class="btn btn-light btn-sm btn-icon mt-2" href="{% url 'kiosk:analytics' %}"><i class="bi bi-graph-up"></i> Trends and analytics</a>{% endif %}
+        </section>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
-<script src="{% static 'js/aivin-charts.js' %}"></script>
 <script nonce="{{ request.csp_nonce }}">
 const DATA_URL = "{% url 'kiosk:dashboard-data' %}";
 const REFRESH_MS = 10000;
-const { COLORS, axes, renderTable, timeLine, update } = AivinCharts;
+const LONG_WAIT_MIN = 30;  // a wait this long is highlighted
 
 document.getElementById("today-date").textContent = new Date().toLocaleDateString("en-GB", {
     timeZone: AIVIN_TIME_ZONE, weekday: "long", day: "numeric", month: "long", year: "numeric",
 });
 
-const hourLabel = (h) => `${String(h).padStart(2, "0")}:00`;
-
-const checkinsChart = new Chart(document.getElementById("chart-checkins"), {
-    type: "bar",
-    data: {
-        labels: [],
-        datasets: [{
-            label: "Check-ins",
-            data: [],
-            backgroundColor: COLORS.series1,
-            hoverBackgroundColor: COLORS.series1,
-            borderRadius: { topLeft: 4, topRight: 4 },
-            borderSkipped: "bottom",
-            categoryPercentage: 0.8,
-            barPercentage: 0.9,
-            maxBarThickness: 36,
-        }],
-    },
-    options: {
-        scales: axes(null, { beginAtZero: true, ticks: { precision: 0 } }),
-        plugins: { tooltip: { callbacks: { title: (items) => `${items[0].label}–${items[0].label.slice(0, 2)}:59`, label: (ctx) => ` ${ctx.formattedValue} check-in${ctx.raw === 1 ? "" : "s"}` } } },
-    },
-});
-
-const bpChart = timeLine(document.getElementById("chart-bp"), [], [
-    { label: "Systolic", key: "systolic", color: COLORS.series1 },
-    { label: "Diastolic", key: "diastolic", color: COLORS.series2 },
-], { yTitle: "mmHg", labelFor: (p) => formatAxis(p.t), suggestedMin: 60, suggestedMax: 160 });
-bpChart.options.plugins.tooltip.callbacks = {
-    title: (items) => {
-        const p = bpChart.$points[items[0].dataIndex];
-        return `${p.patient} · ${formatDateTime(p.t)}`;
-    },
-    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.formattedValue} mmHg`,
+const minutesSince = (iso, until = Date.now()) => (iso ? Math.max(0, Math.round((until - new Date(iso)) / 60000)) : null);
+const fmtMin = (m) => (m == null ? "–" : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`);
+const STATUS = {
+    "Called": '<span class="status status-warning"><i class="bi bi-megaphone-fill"></i>Called</span>',
+    "In consultation": '<span class="status status-good"><i class="bi bi-door-closed-fill"></i>With doctor</span>',
+    "Waiting": '<span class="status status-neutral"><i class="bi bi-hourglass-split"></i>Waiting</span>',
+    "Not arrived": '<span class="status status-neutral"><i class="bi bi-phone"></i>Not arrived</span>',
 };
 
-function renderCategories(categories) {
-    const total = categories.reduce((n, c) => n + c.count, 0);
-    const el = document.getElementById("bp-categories");
-    if (!total) {
-        el.innerHTML = `<div class="empty-state"><i class="bi bi-heart-pulse"></i>No blood pressure readings yet today.</div>`;
-        return;
+function waitFor(q) {
+    if (q.status === "Not arrived") return "–";
+    if (q.status === "Waiting") {
+        const m = minutesSince(q.checked_in_at);
+        return `<span class="wait-cell${m >= LONG_WAIT_MIN ? " is-long" : ""}">${fmtMin(m)}</span>`;
     }
-    el.innerHTML = categories
-        .map((c) => `
-            <div class="bp-cat">
-                <span class="status status-${c.status}"><i class="bi ${c.icon}"></i>${esc(c.label)}</span>
-                <div class="bp-track" aria-hidden="true"><div class="bp-fill" style="width:${(c.count / total) * 100}%; background: var(--aivin-${c.status})"></div></div>
-                <span class="bp-count">${c.count}</span>
-            </div>`)
-        .join("");
+    // Called or with the doctor: how long they waited before being called.
+    const m = q.called_at && q.checked_in_at ? minutesSince(q.checked_in_at, new Date(q.called_at)) : null;
+    return `<span class="wait-cell">${fmtMin(m)}<span class="cell-sub">before the call</span></span>`;
 }
 
-function renderQueue(queue) {
+function renderQueue(data) {
     const body = document.getElementById("queue-body");
-    if (!queue.length) {
-        body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="bi bi-cup-hot"></i>Nobody is waiting.</div></td></tr>`;
+    if (!data.queue.length) {
+        body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="bi bi-cup-hot"></i>Nobody in the queue right now.</div></td></tr>`;
         return;
     }
-    body.innerHTML = queue
-        .map((q) => `
-            <tr class="row-link" data-href="${esc(q.url)}">
+    let group = null;
+    body.innerHTML = data.queue.map((q) => {
+        const header = q.status !== group ? `<tr class="queue-group"><td colspan="6">${esc(q.status === "In consultation" ? "With the doctor" : q.status)}</td></tr>` : "";
+        group = q.status;
+        const doctor = q.room ? `${esc(q.doctor)}<span class="cell-sub">${esc(q.room)}</span>` : esc(q.doctor);
+        return `${header}
+            <tr class="row-link${q.urgent ? " is-urgent" : ""}" data-href="${esc(q.url)}">
                 <td><strong class="fs-5">${esc(q.queue_number)}</strong></td>
-                <td>${esc(q.patient)}</td>
-                <td class="text-muted">${esc(formatTime(q.created_at))}</td>
-                <td class="num">${q.weight_kg != null ? `${esc(q.weight_kg)} kg` : "–"}</td>
-                <td class="num">${q.bp ? `${esc(q.bp)} <span class="text-muted">mmHg</span>` : "–"}</td>
-                <td class="num">${q.pulse != null ? `${esc(q.pulse)} bpm` : "–"}</td>
-                <td>${q.category ? `<span class="status status-${q.category.status}"><i class="bi ${q.category.icon}"></i>${esc(q.category.label)}</span>` : '<span class="status status-neutral">No BP yet</span>'}</td>
-            </tr>`)
-        .join("");
+                <td>${esc(q.patient)}${q.source === "Online" ? '<span class="cell-sub">Booked online</span>' : ""}</td>
+                <td>${doctor}</td>
+                <td>${waitFor(q)}</td>
+                <td class="num">${q.bp ? `${esc(q.bp)}${q.category ? ` <span class="status status-${q.category.status}" title="${esc(q.category.label)}"><i class="bi ${q.category.icon}"></i>${q.urgent ? "Urgent" : ""}</span>` : ""}` : '<span class="text-muted">–</span>'}</td>
+                <td>${STATUS[q.status] || esc(q.status)}</td>
+            </tr>`;
+    }).join("");
     body.querySelectorAll("tr[data-href]").forEach((row) => row.addEventListener("click", () => (location.href = row.dataset.href)));
+    document.getElementById("queue-note").textContent = data.queue_total > data.queue.length
+        ? `Showing ${data.queue.length} of ${data.queue_total}` : "Open a row for the patient's visit";
+}
+
+function renderDoctors(doctors) {
+    const el = document.getElementById("doctors");
+    if (!doctors.length) {
+        el.innerHTML = `<li class="text-muted small py-2">No doctor is on duty with a room.</li>`;
+        return;
+    }
+    el.innerHTML = doctors.map((d) => `
+        <li><div class="side-row">
+            <span class="side-icon" title="${esc(d.room)}">${esc(d.room.replace(/^room\s*/i, "") || "–")}</span>
+            <span class="side-main">${esc(d.name)}
+                <span class="side-sub">${d.serving ? `${esc(d.serving_status)}: <strong>${esc(d.serving)}</strong>` : "Free"} · ${d.seen_today} seen today</span></span>
+            <span class="count-pill" title="Waiting in this doctor's line">${d.in_line}</span>
+        </div></li>`).join("");
+}
+
+function renderTodo(todo) {
+    const section = document.getElementById("todo-section");
+    section.hidden = !todo.length;
+    document.getElementById("todo").innerHTML = todo.map((t) => `
+        <li><a href="${esc(t.url)}">
+            <span class="side-icon"><i class="bi ${t.icon}"></i></span>
+            <span class="side-main">${esc(t.label)}</span>
+            <span class="count-pill${t.count ? " has-items" : ""}">${t.count}</span>
+        </a></li>`).join("");
+}
+
+function renderTotals(k) {
+    const rows = [
+        ["bi-person-check", "Checked in", k.checked_in],
+        ["bi-door-closed", "With the doctor now", k.with_doctor],
+        ["bi-check2-circle", "Seen", k.completed],
+        ["bi-x-circle", "Cancelled or no-show", k.cancelled],
+    ];
+    document.getElementById("today-totals").innerHTML = rows.map(([icon, label, n]) => `
+        <li><div class="side-row"><span class="side-icon"><i class="bi ${icon}"></i></span><span class="side-main">${label}</span><span class="count-pill">${n}</span></div></li>`).join("");
 }
 
 async function refresh() {
@@ -189,32 +167,24 @@ async function refresh() {
         const response = await fetch(DATA_URL, { headers: { Accept: "application/json" } });
         if (response.redirected || !response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
+        const k = data.kpis;
 
-        document.getElementById("kpi-checkins").textContent = data.kpis.checkins_today;
-        document.getElementById("kpi-waiting").textContent = data.kpis.waiting;
-        document.getElementById("kpi-attention").textContent = data.kpis.needs_attention;
-        document.getElementById("kpi-devices").innerHTML = data.devices.gateway_online
-            ? '<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Online</span>'
-            : '<span class="status status-critical"><i class="bi bi-x-octagon-fill"></i>Offline</span>';
-        document.getElementById("kpi-devices-sub").textContent = `${data.devices.paired} paired`;
+        document.getElementById("kpi-waiting").textContent = k.waiting;
+        document.getElementById("kpi-waiting-sub").textContent = k.not_arrived
+            ? `+ ${k.not_arrived} online ticket${k.not_arrived === 1 ? "" : "s"} not arrived` : "checked in, not called yet";
+        document.getElementById("kpi-longest").textContent = fmtMin(k.longest_wait_min);
+        document.getElementById("kpi-longest-sub").textContent = k.longest_wait_ticket ? `ticket ${k.longest_wait_ticket}` : "nobody waiting";
+        document.getElementById("kpi-avg").textContent = k.avg_wait_min == null ? "–" : fmtMin(Math.round(k.avg_wait_min));
+        document.getElementById("kpi-urgent").textContent = k.urgent_waiting;
+        document.getElementById("tile-urgent").classList.toggle("is-urgent", k.urgent_waiting > 0);
+        document.getElementById("devices-status").innerHTML = data.devices.gateway_online
+            ? `<span class="status status-good"><i class="bi bi-bluetooth"></i>Devices online · ${data.devices.paired} paired</span>`
+            : '<span class="status status-critical"><i class="bi bi-x-octagon-fill"></i>Devices offline</span>';
 
-        update(checkinsChart, data.checkins_by_hour.map((r) => hourLabel(r.hour)), [data.checkins_by_hour.map((r) => r.count)]);
-        renderTable(document.getElementById("table-checkins"), [
-            { label: "Hour", value: (r) => hourLabel(r.hour) },
-            { label: "Check-ins", value: (r) => r.count, num: true },
-        ], data.checkins_by_hour);
-
-        bpChart.$points = data.recent_bp;
-        update(bpChart, data.recent_bp.map((p) => formatAxis(p.t)), [data.recent_bp.map((p) => p.systolic), data.recent_bp.map((p) => p.diastolic)]);
-        renderTable(document.getElementById("table-bp"), [
-            { label: "Time", value: (p) => formatDateTime(p.t) },
-            { label: "Patient", value: (p) => p.patient },
-            { label: "Systolic", value: (p) => p.systolic, num: true },
-            { label: "Diastolic", value: (p) => p.diastolic, num: true },
-        ], data.recent_bp);
-
-        renderCategories(data.bp_categories);
-        renderQueue(data.queue);
+        renderQueue(data);
+        renderDoctors(data.doctors);
+        renderTodo(data.todo);
+        renderTotals(k);
 
         status.classList.remove("offline");
         status.textContent = `Live · updated ${formatTime(data.generated_at)}`;

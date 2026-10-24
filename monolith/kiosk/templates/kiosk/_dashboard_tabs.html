@@ -1,0 +1,7 @@
+{# Today / Analytics switch at the top of the dashboard, for those who can see both. #}
+{% if user_can.manage_staff %}
+<nav class="view-tabs" aria-label="Dashboard views">
+    <a href="{% url 'kiosk:dashboard' %}"{% if request.resolver_match.url_name == 'dashboard' %} class="active" aria-current="page"{% endif %}><i class="bi bi-broadcast"></i> Today</a>
+    <a href="{% url 'kiosk:analytics' %}"{% if request.resolver_match.url_name == 'analytics' %} class="active" aria-current="page"{% endif %}><i class="bi bi-graph-up"></i> Analytics</a>
+</nav>
+{% endif %}

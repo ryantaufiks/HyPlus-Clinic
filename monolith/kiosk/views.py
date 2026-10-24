@@ -1,10 +1,10 @@
+import datetime as dt
 import logging
 
 from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
-from django.db.models import Count, Q
-from django.db.models.functions import ExtractHour
+from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -13,11 +13,12 @@ from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import DetailView, ListView, TemplateView
 
+from . import analytics
 from .device_views import gateway_devices, gateway_online
 from .kiosk_auth import kiosk_allowed
-from .models import Measurement, Patient, PatientSubmission, Visit
-from .roles import StaffAreaMixin
-from .vitals import BP_CATEGORIES, bp_category, heart_rate_status
+from .models import BookingRequest, Measurement, Patient, PatientSubmission, Review, Visit
+from .roles import CapabilityRequiredMixin, StaffAreaMixin, can
+from .vitals import bp_category, heart_rate_status
 
 logger = logging.getLogger(__name__)
 
@@ -159,90 +160,46 @@ class DashboardView(StaffAreaMixin, TemplateView):
 
 
 class DashboardDataView(StaffAreaMixin, View):
-    """JSON for the dashboard, polled every few seconds."""
+    """JSON for the Today dashboard, polled every few seconds."""
 
     def get(self, request):
-        today = timezone.localdate()
-        visits_today = Visit.objects.filter(created_at__date=today)
-        measurements_today = Measurement.objects.filter(measured_at__date=today)
+        data = analytics.today_overview()
+        user = request.user
+        # Work waiting for the front desk, only what this user may act on.
+        todo = []
+        if can(user, "manage_bookings"):
+            todo.append({"label": "Bookings to confirm", "icon": "bi-calendar2-check", "url": reverse("kiosk:bookings"),
+                         "count": BookingRequest.objects.filter(status=BookingRequest.NEW).count()})
+        if can(user, "review_registrations"):
+            todo.append({"label": "Registrations to approve", "icon": "bi-person-plus", "url": reverse("kiosk:submissions"),
+                         "count": PatientSubmission.objects.filter(status=PatientSubmission.PENDING).count()})
+        if can(user, "moderate_reviews"):
+            todo.append({"label": "Reviews to moderate", "icon": "bi-star", "url": reverse("kiosk:reviews"),
+                         "count": Review.objects.filter(status=Review.PENDING).count()})
+        data.update({
+            "generated_at": timezone.now().isoformat(),
+            "devices": {"gateway_online": gateway_online(), "paired": len(gateway_devices())},
+            "todo": todo,
+        })
+        return JsonResponse(data)
 
-        by_hour = dict(
-            visits_today.annotate(hour=ExtractHour("created_at"))
-            .values("hour")
-            .annotate(n=Count("id"))
-            .values_list("hour", "n")
-        )
-        now_hour = timezone.localtime().hour
-        first = min([7, *by_hour.keys()])
-        last = max([min(now_hour, 23), 17, *by_hour.keys()])
-        checkins_by_hour = [{"hour": h, "count": by_hour.get(h, 0)} for h in range(first, last + 1)]
 
-        # Latest BP per patient today, grouped by category.
-        latest_bp = {}
-        for m in measurements_today.filter(systolic_bp__isnull=False, diastolic_bp__isnull=False).order_by("measured_at"):
-            latest_bp[m.patient_id] = m
-        counts = {c.key: 0 for c in BP_CATEGORIES}
-        for m in latest_bp.values():
-            counts[bp_category(m.systolic_bp, m.diastolic_bp).key] += 1
-        bp_categories = [
-            {"key": c.key, "label": c.label, "status": c.status, "icon": c.icon, "count": counts[c.key]}
-            for c in BP_CATEGORIES
-        ]
+class AnalyticsView(CapabilityRequiredMixin, TemplateView):
+    """How the clinic did over the last 7, 30 or 90 days: for the clinic's administrators."""
 
-        recent_bp = list(
-            Measurement.objects.filter(systolic_bp__isnull=False, diastolic_bp__isnull=False)
-            .select_related("patient")
-            .order_by("-measured_at")[:20]
-        )
-        recent_bp.reverse()
+    capability = "manage_staff"
+    template_name = "kiosk/analytics.html"
 
-        queue = []
-        visits = (
-            Visit.objects.filter(queue_date=today, status__in=[Visit.WAITING, Visit.IN_CONSULTATION])
-            .exclude(queue_number="")
-            .select_related("patient")
-            .prefetch_related("measurements")
-            .order_by("queue_number")[:25]
-        )
-        for visit in visits:
-            vitals = latest_vitals(visit.measurements.all())
-            bp, category = vitals["bp"], vitals["bp_category"]
-            queue.append(
-                {
-                    "queue_number": visit.queue_number,
-                    "patient": visit.patient.name,
-                    "patient_id": visit.patient.patient_id,
-                    "status": visit.get_status_display(),
-                    "created_at": visit.created_at.isoformat(),
-                    "url": reverse("kiosk:visit-detail", args=[visit.pk]),
-                    "weight_kg": vitals["weight"].weight_kg if vitals["weight"] else None,
-                    "bp": f"{bp.systolic_bp}/{bp.diastolic_bp}" if bp else None,
-                    "pulse": bp.heart_rate_bpm if bp else None,
-                    "category": {"label": category.label, "status": category.status, "icon": category.icon} if category else None,
-                }
-            )
-
-        return JsonResponse(
-            {
-                "generated_at": timezone.now().isoformat(),
-                "kpis": {
-                    "checkins_today": visits_today.count(),
-                    "measurements_today": measurements_today.count(),
-                    "waiting": len(queue),
-                    "needs_attention": counts["stage2"] + counts["crisis"],
-                },
-                "devices": {"gateway_online": gateway_online(), "paired": len(gateway_devices())},
-                "checkins_by_hour": checkins_by_hour,
-                "bp_categories": bp_categories,
-                "recent_bp": [
-                    {
-                        "t": m.measured_at.isoformat(),
-                        "systolic": m.systolic_bp,
-                        "diastolic": m.diastolic_bp,
-                        "patient": m.patient.name,
-                    }
-                    for m in recent_bp
-                ],
-                "queue": queue,
-            }
-        )
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            days = int(self.request.GET.get("days", 30))
+        except ValueError:
+            days = 30
+        days = days if days in analytics.PERIODS else 30
+        report = analytics.period_report(days)
+        context.update({
+            "report": report, "periods": analytics.PERIODS, "days": days,
+            "start": dt.date.fromisoformat(report["start"]), "end": dt.date.fromisoformat(report["end"]),
+        })
+        return context

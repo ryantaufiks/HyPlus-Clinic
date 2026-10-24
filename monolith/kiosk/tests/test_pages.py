@@ -73,10 +73,11 @@ class StaffPagesTest(TestCase):
     def test_dashboard_data(self):
         self.assertEqual(self.client.get(reverse("kiosk:dashboard")).status_code, 200)
         data = self.client.get(reverse("kiosk:dashboard-data")).json()
-        self.assertEqual(data["kpis"], {"checkins_today": 1, "measurements_today": 2, "waiting": 1, "needs_attention": 1})
-        self.assertEqual(sum(r["count"] for r in data["checkins_by_hour"]), 1)
+        k = data["kpis"]
+        self.assertEqual((k["waiting"], k["urgent_waiting"], k["checked_in"], k["completed"]), (1, 1, 1, 0))
+        self.assertEqual(k["longest_wait_ticket"], "A001")
         row = data["queue"][0]
-        self.assertEqual((row["queue_number"], row["bp"], row["weight_kg"], row["patient_id"]), ("A001", "165/95", 70.7, self.patient.patient_id))
+        self.assertEqual((row["queue_number"], row["bp"], row["status"], row["urgent"]), ("A001", "165/95", "Waiting", True))
         self.assertEqual(row["category"]["status"], "critical")
 
     def test_dashboard_data_requires_login(self):
