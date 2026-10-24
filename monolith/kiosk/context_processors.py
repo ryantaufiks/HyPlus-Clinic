@@ -7,7 +7,7 @@ from .roles import CAPABILITIES, ROLE_LABELS, can, is_doctor, role_of
 
 # Pages under the grouped menus, to highlight the group that holds the current page.
 FRONT_DESK_PAGES = {"home", "qr-scanner", "submissions", "submission-review", "bookings", "reviews"}
-SETTINGS_PAGES = {"devices", "staff-list", "staff-create", "staff-edit"}
+SETTINGS_PAGES = {"settings", "devices", "staff-list", "staff-create", "staff-edit", "schedules", "staff-schedule"}
 
 
 def app_settings(request):

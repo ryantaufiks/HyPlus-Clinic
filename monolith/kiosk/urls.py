@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import accounts_views, avatar_views, clinical_views, device_views, kiosk_api, portal_views, queue_views, schedule_views, views, website_views
+from . import accounts_views, avatar_views, clinical_views, device_views, kiosk_api, portal_views, queue_views, schedule_views, settings_views, views, website_views
 
 app_name = "kiosk"
 
@@ -94,6 +94,8 @@ urlpatterns = [
     path("staff/<int:pk>/schedule/", schedule_views.ScheduleEditView.as_view(), name="staff-schedule"),
     path("photos/staff/<int:user_id>/", avatar_views.staff_photo, name="staff-photo"),
     path("photos/patients/<int:pk>/", avatar_views.patient_photo, name="patient-photo"),
+    # Settings home: every configuration module as a card
+    path("settings/", settings_views.SettingsHomeView.as_view(), name="settings"),
     # Staff accounts (administrators)
     path("staff/", accounts_views.StaffListView.as_view(), name="staff-list"),
     path("staff/new/", accounts_views.StaffCreateView.as_view(), name="staff-create"),

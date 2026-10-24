@@ -346,3 +346,51 @@ code { color: var(--aivin-primary-strong); }
 
 /* Queue number and Patient ID on the patient's phone ticket: as large as fits */
 .ticket-big { font-size: clamp(2rem, 11vw, 3.2rem); line-height: 1.1; }
+
+/* ---- Settings home: module cards, ERP style -------------------------------------- */
+
+.module-search { position: relative; width: min(100%, 320px); }
+.module-search .bi { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--aivin-muted); pointer-events: none; }
+.module-search .form-control { padding-left: 2.3rem; border-radius: 99px; }
+.module-group + .module-group { margin-top: 2rem; }
+.module-group[hidden], .module-card[hidden] { display: none !important; }
+.module-group-title { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--aivin-muted); margin: 0 0 0.75rem; }
+.module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+.module-card {
+    --tone: var(--aivin-primary); --tone-soft: var(--aivin-primary-soft);
+    display: flex; flex-direction: column; gap: 0.85rem; padding: 1.15rem; min-height: 190px;
+    color: var(--aivin-ink); text-decoration: none; background: var(--aivin-surface);
+    border: 1px solid var(--aivin-border); border-radius: var(--aivin-radius); box-shadow: var(--aivin-shadow);
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+a.module-card:hover { color: var(--aivin-ink); border-color: var(--tone); transform: translateY(-2px); box-shadow: 0 2px 4px rgba(15, 29, 43, 0.05), 0 12px 28px rgba(15, 29, 43, 0.1); }
+a.module-card:focus-visible { outline: 3px solid var(--tone); outline-offset: 2px; }
+.module-icon { width: 2.9rem; height: 2.9rem; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.35rem; color: #fff; background: var(--tone); }
+.module-body { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
+.module-title { font-weight: 700; font-size: 1.02rem; }
+.module-text { font-size: 0.88rem; color: var(--aivin-ink-2); }
+.module-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--aivin-border); }
+.module-stat { font-size: 0.82rem; font-weight: 600; color: var(--tone); }
+.module-go { color: var(--aivin-muted); transition: transform 0.15s, color 0.15s; }
+a.module-card:hover .module-go { color: var(--tone); transform: translateX(3px); }
+.tone-teal   { --tone: #0b7a83; }
+.tone-blue   { --tone: #2a62b8; }
+.tone-violet { --tone: #5b3fd1; }
+.tone-amber  { --tone: #b86e00; }
+.tone-rose   { --tone: #c2386b; }
+.tone-green  { --tone: #2f7d32; }
+.tone-slate  { --tone: #4a5867; }
+.module-soon { border-style: dashed; box-shadow: none; background: var(--aivin-surface-2); }
+.module-soon .module-icon { color: #5b3fd1; background: #ece8ff; }
+.module-soon .module-stat { color: var(--aivin-muted); }
+.soon-pill { font-size: 0.66rem; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.12rem 0.5rem; border-radius: 99px; color: #5b3fd1; background: #ece8ff; }
+@media (prefers-reduced-motion: reduce) { .module-card, .module-go { transition: none; } a.module-card:hover { transform: none; } }
+.page-back { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.85rem; font-weight: 600; color: var(--aivin-muted); text-decoration: none; margin-bottom: 0.35rem; }
+.page-back:hover { color: var(--aivin-primary); }
+@media (max-width: 575.98px) {
+    .module-grid { gap: 0.65rem; }
+    .module-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.85rem; min-height: 0; padding: 0.9rem 1rem; }
+    .module-icon { width: 2.5rem; height: 2.5rem; font-size: 1.15rem; grid-row: span 1; }
+    .module-foot { grid-column: 1 / -1; padding-top: 0.55rem; }
+    .module-search { width: 100%; }
+}

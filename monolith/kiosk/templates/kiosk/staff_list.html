@@ -6,6 +6,7 @@
 {% block content %}
 <div class="page-header">
     <div>
+        {% if user_can.manage_devices or user_can.manage_staff %}<a class="page-back" href="{% url 'kiosk:settings' %}"><i class="bi bi-chevron-left"></i> Settings</a>{% endif %}
         <h1 class="page-title">Staff accounts</h1>
         <p class="page-subtitle">Doctors, nurses and front-desk staff who can sign in.</p>
     </div>

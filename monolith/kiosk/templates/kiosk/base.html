@@ -113,18 +113,8 @@
                             </li>
                             {% endif %}
                             {% if user_can.manage_devices or user_can.manage_staff %}
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle {% if current in settings_pages %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Settings"><i class="bi bi-gear"></i> <span class="d-lg-none d-xl-inline">Settings</span>{% if new_inquiries %} <span class="badge rounded-pill text-bg-danger">{{ new_inquiries }}</span>{% endif %}</a>
-                                <ul class="dropdown-menu dropdown-menu-end app-menu">
-                                    {% if user_can.manage_devices %}<li><a class="dropdown-item {% if current == 'devices' %}active{% endif %}" href="{% url 'kiosk:devices' %}"><i class="bi bi-bluetooth"></i> Devices</a></li>{% endif %}
-                                    {% if user_can.manage_staff %}
-                                    <li><a class="dropdown-item {% if current in settings_pages and current != 'devices' %}active{% endif %}" href="{% url 'kiosk:staff-list' %}"><i class="bi bi-person-badge"></i> Staff accounts</a></li>
-                                    <li><a class="dropdown-item" href="{% url 'admin:kiosk_service_changelist' %}"><i class="bi bi-tags"></i> Services &amp; prices</a></li>
-                                    <li><a class="dropdown-item" href="{% url 'admin:kiosk_partnerinquiry_changelist' %}"><i class="bi bi-envelope-paper"></i> Partner inquiries{% if new_inquiries %}<span class="badge rounded-pill text-bg-danger ms-auto">{{ new_inquiries }}</span>{% endif %}</a></li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                    <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="bi bi-sliders"></i> Admin panel</a></li>
-                                    {% endif %}
-                                </ul>
+                            <li class="nav-item">
+                                <a class="nav-link {% if current in settings_pages %}active{% endif %}" href="{% url 'kiosk:settings' %}" title="Settings"><i class="bi bi-gear"></i> <span class="d-lg-none d-xl-inline">Settings</span>{% if new_inquiries %} <span class="badge rounded-pill text-bg-danger">{{ new_inquiries }}</span>{% endif %}</a>
                             </li>
                             {% endif %}
                             <li class="nav-item dropdown">
