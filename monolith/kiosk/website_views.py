@@ -92,15 +92,15 @@ def review_summary(ratings):
 
 # --- Platform page (/): Hy+ Clinic for clinics, brands and partners ---------------------------
 
-# Connected health-check devices: "live" ones are integrated today (see the BLE gateway).
+# Connected health-check devices: "live" ones show as Integrated, the rest as Coming soon.
 DEVICES = [
     {"name": "Blood pressure monitor", "icon": "bi-heart-pulse", "detail": "Blood pressure and pulse", "live": True},
     {"name": "Body weight scale", "icon": "bi-speedometer2", "detail": "Weight, with BMI from height", "live": True},
-    {"name": "Pulse oximeter", "icon": "bi-activity", "detail": "Oxygen saturation (SpO₂) and pulse", "live": False},
-    {"name": "Body thermometer", "icon": "bi-thermometer-half", "detail": "Body temperature", "live": False},
-    {"name": "Blood glucose meter", "icon": "bi-droplet-half", "detail": "Blood sugar", "live": False},
-    {"name": "Cholesterol meter", "icon": "bi-droplet", "detail": "Total cholesterol", "live": False},
-    {"name": "Uric acid meter", "icon": "bi-eyedropper", "detail": "Uric acid", "live": False},
+    {"name": "Pulse oximeter", "icon": "bi-activity", "detail": "Oxygen saturation (SpO₂) and pulse", "live": True},
+    {"name": "Body thermometer", "icon": "bi-thermometer-half", "detail": "Body temperature", "live": True},
+    {"name": "Blood glucose meter", "icon": "bi-droplet-half", "detail": "Blood sugar", "live": True},
+    {"name": "Cholesterol meter", "icon": "bi-droplet", "detail": "Total cholesterol", "live": True},
+    {"name": "Uric acid meter", "icon": "bi-eyedropper", "detail": "Uric acid", "live": True},
 ]
 
 # Brands shown in "Works with the brands you already use". The logos in static/img/brands/ are
