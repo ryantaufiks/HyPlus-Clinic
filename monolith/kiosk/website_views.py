@@ -103,6 +103,26 @@ DEVICES = [
     {"name": "Uric acid meter", "icon": "bi-eyedropper", "detail": "Uric acid", "live": False},
 ]
 
+# Brands shown in "Works with the brands you already use". The logos in static/img/brands/ are
+# single-colour masks (transparent PNG, 112 px high) so the page can tint them with CSS.
+BRAND_GROUPS = [
+    {"title": "Health-check devices", "icon": "bi-heart-pulse", "brands": [
+        ("OMRON", "omron", 470, 95), ("Beurer", "beurer", 423, 112), ("Yuwell", "yuwell", 311, 112),
+        ("FORA", "fora", 283, 112), ("ABN", "abn", 470, 87), ("Stemoscope", "stemoscope", 443, 112),
+    ]},
+    {"title": "Door access, CCTV and smart relays", "icon": "bi-door-open", "brands": [
+        ("Hikvision", "hikvision", 470, 61), ("Dahua", "dahua", 371, 112), ("Axis", "axis", 311, 112),
+        ("Shelly", "shelly", 405, 112), ("Sonoff", "sonoff", 372, 112),
+    ]},
+]
+# Optical sizing: a wide, thin wordmark gets a shorter box than a compact one, so every logo
+# carries about the same visual weight (height scales with 1/sqrt(aspect ratio)).
+for _group in BRAND_GROUPS:
+    _group["brands"] = [
+        {"name": name, "file": f"img/brands/{slug}.png", "height": round(min(46, max(24, 34 * (3 / (w / h)) ** 0.5)))}
+        for name, slug, w, h in _group["brands"]
+    ]
+
 
 class PartnerInquiryForm(BootstrapMixin, forms.ModelForm):
     consent = forms.BooleanField(label="I agree that Hy+ Clinic stores these details to reply to me.")
@@ -132,7 +152,7 @@ class PlatformView(View):
     template_name = "kiosk/platform.html"
 
     def _render(self, request, form, sent=False):
-        return render(request, self.template_name, {"form": form, "sent": sent, "devices": DEVICES})
+        return render(request, self.template_name, {"form": form, "sent": sent, "devices": DEVICES, "brand_groups": BRAND_GROUPS})
 
     def get(self, request):
         interest = request.GET.get("interest")

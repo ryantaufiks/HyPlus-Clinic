@@ -166,7 +166,9 @@ class PlatformPageTest(TestCase):
                      "CTO / Founding engineer", "Contact us", reverse("kiosk:landing")]:
             self.assertContains(page, text)
         self.assertNotContains(page, "SGD")  # no clinic prices on the platform page
-        self.assertNotContains(page, "OMRON")  # no device brands on the platform page
+        self.assertContains(page, "Works with the brands you already use")
+        self.assertContains(page, 'aria-label="Hikvision"')
+        self.assertContains(page, "no partnership or endorsement is implied")
         demo = self.client.get(reverse("kiosk:landing"))
         self.assertContains(demo, "Demo clinic")
         self.assertContains(demo, "SGD 49")

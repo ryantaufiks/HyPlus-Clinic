@@ -106,6 +106,29 @@
         </div>
     </section>
 
+    <!-- Compatible brands -->
+    <section class="section" id="brands">
+        <div class="container">
+            <div class="section-head">
+                <h2>Works with the brands you already use</h2>
+                <p>Keep the devices and door hardware your clinic trusts. Hy+ Clinic reads health-check devices and drives access control, CCTV and smart relays from leading brands.</p>
+            </div>
+            <div class="brand-groups">
+                {% for group in brand_groups %}
+                <div class="brand-group" data-reveal style="--i: {{ forloop.counter0 }}">
+                    <h3><i class="bi {{ group.icon }}"></i>{{ group.title }}</h3>
+                    <ul class="brand-logos">
+                        {% for brand in group.brands %}
+                        <li><span class="brand-logo" role="img" aria-label="{{ brand.name }}" style="--logo: url('{% static brand.file %}'); height: {{ brand.height }}px"></span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="brand-note">Brand names and logos are trademarks of their respective owners and show compatibility only; no partnership or endorsement is implied.</p>
+        </div>
+    </section>
+
     <!-- Platform features -->
     <section class="section" id="platform">
         <div class="container">
