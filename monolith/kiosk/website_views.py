@@ -103,6 +103,41 @@ DEVICES = [
     {"name": "Uric acid meter", "icon": "bi-eyedropper", "detail": "Uric acid", "live": True},
 ]
 
+# What a clinic gets, shown in the hero card.
+PLATFORM_MODULES = [
+    {"name": "Health-check devices", "icon": "bi-heart-pulse"},
+    {"name": "Digital medical records", "icon": "bi-journal-medical"},
+    {"name": "Secure video consultation", "icon": "bi-camera-video"},
+    {"name": "Queue display on smart TV", "icon": "bi-tv"},
+    {"name": "Room access control", "icon": "bi-door-open"},
+    {"name": "Staff attendance", "icon": "bi-fingerprint"},
+    {"name": "AI assistant for doctors", "icon": "bi-stars"},
+]
+
+# "From manual to digital": what each step looked like before, and with Hy+ Clinic.
+SHIFTS = [
+    ("Vitals measured, written down, then typed again", "Readings go from the device straight into the record", "bi-heart-pulse"),
+    ("Paper files and notes scattered across desks", "One digital medical record: history, ICD-10 diagnoses, prescriptions", "bi-journal-medical"),
+    ("Doctors read through notes before each patient", "An AI summary is ready before the patient walks in", "bi-stars"),
+    ("A trip to the clinic for every follow-up", "Secure video consultations from home", "bi-camera-video"),
+    ("Bookings by phone, confirmed by hand", "Online booking and queue numbers, confirmed on WhatsApp", "bi-calendar2-check"),
+    ("Names called out across a crowded room", "Numbers on the patient's phone and the smart TV, with a chime", "bi-tv"),
+    ("Keys, and staff walking patients to rooms", "QR tickets and staff accounts open the right doors", "bi-door-open"),
+    ("Paper sign-in sheets for attendance", "Digital clock-in, matched with each schedule", "bi-fingerprint"),
+]
+
+# "Built for the people who deliver care": what each role gains.
+ROLES = [
+    {"name": "Doctors", "icon": "bi-clipboard2-pulse", "gain": "Fully prepared for every patient.",
+     "items": ["Vitals, history and allergies on one screen", "AI pre-consultation summary", "Video consultations from the same workspace", "Prescriptions checked against allergies"]},
+    {"name": "Nurses", "icon": "bi-heart-pulse", "gain": "Less recording, more caring.",
+     "items": ["Patients measure themselves at the kiosk", "Abnormal readings flagged automatically", "Urgent patients moved to the front", "No transcription mistakes"]},
+    {"name": "Front desk", "icon": "bi-person-badge", "gain": "A calmer counter.",
+     "items": ["Self check-in and online queue numbers", "Bookings confirmed on WhatsApp", "Queue on the smart TV, not shouted", "Registrations approved in one click"]},
+    {"name": "Clinic owners", "icon": "bi-graph-up-arrow", "gain": "The whole clinic at a glance.",
+     "items": ["Live dashboard of visits and devices", "Staff attendance and doctor schedules", "Room access managed in one place", "Your brand on every screen"]},
+]
+
 # Brands shown in "Works with the brands you already use". The logos in static/img/brands/ are
 # single-colour masks (transparent PNG, 112 px high) so the page can tint them with CSS.
 BRAND_GROUPS = [
@@ -152,7 +187,7 @@ class PlatformView(View):
     template_name = "kiosk/platform.html"
 
     def _render(self, request, form, sent=False):
-        return render(request, self.template_name, {"form": form, "sent": sent, "devices": DEVICES, "brand_groups": BRAND_GROUPS})
+        return render(request, self.template_name, {"form": form, "sent": sent, "devices": DEVICES, "modules": PLATFORM_MODULES, "shifts": SHIFTS, "roles": ROLES, "brand_groups": BRAND_GROUPS})
 
     def get(self, request):
         interest = request.GET.get("interest")

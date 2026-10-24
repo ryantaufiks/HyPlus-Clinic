@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b7a83" />
-    <meta name="description" content="Hy+ Clinic is a smart, white-label clinic platform connected to health-check devices: self check-in kiosk, live queues, the doctor's workspace, a patient portal and AI pre-consultation summaries." />
-    <title>Hy+ Clinic — Smart clinic platform with connected health devices</title>
+    <meta name="description" content="Hy+ Clinic is a smart, white-label clinic platform that takes clinic work from manual to digital: connected health-check devices, medical records, video consultations, queue displays, door access, staff attendance and an AI assistant for doctors." />
+    <title>Hy+ Clinic — Smart clinic platform for healthcare teams</title>
     <link rel="manifest" href="{% static 'manifest.json' %}" />
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'icons/icon-32x32.png' %}" />
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192x192.png' %}" />
@@ -21,8 +21,9 @@
     <div class="container d-flex align-items-center gap-3">
         <a class="brand me-auto" href="{% url 'kiosk:platform' %}">{% include 'kiosk/_brand.html' %}</a>
         <nav class="site-nav d-none d-lg-flex" aria-label="Sections">
-            <a href="#devices">Devices</a>
+            <a href="#benefits">Benefits</a>
             <a href="#platform">Platform</a>
+            <a href="#devices">Integrations</a>
             <a href="#white-label">White label</a>
             <a href="#demo">Live demo</a>
             <a href="#engage">Work with us</a>
@@ -44,25 +45,25 @@
             <div class="row g-5 align-items-center">
                 <div class="col-lg-7">
                     <span class="eyebrow" data-rise><i class="bi bi-stars"></i> Smart clinic platform · White label</span>
-                    <h1 class="hero-title" data-rise style="--i: 1">The smart clinic platform,<br /><span>connected to your health devices.</span></h1>
-                    <p class="hero-lead" data-rise style="--i: 2">Hy+ Clinic connects your health-check devices to a self check-in kiosk, live queues and the doctor's workspace. Under your own brand.</p>
+                    <h1 class="hero-title" data-rise style="--i: 1">Less admin.<br /><span>More time for patients.</span></h1>
+                    <p class="hero-lead" data-rise style="--i: 2">Hy+ Clinic turns manual clinic work into one connected digital flow, so doctors, nurses and the front desk spend less time on paperwork and more on care. Under your own brand.</p>
                     <div class="d-flex flex-wrap gap-2 mt-4" data-rise style="--i: 3">
                         <a class="btn btn-primary btn-lg btn-icon btn-glow" href="#contact"><i class="bi bi-chat-dots"></i> Contact us</a>
                         <a class="btn btn-light btn-lg btn-icon" href="{% url 'kiosk:landing' %}"><i class="bi bi-eye"></i> See the live demo</a>
                     </div>
-                    <p class="hero-price" data-rise style="--i: 4">Connected devices · Self check-in · Live queues · AI summaries</p>
+                    <p class="hero-price" data-rise style="--i: 4">Connected devices · Medical records · Video consultation · AI assistant</p>
                 </div>
                 <div class="col-lg-5 hero-visual">
                     <canvas id="orb" class="orb" aria-hidden="true"></canvas>
                     <div class="today-card glass glow-border device-card" data-rise style="--i: 2">
                         <div class="today-head">
-                            <span><i class="bi bi-bluetooth"></i> Connected devices</span>
+                            <span><i class="bi bi-grid-1x2"></i> Your clinic, connected</span>
                             <span class="live"><span class="dot"></span>Live</span>
                         </div>
                         <svg class="ekg" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true"><path class="base" d="M0 22 H70 L80 22 L88 8 L96 34 L104 4 L112 30 L118 22 H190 L198 22 L204 14 L210 26 L216 22 H300" /><path class="pulse" pathLength="100" d="M0 22 H70 L80 22 L88 8 L96 34 L104 4 L112 30 L118 22 H190 L198 22 L204 14 L210 26 L216 22 H300" /></svg>
                         <ul class="device-list">
-                            {% for d in devices %}
-                            <li><i class="bi {{ d.icon }}"></i><span>{{ d.name }}</span>{% if d.live %}<span class="status status-good"><i class="bi bi-circle-fill"></i>Live</span>{% else %}<span class="soon">Soon</span>{% endif %}</li>
+                            {% for m in modules %}
+                            <li><i class="bi {{ m.icon }}"></i><span>{{ m.name }}</span><span class="status status-good"><i class="bi bi-check-circle-fill"></i>Included</span></li>
                             {% endfor %}
                         </ul>
                     </div>
@@ -71,23 +72,47 @@
         </div>
     </section>
 
-    <!-- Problem -->
-    <section class="section">
+    <!-- Manual to digital -->
+    <section class="section" id="benefits">
         <div class="container">
             <div class="section-head">
-                <h2>Built to take the routine off your nurses</h2>
-                <p>Before every consultation, someone measures the patient's vital signs, writes them down and passes them to the doctor. Hy+ Clinic does that part for them.</p>
+                <h2>From manual to digital, step by step</h2>
+                <p>Many clinics still run on paper forms, handwritten vitals and phone calls. Hy+ Clinic replaces each manual step with a digital one, so the work gets done once, correctly, and nobody has to do it twice.</p>
+            </div>
+            <div class="shift-grid">
+                {% for before, after, icon in shifts %}
+                <article class="shift-card" data-reveal style="--i: {% cycle 0 1 2 3 %}">
+                    <span class="shift-icon"><i class="bi {{ icon }}"></i></span>
+                    <p class="shift-before"><span>Before</span>{{ before }}</p>
+                    <p class="shift-after"><span>With Hy+</span>{{ after }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- For the care team -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="section-head">
+                <h2>Built for the people who deliver care</h2>
+                <p>Every role gets back time it used to spend on admin.</p>
             </div>
             <div class="row g-3">
-                <div class="col-md-4"><div class="value-tile" data-reveal><i class="bi bi-clipboard-x"></i><h3>No more copying numbers</h3><p>Devices send readings straight to the patient's record: no handwriting, no typing, no transcription mistakes.</p></div></div>
-                <div class="col-md-4"><div class="value-tile" data-reveal style="--i: 1"><i class="bi bi-people"></i><h3>Calmer waiting rooms</h3><p>Online queue numbers, live position on the patient's phone and a TV that calls numbers with a chime.</p></div></div>
-                <div class="col-md-4"><div class="value-tile" data-reveal style="--i: 2"><i class="bi bi-clipboard2-pulse"></i><h3>Doctors fully prepared</h3><p>Vitals, history, allergies and an AI pre-consultation summary are ready before the patient walks in.</p></div></div>
+                {% for role in roles %}
+                <div class="col-sm-6 col-lg-3"><article class="role-card" data-reveal style="--i: {{ forloop.counter0 }}">
+                    <span class="role-icon"><i class="bi {{ role.icon }}"></i></span>
+                    <h3>{{ role.name }}</h3>
+                    <p class="role-gain">{{ role.gain }}</p>
+                    <ul>{% for item in role.items %}<li><i class="bi bi-check2"></i>{{ item }}</li>{% endfor %}</ul>
+                </article></div>
+                {% endfor %}
             </div>
         </div>
     </section>
 
     <!-- Devices -->
-    <section class="section section-alt" id="devices">
+    <section class="section" id="devices">
         <div class="container">
             <div class="section-head">
                 <h2>Connected health-check devices</h2>
@@ -107,7 +132,7 @@
     </section>
 
     <!-- Compatible brands -->
-    <section class="section" id="brands">
+    <section class="section section-alt" id="brands">
         <div class="container">
             <div class="section-head">
                 <h2>Works with the brands you already use</h2>
@@ -256,7 +281,7 @@
             <ol class="impl-steps">
                 <li data-reveal><span>1</span><h3>Discovery</h3><p>We learn how your clinic runs today and agree on the scope and timeline.</p></li>
                 <li data-reveal style="--i: 1"><span>2</span><h3>Your brand</h3><p>Name, logo, colours, domain, services, prices, doctors and staff accounts.</p></li>
-                <li data-reveal style="--i: 2"><span>3</span><h3>Devices &amp; screens</h3><p>Pairing the health-check devices, the kiosk tablet and the waiting-room TV.</p></li>
+                <li data-reveal style="--i: 2"><span>3</span><h3>Devices, doors &amp; screens</h3><p>Pairing the health-check devices, door access, the kiosk tablet and the waiting-room TV.</p></li>
                 <li data-reveal style="--i: 3"><span>4</span><h3>Go live &amp; support</h3><p>Training for your team, monitoring, daily backups and updates.</p></li>
             </ol>
         </div>
@@ -303,7 +328,9 @@
             </div>
             <details data-reveal><summary>Which devices work with Hy+ Clinic?</summary><p>Blood pressure monitors, body weight scales, pulse oximeters, thermometers and blood glucose, cholesterol and uric acid meters from the brands listed above. If your clinic already uses another Bluetooth device, we can integrate it.</p></details>
             <details data-reveal><summary>Can it run under our own brand and domain?</summary><p>Yes. The name, logo, colours, domain, services and prices are yours, and each clinic gets its own installation and database.</p></details>
-            <details data-reveal><summary>What hardware does a clinic need?</summary><p>A tablet or touch screen for the kiosk, a TV for the waiting room, the health-check devices and a small computer at the clinic that reads the devices over Bluetooth.</p></details>
+            <details data-reveal><summary>What hardware does a clinic need?</summary><p>A tablet or touch screen for the kiosk, a smart TV for the waiting room, the health-check devices and a small computer at the clinic that reads the devices over Bluetooth. For room access, your door controllers or smart relays.</p></details>
+            <details data-reveal><summary>How do video consultations work?</summary><p>Patients join from their phone or laptop through a secure, private link, with no app to install. The doctor runs the call from their workspace and the notes go into the patient's record like any other visit.</p></details>
+            <details data-reveal><summary>Does it work with our door access and CCTV?</summary><p>Yes. Hy+ Clinic works with door access controllers, CCTV and smart relays from the brands listed above, so queue tickets and staff accounts open the right rooms.</p></details>
             <details data-reveal><summary>Is patient data sent to the AI?</summary><p>Only de-identified data: no names, IDs, phone numbers or addresses. The doctor always reviews the summary; it does not diagnose.</p></details>
             <details data-reveal><summary>How much does it cost?</summary><p>Pricing depends on the number of sites, devices and the support you need. Contact us and we will send a proposal.</p></details>
         </div>
