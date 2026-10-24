@@ -9,9 +9,21 @@
         <h1 class="page-title">Settings</h1>
         <p class="page-subtitle">Every module of your clinic in one place.</p>
     </div>
-    <div class="module-search">
-        <i class="bi bi-search" aria-hidden="true"></i>
-        <input type="search" class="form-control" id="module-search" placeholder="Search settings" aria-label="Search settings" autocomplete="off" />
+    <div class="module-tools">
+        <div class="module-search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" id="module-search" placeholder="Search settings" aria-label="Search settings" autocomplete="off" />
+        </div>
+        <label class="module-sort">
+            <span class="visually-hidden">Sort by</span>
+            <i class="bi bi-sort-down" aria-hidden="true"></i>
+            <select class="form-select" id="module-sort">
+                <option value="group">Sort by group</option>
+                <option value="attention">Needs attention first</option>
+                <option value="az">Name A–Z</option>
+                <option value="za">Name Z–A</option>
+            </select>
+        </label>
     </div>
 </div>
 
@@ -20,14 +32,14 @@
     <h2 class="module-group-title" id="group-{{ forloop.counter }}">{{ group.title }}</h2>
     <div class="module-grid">
         {% for m in group.modules %}
-        <a class="module-card tone-{{ m.tone }}" href="{{ m.url }}"{% if m.new_tab %} target="_blank" rel="noopener"{% endif %} data-module="{{ m.title|lower }} {{ m.text|lower }}">
+        <a class="module-card tone-{{ m.tone }}" href="{{ m.url }}"{% if m.new_tab %} target="_blank" rel="noopener"{% endif %} data-module="{{ m.title|lower }} {{ m.text|lower }} {{ group.title|lower }}" data-title="{{ m.title }}" data-badge="{{ m.badge }}"{% if m.warn %} data-warn{% endif %}>
             <span class="module-icon"><i class="bi {{ m.icon }}"></i></span>
             <span class="module-body">
                 <span class="module-title">{{ m.title }}{% if m.new_tab %} <i class="bi bi-box-arrow-up-right small text-muted"></i>{% endif %}</span>
                 <span class="module-text">{{ m.text }}</span>
             </span>
             <span class="module-foot">
-                <span class="module-stat">{{ m.stat }}</span>
+                <span class="module-stat{% if m.warn %} is-warn{% endif %}">{% if m.warn %}<i class="bi bi-exclamation-triangle-fill"></i> {% endif %}{{ m.stat }}</span>
                 {% if m.badge %}<span class="badge rounded-pill text-bg-danger">{{ m.badge }} {{ m.badge_label }}</span>{% else %}<i class="bi bi-arrow-right module-go" aria-hidden="true"></i>{% endif %}
             </span>
         </a>
@@ -40,7 +52,7 @@
     <h2 class="module-group-title" id="group-soon">Coming soon</h2>
     <div class="module-grid">
         {% for m in coming_soon %}
-        <div class="module-card module-soon" data-module="{{ m.title|lower }} {{ m.text|lower }}" aria-disabled="true">
+        <div class="module-card module-soon" data-module="{{ m.title|lower }} {{ m.text|lower }} coming soon" data-title="{{ m.title }}" data-badge="0" data-soon aria-disabled="true">
             <span class="module-icon"><i class="bi {{ m.icon }}"></i></span>
             <span class="module-body">
                 <span class="module-title">{{ m.title }}</span>
@@ -50,6 +62,11 @@
         </div>
         {% endfor %}
     </div>
+</section>
+
+<section class="module-group" id="module-sorted" hidden aria-label="All modules, sorted">
+    <h2 class="module-group-title">All modules</h2>
+    <div class="module-grid"></div>
 </section>
 
 <p class="text-muted text-center py-4 d-none" id="module-empty">No settings match your search.</p>

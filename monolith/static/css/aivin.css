@@ -349,7 +349,11 @@ code { color: var(--aivin-primary-strong); }
 
 /* ---- Settings home: module cards, ERP style -------------------------------------- */
 
-.module-search { position: relative; width: min(100%, 320px); }
+.module-tools { display: flex; flex-wrap: wrap; gap: 0.6rem; width: min(100%, 520px); justify-content: flex-end; }
+.module-search { position: relative; flex: 1 1 220px; }
+.module-sort { position: relative; flex: 0 0 auto; margin: 0; }
+.module-sort .bi { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--aivin-muted); pointer-events: none; }
+.module-sort .form-select { padding-left: 2.3rem; border-radius: 99px; min-width: 250px; }
 .module-search .bi { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--aivin-muted); pointer-events: none; }
 .module-search .form-control { padding-left: 2.3rem; border-radius: 99px; }
 .module-group + .module-group { margin-top: 2rem; }
@@ -371,8 +375,10 @@ a.module-card:focus-visible { outline: 3px solid var(--tone); outline-offset: 2p
 .module-text { font-size: 0.88rem; color: var(--aivin-ink-2); }
 .module-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--aivin-border); }
 .module-stat { font-size: 0.82rem; font-weight: 600; color: var(--tone); }
+.module-stat.is-warn { color: var(--aivin-warning-ink); }
 .module-go { color: var(--aivin-muted); transition: transform 0.15s, color 0.15s; }
-a.module-card:hover .module-go { color: var(--tone); transform: translateX(3px); }
+a.module-card:hover .module-stat.is-warn { color: var(--aivin-warning-ink); }
+.module-go { color: var(--tone); transform: translateX(3px); }
 .tone-teal   { --tone: #0b7a83; }
 .tone-blue   { --tone: #2a62b8; }
 .tone-violet { --tone: #5b3fd1; }
@@ -392,5 +398,7 @@ a.module-card:hover .module-go { color: var(--tone); transform: translateX(3px);
     .module-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.85rem; min-height: 0; padding: 0.9rem 1rem; }
     .module-icon { width: 2.5rem; height: 2.5rem; font-size: 1.15rem; grid-row: span 1; }
     .module-foot { grid-column: 1 / -1; padding-top: 0.55rem; }
-    .module-search { width: 100%; }
+    .module-tools { width: 100%; }
+    .module-sort { flex: 1 1 100%; }
+    .module-sort .form-select { width: 100%; }
 }

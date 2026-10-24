@@ -32,7 +32,10 @@ def _plural(n, word, plural=None):
 
 
 def _modules():
-    """(group, modules). A module's `stat` is called only if the user can open it."""
+    """(group, modules). A module's `stat`, `badge` and `warn` are called only if the user can open it.
+
+    `badge` counts items waiting for someone; `warn` means the module still needs setting up.
+    """
     return [
         ("People", [
             {"title": "Staff accounts", "icon": "bi-person-badge", "tone": "teal", "need": "manage_staff",
@@ -61,7 +64,8 @@ def _modules():
              "stat": lambda: "Bluetooth gateway"},
             {"title": "Kiosk screens", "icon": "bi-display", "tone": "blue", "need": "manage_devices",
              "url": reverse("kiosk:devices") + "#kiosks", "text": "Tablets allowed to check patients in.",
-             "stat": lambda: _plural(KioskDevice.objects.filter(is_active=True).count(), "active kiosk")},
+             "stat": lambda: _plural(KioskDevice.objects.filter(is_active=True).count(), "active kiosk"),
+             "warn": lambda: not KioskDevice.objects.filter(is_active=True).exists()},
             {"title": "Door access", "icon": "bi-door-open", "tone": "slate", "need": "scan_tickets",
              "url": reverse("kiosk:qr-scanner"), "text": "Scan queue tickets at the consulting-room door.",
              "stat": lambda: "QR ticket scanner"},
@@ -72,7 +76,8 @@ def _modules():
         ("System", [
             {"title": "AI & system settings", "icon": "bi-stars", "tone": "violet", "need": SUPERUSER,
              "url": reverse("admin:kiosk_siteconfiguration_changelist"), "text": "The OpenAI key for AI summaries, and server secrets.",
-             "stat": lambda: "OpenAI key set" if SiteConfiguration.load().openai_api_key_hint else "OpenAI key not set"},
+             "stat": lambda: "OpenAI key set" if SiteConfiguration.load().openai_api_key_hint else "OpenAI key not set",
+             "warn": lambda: not SiteConfiguration.load().openai_api_key_hint},
             {"title": "Audit log", "icon": "bi-journal-check", "tone": "slate", "need": SUPERUSER,
              "url": reverse("admin:kiosk_auditevent_changelist"), "text": "Every change to medical and registration data.",
              "stat": lambda: "Read only"},
@@ -108,6 +113,7 @@ class SettingsHomeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     **module,
                     "stat": module["stat"](),
                     "badge": module["badge"]() if "badge" in module else 0,
+                    "warn": module["warn"]() if "warn" in module else False,
                 })
             if visible:
                 groups.append({"title": title, "modules": visible})

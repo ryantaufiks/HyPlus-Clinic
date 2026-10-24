@@ -21,6 +21,8 @@ class SettingsHomeTest(TestCase):
                      "AI &amp; system settings", "Audit log", "Staff attendance", "Coming soon"]:
             self.assertContains(page, text)
         self.assertContains(page, "OpenAI key not set")
+        self.assertContains(page, "data-warn")  # no OpenAI key and no kiosk yet: flagged for setup
+        self.assertContains(page, 'id="module-sort"')
 
     def test_nurse_sees_only_the_modules_they_can_open(self):
         self.client.force_login(user_with_role("nina", "nurse"))
