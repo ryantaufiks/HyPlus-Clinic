@@ -464,10 +464,10 @@
 .brand-group { min-width: 0; background: var(--aivin-surface); border: 1px solid var(--aivin-border); border-radius: 20px; padding: 1.4rem 1.5rem 1.6rem; }
 .brand-group h3 { display: flex; align-items: center; gap: 0.55rem; font-size: 1rem; font-weight: 700; margin: 0 0 1.2rem; }
 .brand-group h3 .bi { color: var(--aivin-primary); }
-.brand-logos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
-@media (max-width: 575.98px) { .brand-logos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.brand-logos li { display: flex; align-items: center; justify-content: center; height: 76px; padding: 0 0.9rem; border-radius: 14px; background: var(--aivin-surface-2, var(--aivin-bg)); }
-.brand-logo { display: block; width: 100%; background: var(--aivin-muted); transition: background-color 0.2s;
+.partner-logos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+@media (max-width: 575.98px) { .partner-logos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.partner-logos li { display: flex; align-items: center; justify-content: center; height: 76px; padding: 0 0.9rem; border-radius: 14px; background: var(--aivin-surface-2, var(--aivin-bg)); }
+.partner-logo { display: block; width: 100%; background: var(--aivin-muted); transition: background-color 0.2s;
     -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat; }
-.brand-logos li:hover .brand-logo { background: var(--aivin-primary); }
+.partner-logos li:hover .partner-logo { background: var(--aivin-primary); }
 .brand-note { margin: 1.1rem 0 0; font-size: 0.8rem; color: var(--aivin-muted); }

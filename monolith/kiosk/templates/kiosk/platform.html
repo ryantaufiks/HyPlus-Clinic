@@ -117,9 +117,9 @@
                 {% for group in brand_groups %}
                 <div class="brand-group" data-reveal style="--i: {{ forloop.counter0 }}">
                     <h3><i class="bi {{ group.icon }}"></i>{{ group.title }}</h3>
-                    <ul class="brand-logos">
+                    <ul class="partner-logos">
                         {% for brand in group.brands %}
-                        <li><span class="brand-logo" role="img" aria-label="{{ brand.name }}" style="--logo: url('{% static brand.file %}'); height: {{ brand.height }}px"></span></li>
+                        <li><span class="partner-logo" role="img" aria-label="{{ brand.name }}" style="--logo: url('{% static brand.file %}'); height: {{ brand.height }}px"></span></li>
                         {% endfor %}
                     </ul>
                 </div>
