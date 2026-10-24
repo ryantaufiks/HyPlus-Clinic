@@ -121,7 +121,7 @@
             <div class="device-grid">
                 {% for d in devices %}
                 <article class="device-tile{% if not d.live %} device-soon{% endif %}" data-reveal style="--i: {{ forloop.counter0 }}">
-                    <span class="device-icon"><i class="bi {{ d.icon }}"></i></span>
+                    <img class="device-art" src="{% static d.image %}" alt="" width="640" height="480" loading="lazy" decoding="async" />
                     <h3>{{ d.name }}</h3>
                     <p>{{ d.detail }}</p>
                     {% if d.live %}<span class="status status-good"><i class="bi bi-check-circle-fill"></i>Integrated</span>{% else %}<span class="soon">Coming soon</span>{% endif %}

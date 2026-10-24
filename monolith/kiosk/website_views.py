@@ -94,13 +94,13 @@ def review_summary(ratings):
 
 # Connected health-check devices: "live" ones show as Integrated, the rest as Coming soon.
 DEVICES = [
-    {"name": "Blood pressure monitor", "icon": "bi-heart-pulse", "detail": "Blood pressure and pulse", "live": True},
-    {"name": "Body weight scale", "icon": "bi-speedometer2", "detail": "Weight, with BMI from height", "live": True},
-    {"name": "Pulse oximeter", "icon": "bi-activity", "detail": "Oxygen saturation (SpO₂) and pulse", "live": True},
-    {"name": "Body thermometer", "icon": "bi-thermometer-half", "detail": "Body temperature", "live": True},
-    {"name": "Blood glucose meter", "icon": "bi-droplet-half", "detail": "Blood sugar", "live": True},
-    {"name": "Cholesterol meter", "icon": "bi-droplet", "detail": "Total cholesterol", "live": True},
-    {"name": "Uric acid meter", "icon": "bi-eyedropper", "detail": "Uric acid", "live": True},
+    {"name": "Blood pressure monitor", "image": "img/devices/blood-pressure.webp", "icon": "bi-heart-pulse", "detail": "Blood pressure and pulse", "live": True},
+    {"name": "Body weight scale", "image": "img/devices/weight-scale.webp", "icon": "bi-speedometer2", "detail": "Weight, with BMI from height", "live": True},
+    {"name": "Pulse oximeter", "image": "img/devices/oximeter.webp", "icon": "bi-activity", "detail": "Oxygen saturation (SpO₂) and pulse", "live": True},
+    {"name": "Body thermometer", "image": "img/devices/body-thermometer.webp", "icon": "bi-thermometer-half", "detail": "Body temperature", "live": True},
+    {"name": "Blood glucose meter", "image": "img/devices/blood-glucose.webp", "icon": "bi-droplet-half", "detail": "Blood sugar", "live": True},
+    {"name": "Cholesterol meter", "image": "img/devices/cholesterol.webp", "icon": "bi-droplet", "detail": "Total cholesterol", "live": True},
+    {"name": "Uric acid meter", "image": "img/devices/uric-acid.webp", "icon": "bi-eyedropper", "detail": "Uric acid", "live": True},
 ]
 
 # What a clinic gets, shown in the hero card.
