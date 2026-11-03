@@ -1,16 +1,68 @@
-# Hy+ Clinic
+<p align="center"><img src="monolith/static/img/hyplus-logo.png" alt="Hy+ Clinic" width="260" /></p>
 
-**Platform klinik pintar berbasis AI: booking dan antrean online, kiosk tanda vital AIVIN (AI-Vital Intake), konsultasi dokter, resep dan portal pasien.**
+<p align="center"><strong>The smart clinic platform for healthcare teams: less admin, more time for patients.</strong></p>
 
-Before a patient sees the doctor, a nurse usually measures their vital signs, writes them down, and passes the notes on to the doctor. AIVIN takes over this intake step: an AI voice assistant guides the patient, Bluetooth medical devices take the measurements, everything is recorded automatically, and the doctor receives the results ready for further examination. The goal is to **reduce nurse workload**, not to replace nurses.
+<p align="center">
+  <img alt="Django 5.2" src="https://img.shields.io/badge/Django-5.2-0b7a83" />
+  <img alt="PostgreSQL 16" src="https://img.shields.io/badge/PostgreSQL-16-0b7a83" />
+  <img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-0b7a83" />
+  <img alt="White label" src="https://img.shields.io/badge/White%20label-one%20instance%20per%20clinic-0b7a83" />
+</p>
+
+<p align="center"><a href="https://aivin.myavantec.com">Platform page</a> · <a href="https://aivin.myavantec.com/demo/">Demo clinic</a></p>
+
+Hy+ Clinic turns manual clinic work into one connected digital flow: online booking and queue numbers, a self check-in kiosk (AIVIN, AI-Vital Intake) that reads health-check devices over Bluetooth, the doctor's workspace with an AI pre-consultation summary, a waiting-room TV, a patient portal and live operations analytics. It runs under the clinic's own brand, with one isolated installation and database per clinic.
+
+![Platform page](docs/screenshots/platform.webp)
+
+## Screenshots
+
+All screenshots show real screens with fictional demo data.
+
+| Today: what the desk acts on now | Analytics: how the clinic is doing |
+|---|---|
+| ![Today dashboard](docs/screenshots/dashboard.webp) | ![Analytics](docs/screenshots/analytics.webp) |
+
+| Doctor's workspace and AI summary | Doctor's queue |
+|---|---|
+| ![Doctor's workspace](docs/screenshots/doctor-visit.webp) | ![Doctor's queue](docs/screenshots/doctor-queue.webp) |
+
+| Self check-in kiosk | Reading from the device | Ticket |
+|---|---|---|
+| ![Kiosk welcome](docs/screenshots/kiosk-welcome.webp) | ![Blood pressure reading](docs/screenshots/kiosk-bp.webp) | ![Kiosk ticket](docs/screenshots/kiosk-ticket.webp) |
+
+| Waiting-room TV | Settings: every module as a card |
+|---|---|
+| ![Waiting-room TV](docs/screenshots/tv.webp) | ![Settings](docs/screenshots/settings.webp) |
+
+| Smart booking | Live place in the queue | Patient portal |
+|---|---|---|
+| ![Booking on a phone](docs/screenshots/phone-booking.webp) | ![Ticket on a phone](docs/screenshots/phone-ticket.webp) | ![Portal on a phone](docs/screenshots/phone-portal.webp) |
 
 ## Features
 
-- Voice-guided patient intake (Web Speech API)
-- OMRON HEM-6232T blood-pressure monitor and HN-300T2 scale, read automatically by a BLE gateway on the server
-- Queue tickets with QR codes; doctors scan the QR to open the patient's results
-- Staff dashboard, patient records and measurement history (login required)
-- Admin-managed system settings, with the OpenAI API key stored encrypted
+**Patients**
+- Online booking and same-day queue numbers, with a choice of doctor
+- QR ticket with their live place in the queue
+- Patient portal: visits, diagnoses, vital-sign trends and printable prescriptions
+
+**Kiosk and devices**
+- Voice-guided self check-in for new and returning patients and online tickets
+- Bluetooth readings sent straight to the record through a gateway on the clinic's server (OMRON HEM-6232T blood pressure monitor and HN-300T2 scale in this repository)
+- Readings checked against clinical guidelines; patients with very high blood pressure are called first
+
+**Doctors and staff**
+- Digital medical records: history, allergies, vital-sign trends, ICD-10 diagnoses and prescriptions checked against recorded drug allergies
+- AI pre-consultation summary from de-identified data, always reviewed by the doctor
+- One-tap calling, weekly doctor schedules, and a waiting-room TV with a chime
+- Ticket scanning at the consulting-room door
+
+**Clinic management**
+- **Today** dashboard: the live queue, longest and average wait, urgent patients, doctors on duty and the front desk's to-do list
+- **Analytics** (7, 30 or 90 days): visits by outcome, waiting and consultation time, busiest hours, blood pressure categories and per-doctor figures
+- **Settings** home: every module as a card, with search and sorting, filtered by role
+
+**Coming soon in this repository:** staff attendance and video consultation.
 
 ## Architecture
 
@@ -29,9 +81,14 @@ Browser / tablet ──HTTPS──> Cloudflare ──tunnel──> cloudflared (
 
 Who can see what:
 
-- **Public:** the kiosk screen (`/`) and its intake API. The API is CSRF-protected and rate-limited.
-- **Login required:** dashboard, patients, QR scanner and tickets.
-- **Superuser only:** Admin → System settings.
+- **Public:** the platform page (`/`), the demo clinic website (`/demo/`), booking, and the waiting-room TV (`/display/`, queue numbers and rooms only).
+- **Registered kiosks:** the check-in kiosk (`/kiosk/`) and its API, on browsers set up under Settings › Kiosk screens, or for signed-in staff.
+- **Staff login, by role:** dashboard, patients, consultations, front desk tools and settings.
+- **Administrators only:** Analytics, staff accounts, and Admin → System settings.
+
+## Security
+
+Role-based access checked on the server, a strict Content Security Policy with per-request nonces, an audit trail of medical and registration changes, encrypted secrets, rate limiting on public forms, and only the last 4 characters of ID documents stored. See [Secrets and configuration](#secrets-and-configuration).
 
 ## Deploying on Debian
 
@@ -44,7 +101,7 @@ make up                # builds the image, starts db + web, runs migrations
 make createsuperuser   # first administrator account (interactive)
 ```
 
-Then, in the Cloudflare Zero Trust dashboard, add a public hostname to the tunnel (for example `aivin.sc2platform.biz.id`) pointing to `http://localhost:8010`. The hostname must be listed in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in `.env`. Run `make restart` after editing `.env`.
+Then, in the Cloudflare Zero Trust dashboard, add a public hostname to the tunnel (for example `clinic.example.com`) pointing to `http://localhost:8010`. The hostname must be listed in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` in `.env`. Run `make restart` after editing `.env`.
 
 Check that the app is up: `curl http://127.0.0.1:8010/healthz/` should return `{"status": "ok"}`.
 
@@ -92,7 +149,7 @@ Supported: **HEM-6232T** wrist blood-pressure monitor and **HN-300T2** scale. Th
 
 The protocol implementation is vendored from [eigger/hass-omron](https://github.com/eigger/hass-omron) (MIT). Its HN-300T2 support is marked beta upstream.
 
-Pair each device once, from **Devices** in the navbar (staff login):
+Pair each device once, from **Settings › Medical devices** (staff login):
 
 1. Remove the device from the OMRON connect app / phone Bluetooth settings first. A device talks to one host at a time.
 2. Hold the device's Bluetooth button until `-P-` blinks, click **Scan**, choose the model and click **Pair**. The device shows `OK` when it worked.
@@ -125,6 +182,7 @@ Run these commands from `monolith/`:
 
 | Command | What it does |
 |---|---|
+| `./start.sh` | Start, rebuild, stop or restart the app, and show its status and logs |
 | `make ps` / `make logs` | Container status and app logs |
 | `make up` | Rebuild and redeploy after pulling new code (migrations run automatically) |
 | `make backup` | Write a gzipped `pg_dump` and an archive of profile photos to `monolith/backups/` (git-ignored) |

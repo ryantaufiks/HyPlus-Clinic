@@ -75,6 +75,22 @@ async function shot(name, fullHeight) {
     writeFileSync(OUT + name + ".png", Buffer.from(data, "base64"));
     console.log("saved", name);
 }
+// A whole page, or one element of it: grow the viewport to fit so lazy images and charts render for real.
+async function tall(name, selector) {
+    const width = await js("document.documentElement.clientWidth");
+    await viewport(width, await js("document.documentElement.scrollHeight"), 1.5);
+    await js(STILL);
+    await sleep(1800);
+    const params = { format: "png" };
+    if (selector) {
+        const r = JSON.parse(await js(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return JSON.stringify({x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height})})()`));
+        params.clip = { ...r, scale: 1 };
+    }
+    const { data } = await send("Page.captureScreenshot", params, session);
+    writeFileSync(OUT + name + ".png", Buffer.from(data, "base64"));
+    console.log("saved", name);
+    await viewport(width, 900, 1.5);
+}
 async function login(user) {
     await go("/accounts/login/");
     const done = loaded();
@@ -87,6 +103,13 @@ async function logout() {
 
 await connect();
 await newPage();
+
+// 0. The public platform page.
+await viewport(1440, 900, 1.5);
+await go("/"); await sleep(800); await shot("platform");
+await tall("platform-benefits", "#benefits");
+await tall("platform-integrations", "#devices");
+await tall("platform-brands", "#brands");
 
 // 1. Kiosk: register this browser as a kiosk (nurse), sign out, then walk through check-in.
 await viewport(1440, 900, 1.5);
@@ -127,7 +150,9 @@ await logout();
 await fetch(BASE + "/internal/gateway/heartbeat/", { method: "POST", headers: { Authorization: "Bearer " + process.env.GATEWAY_TOKEN, "Content-Type": "application/json" },
     body: JSON.stringify({ devices: [{ kind: "bp", model: "HEM-6232T", address: "AA:BB:CC:00:00:01" }, { kind: "weight", model: "HN-300T2", address: "AA:BB:CC:00:00:02" }] }) });
 await login("admin");
-await go("/dashboard/"); await sleep(1800); await shot("dashboard");
+await go("/dashboard/"); await sleep(1800); await tall("dashboard");
+await go("/analytics/?days=30"); await tall("analytics");
+await go("/settings/"); await tall("settings");
 await go("/schedules/"); await shot("schedules");
 await logout();
 

@@ -1,7 +1,7 @@
 {
   "name": "aivin",
   "version": "1.0.0",
-  "description": "AI-assisted pre-consultation kiosk that measures vital signs, records them automatically and prepares a summary for the doctor, reducing nurse workload",
+  "description": "Hy+ Clinic: smart, white-label clinic platform connected to health-check devices, with self check-in, live queues, medical records and an AI assistant for doctors",
   "author": "AIVIN Team",
   "license": "MIT",
   "main": "index.js",
